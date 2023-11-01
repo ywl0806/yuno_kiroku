@@ -1,0 +1,14 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/*
+* Reset CSS
+*/
+html {
+  font-size: 62.5%;
+}
+body {
+  font-size: 1.6rem;
+  color: #333;
+}
