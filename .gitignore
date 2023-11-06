@@ -1,2 +1,5 @@
 /dist
 .env
+*/*.log
+firestore/data
+/tmp

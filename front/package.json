@@ -2,7 +2,6 @@
   "name": "yuno",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -15,10 +14,12 @@
     "@mui/icons-material": "^5.14.15",
     "@mui/material": "^5.14.15",
     "@tanstack/react-query": "^5.0.5",
+    "firebase": "^10.5.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "^20.8.10",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
@@ -32,9 +33,15 @@
     "eslint-plugin-tailwindcss": "^3.8.3",
     "postcss": "^8.4.21",
     "prettier": "^3.0.3",
-    "prettier-plugin-tailwindcss": "^0.5.4",
+    "prettier-plugin-organize-imports": "^3.2.3",
+    "prettier-plugin-tailwindcss": "^0.5.6",
     "tailwindcss": "^3.2.4",
     "typescript": "^5.0.2",
-    "vite": "^4.4.5"
+    "vite": "^4.4.5",
+    "vite-plugin-pwa": "^0.16.6",
+    "workbox-build": "^7.0.0",
+    "workbox-core": "^7.0.0",
+    "workbox-routing": "^7.0.0",
+    "workbox-strategies": "^7.0.0"
   }
 }
