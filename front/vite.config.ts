@@ -44,7 +44,7 @@ export default defineConfig({
         start_url: 'index.html',
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#000000',
+        theme_color: '#42b883',
         lang: 'ja',
       },
     }),
