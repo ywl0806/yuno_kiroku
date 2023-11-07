@@ -5,7 +5,7 @@ import { cacheNames, clientsClaim } from 'workbox-core'
 import { setCatchHandler, setDefaultHandler } from 'workbox-routing'
 
 //Import caching modules for caching strategies
-import { NetworkOnly } from 'workbox-strategies'
+import { NetworkFirst } from 'workbox-strategies'
 
 //Import module for caching precached assets
 
@@ -74,7 +74,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 })
 
 // Inform the service worker to send all routes that are not recognized to the network to be fetched
-setDefaultHandler(new NetworkOnly())
+setDefaultHandler(new NetworkFirst())
 
 // This method is called when the service worker is unable to fetch a resource from the network
 setCatchHandler(({ event }: any): Promise<Response> => {
@@ -94,12 +94,12 @@ self.skipWaiting()
 clientsClaim()
 
 const config = {
-  apiKey: 'AIzaSyAIBsve46yZ7Nskxfp2deN16VVV86K7XG8',
-  authDomain: 'kiroku-messaging-app.firebaseapp.com',
-  projectId: 'kiroku-messaging-app',
-  storageBucket: 'kiroku-messaging-app.appspot.com',
-  messagingSenderId: '1085771729373',
-  appId: '1:1085771729373:web:ebab984f412cd38ac6ce34',
+  apiKey: import.meta.env['VITE_API_KEY'],
+  authDomain: import.meta.env['VITE_AUTH_DOMAIN'],
+  projectId: import.meta.env['VITE_PROJECT_ID'],
+  storageBucket: import.meta.env['VITE_STORAGE_BUCKET'],
+  messagingSenderId: import.meta.env['VITE_MESSAGING_SENDER_ID'],
+  appId: import.meta.env['VITE_APP_ID'],
 }
 
 const app = initializeApp(config)

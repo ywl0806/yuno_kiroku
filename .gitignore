@@ -2,4 +2,5 @@
 .env
 */*.log
 firestore/data
-/tmp
+api/tmp
+node_modules
