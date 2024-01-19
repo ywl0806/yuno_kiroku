@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+  firebase:
+    build:
+      context: ./firestore
+      dockerfile: ./Dockerfile
+    volumes:
+      - type: bind
+        source: ./firestore
+        target: /app
+    ports:
+      - 4040:4040 # Emulator Suite UI
+      - 8080:8080 # Cloud Firestore
+      - 9099:9099 # Firebase auth
+
+    tty: true
+    command: firebase emulators:start --only firestore,auth --project devlocal --import ./data --export-on-exit=./data
