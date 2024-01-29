@@ -1,15 +1,10 @@
 package main
 
 import (
-	"net/http"
-
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/ywl0806/yuno_kiroku/api/route"
 )
-
-type Hoge struct {
-	message string
-}
 
 func main() {
 	app := echo.New()
@@ -23,12 +18,7 @@ func main() {
 		HTML5:  true,
 		Browse: false,
 	}))
+	route.New(app)
 
-	app.GET("/api", func(ctx echo.Context) error {
-
-		print("hoge")
-
-		return ctx.String(http.StatusOK, "Hello, World!")
-	})
 	app.Logger.Fatal(app.Start("localhost:1323"))
 }
