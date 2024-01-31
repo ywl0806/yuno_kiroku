@@ -1,0 +1,11 @@
+info:
+  contact: {}
+paths:
+  /:
+    get:
+      operationId: HelloWorldIndex
+      responses: {}
+      summary: Hello World !
+      tags:
+      - HelloWorld
+swagger: "2.0"

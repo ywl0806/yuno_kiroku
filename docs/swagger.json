@@ -1,0 +1,18 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "tags": [
+                    "HelloWorld"
+                ],
+                "summary": "Hello World !",
+                "operationId": "HelloWorldIndex",
+                "responses": {}
+            }
+        }
+    }
+}
