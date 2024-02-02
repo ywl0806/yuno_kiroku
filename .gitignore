@@ -5,3 +5,4 @@ firestore/data
 api/tmp
 node_modules
 tmp/
+/db
