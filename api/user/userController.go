@@ -7,15 +7,15 @@ import (
 	"github.com/ywl0806/yuno_kiroku/api/user/store"
 )
 
-type UserContoller struct {
+type UserController struct {
 	userStore store.UserStore
 }
 
-func NewUserContoller(userStore store.UserStore) *UserContoller {
-	return &UserContoller{userStore: userStore}
+func NewUserController(userStore store.UserStore) *UserController {
+	return &UserController{userStore: userStore}
 }
 
-func (h *UserContoller) GetUser(c echo.Context) error {
+func (h *UserController) GetUser(c echo.Context) error {
 	log.Default()
 	h.userStore.CreateUser()
 	return nil
