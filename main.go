@@ -3,14 +3,16 @@ package main
 import (
 	"embed"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/ywl0806/yuno_kiroku/api/route"
+
+	"github.com/ywl0806/yuno_kiroku/api"
 	"github.com/ywl0806/yuno_kiroku/api/setting"
 
 	echoSwagger "github.com/swaggo/echo-swagger"
-	_ "github.com/ywl0806/yuno_kiroku/api/docs"
+	_ "github.com/ywl0806/yuno_kiroku/docs"
 )
 
 //go:embed dist
@@ -18,17 +20,16 @@ var webAssets embed.FS
 
 // @BasePath /api
 func main() {
+	// config
 	setting.SettingEnv()
 
 	e := echo.New()
 
-	// static file handler
+	// static file
 	e.Static("/uploads", "uploads")
-
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
 		Skipper: func(c echo.Context) bool {
-			basePath := c.Path()[1:8]
-			return basePath == "swagger"
+			return strings.HasPrefix(c.Path(), "/swagger/")
 		},
 		HTML5:      true,
 		Root:       "dist",
@@ -38,8 +39,8 @@ func main() {
 	// swagger setting
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
-	// router setting
-	route.Init(e)
+	// api setting
+	api.Init(e)
 
 	// logger
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{

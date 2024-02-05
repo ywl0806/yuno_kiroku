@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/photo": {
+        "/photo/upload": {
             "post": {
                 "description": "put photo",
                 "consumes": [

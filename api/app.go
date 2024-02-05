@@ -1,4 +1,4 @@
-package route
+package api
 
 import (
 	"github.com/labstack/echo/v4"
@@ -22,7 +22,7 @@ func Init(e *echo.Echo) {
 	mUserStore := userStore.NewMUserStore(db)
 	mPhotoStore := photoStore.NewMPhotoStore(db)
 
-	// Storage
+	// Storage service
 	sStorage := storage.NewLocalStorageService("standard")
 	lStorage := storage.NewLocalStorageService("longterm")
 

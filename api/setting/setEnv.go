@@ -12,6 +12,7 @@ func SettingEnv() {
 	viper.SetConfigType("env")
 
 	modePrefix := ""
+
 	if mode != "" {
 		modePrefix = "." + mode
 	}

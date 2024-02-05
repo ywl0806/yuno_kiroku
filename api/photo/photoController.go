@@ -27,7 +27,7 @@ func NewPhotoController(
 // @Description put photo
 // @Accept  multipart/form-data
 // @Param file formData file true "file"
-// @Router /photo [post]
+// @Router /photo/upload [post]
 func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	file, err := c.FormFile("file")
 

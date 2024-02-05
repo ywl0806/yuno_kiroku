@@ -5,7 +5,7 @@
     },
     "basePath": "/api",
     "paths": {
-        "/photo": {
+        "/photo/upload": {
             "post": {
                 "description": "put photo",
                 "consumes": [
