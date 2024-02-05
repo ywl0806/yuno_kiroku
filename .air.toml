@@ -7,12 +7,12 @@ tmp_dir = "tmp"
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ./main.go"
   delay = 0
-  exclude_dir = ["assets", "tmp", "vendor", "testdata","front/node_modules", "front", "firestore", "dist", "tmp"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata","front/node_modules", "front", "firestore", "dist", "tmp", "uploads"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = ""
+  full_bin = "APP_MODE=dev ./tmp/main"
   include_dir = []
   include_ext = ["go", "tpl", "tmpl", "html"]
   include_file = []
@@ -35,7 +35,7 @@ tmp_dir = "tmp"
   time = false
 
 [misc]
-  clean_on_exit = false
+  clean_on_exit = true
 
 [screen]
   clear_on_rebuild = false

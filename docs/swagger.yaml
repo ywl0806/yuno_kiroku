@@ -1,11 +1,17 @@
+basePath: /api
 info:
   contact: {}
 paths:
-  /:
-    get:
-      operationId: HelloWorldIndex
+  /photo:
+    post:
+      consumes:
+      - multipart/form-data
+      description: put photo
+      parameters:
+      - description: file
+        in: formData
+        name: file
+        required: true
+        type: file
       responses: {}
-      summary: Hello World !
-      tags:
-      - HelloWorld
 swagger: "2.0"

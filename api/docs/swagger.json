@@ -3,5 +3,25 @@
     "info": {
         "contact": {}
     },
-    "paths": {}
+    "basePath": "/api",
+    "paths": {
+        "/photo": {
+            "post": {
+                "description": "put photo",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        }
+    }
 }

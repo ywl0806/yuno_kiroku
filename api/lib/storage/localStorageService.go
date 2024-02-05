@@ -27,7 +27,15 @@ func (s *LocalStorageService) SaveFile(file *multipart.FileHeader, filePath stri
 
 	defer src.Close()
 
-	path := filepath.Join("uploads", s.rootDir, filePath, file.Filename)
+	dirPath := filepath.Join("uploads", s.rootDir, filePath)
+
+	err = os.MkdirAll(dirPath, os.ModePerm)
+	path := filepath.Join(dirPath, file.Filename)
+
+	if err != nil {
+		return "", err
+	}
+
 	dst, err := os.Create(path)
 
 	if err != nil {

@@ -2,42 +2,45 @@ package main
 
 import (
 	"embed"
-	"io/fs"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/ywl0806/yuno_kiroku/api/route"
+	"github.com/ywl0806/yuno_kiroku/api/setting"
 
 	echoSwagger "github.com/swaggo/echo-swagger"
 	_ "github.com/ywl0806/yuno_kiroku/api/docs"
 )
 
 //go:embed dist
-var embededFiles embed.FS
+var webAssets embed.FS
 
-// static file hosting
-func getFileSystem() http.FileSystem {
-
-	fsys, err := fs.Sub(embededFiles, "dist")
-	if err != nil {
-		panic(err)
-	}
-
-	return http.FS(fsys)
-}
+// @BasePath /api
 func main() {
+	setting.SettingEnv()
+
 	e := echo.New()
 
-	assetHandler := http.FileServer(getFileSystem())
+	// static file handler
+	e.Static("/uploads", "uploads")
+
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		Skipper: func(c echo.Context) bool {
+			basePath := c.Path()[1:8]
+			return basePath == "swagger"
+		},
+		HTML5:      true,
+		Root:       "dist",
+		Filesystem: http.FS(webAssets),
+	}))
+
 	// swagger setting
-	e.GET("/docs/*", echoSwagger.WrapHandler)
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// router setting
 	route.Init(e)
-	// static file handler
-	e.Static("/uploads", "uploads")
-	e.GET("/*", echo.WrapHandler(assetHandler))
+
 	// logger
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "method=${method}, uri=${uri}, status=${status} latency=${latency_human}  ${error}\n ",

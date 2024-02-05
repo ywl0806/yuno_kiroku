@@ -1,4 +1,17 @@
+basePath: /api
 info:
   contact: {}
-paths: {}
+paths:
+  /photo:
+    post:
+      consumes:
+      - multipart/form-data
+      description: put photo
+      parameters:
+      - description: file
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses: {}
 swagger: "2.0"

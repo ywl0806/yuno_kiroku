@@ -15,13 +15,21 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/": {
-            "get": {
-                "tags": [
-                    "HelloWorld"
+        "/photo": {
+            "post": {
+                "description": "put photo",
+                "consumes": [
+                    "multipart/form-data"
                 ],
-                "summary": "Hello World !",
-                "operationId": "HelloWorldIndex",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
                 "responses": {}
             }
         }
@@ -32,7 +40,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "",
 	Host:             "",
-	BasePath:         "",
+	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "",
 	Description:      "",
