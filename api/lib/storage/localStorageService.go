@@ -2,7 +2,6 @@ package storage
 
 import (
 	"io"
-	"mime/multipart"
 	"os"
 	"path/filepath"
 )
@@ -18,19 +17,12 @@ func NewLocalStorageService(rootDir string) *LocalStorageService {
 	}
 }
 
-func (s *LocalStorageService) SaveFile(file *multipart.FileHeader, filePath string) (string, error) {
-	src, err := file.Open()
-
-	if err != nil {
-		return "", err
-	}
-
-	defer src.Close()
+func (s *LocalStorageService) SaveFile(file io.Reader, filePath string, fileName string) (string, error) {
 
 	dirPath := filepath.Join("uploads", s.rootDir, filePath)
 
-	err = os.MkdirAll(dirPath, os.ModePerm)
-	path := filepath.Join(dirPath, file.Filename)
+	err := os.MkdirAll(dirPath, os.ModePerm)
+	path := filepath.Join(dirPath, fileName)
 
 	if err != nil {
 		return "", err
@@ -43,8 +35,9 @@ func (s *LocalStorageService) SaveFile(file *multipart.FileHeader, filePath stri
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, src); err != nil {
+	if _, err := io.Copy(dst, file); err != nil {
 		return "", err
 	}
+
 	return path, err
 }

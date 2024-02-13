@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -22,23 +23,29 @@ var webAssets embed.FS
 func main() {
 	// config
 	setting.SettingEnv()
-
+	mode := os.Getenv("APP_MODE")
 	e := echo.New()
 
 	// static file
 	e.Static("/uploads", "uploads")
-	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Skipper: func(c echo.Context) bool {
+	var skipper middleware.Skipper = middleware.DefaultSkipper
+	if mode == "dev" {
+		skipper = func(c echo.Context) bool {
 			return strings.HasPrefix(c.Path(), "/swagger/")
-		},
+		}
+	}
+
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		Skipper:    skipper,
 		HTML5:      true,
 		Root:       "dist",
 		Filesystem: http.FS(webAssets),
 	}))
 
 	// swagger setting
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
-
+	if mode == "dev" {
+		e.GET("/swagger/*", echoSwagger.WrapHandler)
+	}
 	// api setting
 	api.Init(e)
 
