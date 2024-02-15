@@ -3,6 +3,7 @@ package photo
 import (
 	"bytes"
 	"log"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -39,17 +40,19 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		return err
 	}
 
-	f, _ := file.Open()
+	originalFile, _ := file.Open()
 
-	rf := bytes.NewBuffer(nil)
+	// file resize
+	// convert to jpeg
+	resizedFile := bytes.NewBuffer(nil)
+	imageHandler.ResizeImage(originalFile, resizedFile)
 
-	imageHandler.ResizeImage(f, rf)
-
-	_, err = con.longTermStorage.SaveFile(rf, "", "test.jpeg")
+	originalFilename := strings.Split(file.Filename, ".")[0]
+	_, err = con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = con.standardStorage.SaveFile(f, "", file.Filename)
+	_, err = con.longTermStorage.SaveFile(originalFile, "", file.Filename)
 	if err != nil {
 		log.Fatal(err)
 	}
