@@ -1,6 +1,6 @@
 module github.com/ywl0806/yuno_kiroku
 
-go 1.21.3
+go 1.22.0
 
 require (
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
