@@ -1,6 +1,8 @@
 package store
 
 import (
+	"context"
+
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -14,4 +16,8 @@ func NewMPhotoStore(db *mongo.Database) *MPhotoStore {
 	}
 }
 
-func (s *MPhotoStore) FindPictures() {}
+func (s *MPhotoStore) FindPictures() {
+	ctx := context.Background()
+
+	s.collection.Find(ctx, nil)
+}

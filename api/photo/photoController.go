@@ -39,13 +39,13 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		log.Fatal("formfile error : ", err)
 		return err
 	}
-
+	ext := strings.Split(file.Filename, ".")[1]
 	originalFile, _ := file.Open()
 
 	// file resize
 	// convert to jpeg
 	resizedFile := bytes.NewBuffer(nil)
-	imageHandler.ResizeImage(originalFile, resizedFile)
+	imageHandler.ResizeImage(originalFile, resizedFile, ext)
 
 	originalFilename := strings.Split(file.Filename, ".")[0]
 	_, err = con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
