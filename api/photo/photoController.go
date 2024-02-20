@@ -28,7 +28,7 @@ func NewPhotoController(
 	}
 }
 
-// @Description put photo
+// @Description upload photo
 // @Accept  multipart/form-data
 // @Param file formData file true "file"
 // @Router /photo/upload [post]
