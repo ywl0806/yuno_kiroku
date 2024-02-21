@@ -37,27 +37,37 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	file, err := c.FormFile("file")
 
 	if err != nil {
-		log.Fatal("formfile error : ", err)
+		log.Println("formfile error : ", err)
 		return err
 	}
 	ext := strings.Split(file.Filename, ".")[1]
-	originalFile, _ := file.Open()
-
+	originalFile, err := file.Open()
+	if err != nil {
+		log.Println("file open error: ", err)
+		return err
+	}
+	defer originalFile.Close()
 	// file resize
 	// convert to jpeg
 	resizedFile := bytes.NewBuffer(nil)
-	imageHandler.ResizeImage(originalFile, resizedFile, ext)
+	err = imageHandler.ResizeImage(originalFile, resizedFile, ext)
+	if err != nil {
+		log.Println("resize error: ", err)
 
+		return err
+	}
 	originalFilename := strings.Split(file.Filename, ".")[0]
 
 	originalUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Standard Storage Error: ", err)
+		return err
 	}
 
 	thumbnailUrl, err := con.longTermStorage.SaveFile(originalFile, "", file.Filename)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Longterm Storage Error: ", err)
+		return err
 	}
 
 	var photo = models.Photo{
@@ -68,7 +78,12 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		UpdatedBy:    "admin",
 	}
 
-	con.photoStore.CreatePicture(photo)
+	newPhoto, err := con.photoStore.CreatePicture(photo)
 
-	return nil
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return c.JSON(200, newPhoto)
 }

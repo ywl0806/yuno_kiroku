@@ -33,6 +33,6 @@ func (s *MUserStore) CreateUser() {
 	fmt.Println(result)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }

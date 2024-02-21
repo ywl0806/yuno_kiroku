@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/photo/upload": {
             "post": {
-                "description": "put photo",
+                "description": "upload photo",
                 "consumes": [
                     "multipart/form-data"
                 ],

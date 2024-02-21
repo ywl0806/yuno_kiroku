@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/ywl0806/yuno_kiroku/api/photo/models"
@@ -35,7 +35,8 @@ func (s *MPhotoStore) CreatePicture(photo models.Photo) (models.Photo, error) {
 
 	result, err := s.collection.InsertOne(ctx, photo)
 	if err != nil {
-		return models.Photo{}, fmt.Errorf("Error: %v", err)
+		log.Println("insert photo error: ", err)
+		return models.Photo{}, err
 	}
 
 	photo.ID = result.InsertedID.(primitive.ObjectID)

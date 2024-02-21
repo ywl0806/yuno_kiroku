@@ -3,15 +3,17 @@
 package imageHandler
 
 import (
-	"fmt"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
+	"log"
+	"strings"
 
 	"io"
 
 	"github.com/adrium/goheif"
+	"github.com/labstack/echo/v4"
 	"github.com/nfnt/resize"
 )
 
@@ -21,21 +23,27 @@ import (
 // It returns an error if any error occurs during the resizing process.
 func ResizeImage(file io.Reader, resizedFile io.Writer, ext string) (err error) {
 	var img image.Image
-
-	// If the image is in heic format, use goheif to decode it
-	if ext == "heic" || ext == "heif" {
-		img, err = handleHeic(file)
-		if err != nil {
-			return err
-		}
-	}
+	smallExt := strings.ToLower(ext)
 
 	// If the image is in jpeg, jpg, png, or gif format, use the standard library to decode it
-	if ext == "jpeg" || ext == "jpg" || ext == "png" || ext == "gif" {
+
+	switch smallExt {
+	case "jpeg", "", "png", "gif":
 		img, _, err = image.Decode(file)
 		if err != nil {
-			return err
+			log.Println("image decode error: ", err)
+			return echo.NewHTTPError(500, "image decode error")
 		}
+	case "heic", "heif":
+		img, err = handleHeic(file)
+		if err != nil {
+			log.Println("heic decode error: ", err)
+			return echo.NewHTTPError(500, "heic decode error")
+		}
+		// The heic image has already been handled
+	default:
+		log.Println("unsupported file type")
+		return echo.NewHTTPError(400, "unsupported file type")
 	}
 
 	// Resize the image to a suitable size for mobile devices
@@ -44,7 +52,8 @@ func ResizeImage(file io.Reader, resizedFile io.Writer, ext string) (err error) 
 
 	// Encode the image to jpeg format
 	if err := jpeg.Encode(resizedFile, resizedImg, nil); err != nil {
-		return err
+		log.Println("image encode error: ", err)
+		return echo.NewHTTPError(500, "image encode error")
 	}
 
 	return nil
@@ -55,7 +64,8 @@ func ResizeImage(file io.Reader, resizedFile io.Writer, ext string) (err error) 
 func handleHeic(file io.Reader) (image.Image, error) {
 	img, err := goheif.Decode(file)
 	if err != nil {
-		return nil, fmt.Errorf("heic decode error: %v", err)
+		log.Println("heic decode error: ", err)
+		return nil, err
 	}
 	return img, nil
 }

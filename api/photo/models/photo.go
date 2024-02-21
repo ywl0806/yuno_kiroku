@@ -7,7 +7,7 @@ import (
 )
 
 type Photo struct {
-	ID           primitive.ObjectID `json:"_id" bson:"_id"`
+	ID           primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
 	ThumbnailUrl string             `json:"thumbnail_url" bson:"thumbnail_url"`
 	OriginalUrl  string             `json:"original_url" bson:"original_url"`
 	// LiveUrl         string             `json:"live_url,omitempty" bson:"live_url,omitempty"`

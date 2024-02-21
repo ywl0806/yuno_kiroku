@@ -6,7 +6,7 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: put photo
+      description: upload photo
       parameters:
       - description: file
         in: formData

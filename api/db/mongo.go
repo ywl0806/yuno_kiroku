@@ -18,13 +18,13 @@ func ConnectDB() *mongo.Client {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://root:password@localhost:27017"))
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("DB connection failed : ", err)
 	}
 
 	err = client.Ping(ctx, readpref.Primary())
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("DB ping failed : ", err)
 	}
 
 	return client
