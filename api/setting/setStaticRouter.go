@@ -1,5 +1,0 @@
-package setting
-
-func SettingStaticRouter() {
-
-}

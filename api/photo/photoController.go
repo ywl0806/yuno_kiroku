@@ -9,6 +9,7 @@ import (
 
 	"github.com/ywl0806/yuno_kiroku/api/lib/imageHandler"
 	"github.com/ywl0806/yuno_kiroku/api/lib/storage"
+	"github.com/ywl0806/yuno_kiroku/api/photo/models"
 	"github.com/ywl0806/yuno_kiroku/api/photo/store"
 )
 
@@ -48,14 +49,26 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	imageHandler.ResizeImage(originalFile, resizedFile, ext)
 
 	originalFilename := strings.Split(file.Filename, ".")[0]
-	_, err = con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
+
+	originalUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = con.longTermStorage.SaveFile(originalFile, "", file.Filename)
+
+	thumbnailUrl, err := con.longTermStorage.SaveFile(originalFile, "", file.Filename)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	var photo = models.Photo{
+		ThumbnailUrl: thumbnailUrl,
+		OriginalUrl:  originalUrl,
+		FileName:     file.Filename,
+		CreatedBy:    "admin",
+		UpdatedBy:    "admin",
+	}
+
+	con.photoStore.CreatePicture(photo)
 
 	return nil
 }

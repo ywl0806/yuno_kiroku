@@ -2,7 +2,11 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	"github.com/ywl0806/yuno_kiroku/api/photo/models"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -20,4 +24,21 @@ func (s *MPhotoStore) FindPictures() {
 	ctx := context.Background()
 
 	s.collection.Find(ctx, nil)
+}
+
+func (s *MPhotoStore) CreatePicture(photo models.Photo) (models.Photo, error) {
+	ctx := context.Background()
+
+	createdAt := time.Now()
+	photo.CreatedAt = createdAt
+	photo.UpdatedAt = createdAt
+
+	result, err := s.collection.InsertOne(ctx, photo)
+	if err != nil {
+		return models.Photo{}, fmt.Errorf("Error: %v", err)
+	}
+
+	photo.ID = result.InsertedID.(primitive.ObjectID)
+
+	return photo, nil
 }
