@@ -20,10 +20,23 @@ func NewMPhotoStore(db *mongo.Database) *MPhotoStore {
 	}
 }
 
-func (s *MPhotoStore) FindPictures() {
+func (s *MPhotoStore) FindPictures() ([]models.Photo, error) {
 	ctx := context.Background()
 
-	s.collection.Find(ctx, nil)
+	cursor, err := s.collection.Find(ctx, nil)
+	if err != nil {
+		log.Println("find photo error: ", err)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var photos []models.Photo
+	if err = cursor.All(ctx, &photos); err != nil {
+		log.Println("cursor all error: ", err)
+		return nil, err
+	}
+
+	return photos, nil
 }
 
 func (s *MPhotoStore) CreatePicture(photo models.Photo) (models.Photo, error) {

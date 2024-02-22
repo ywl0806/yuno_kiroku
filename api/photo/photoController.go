@@ -87,3 +87,14 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 
 	return c.JSON(200, newPhoto)
 }
+
+// @Description get photo list
+// @Router /photo/list [get]
+func (con *PhotoController) GetPhotoList(c echo.Context) error {
+	photos, err := con.photoStore.FindPictures()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return c.JSON(200, photos)
+}
