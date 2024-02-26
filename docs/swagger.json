@@ -1,0 +1,33 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "basePath": "/api",
+    "paths": {
+        "/photo/list": {
+            "get": {
+                "description": "get photo list",
+                "responses": {}
+            }
+        },
+        "/photo/upload": {
+            "post": {
+                "description": "upload photo",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        }
+    }
+}

@@ -1,0 +1,21 @@
+basePath: /api
+info:
+  contact: {}
+paths:
+  /photo/list:
+    get:
+      description: get photo list
+      responses: {}
+  /photo/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: upload photo
+      parameters:
+      - description: file
+        in: formData
+        name: file
+        required: true
+        type: file
+      responses: {}
+swagger: "2.0"

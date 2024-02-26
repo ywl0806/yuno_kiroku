@@ -1,18 +1,28 @@
 version: "3"
 
 services:
-  firebase:
-    build:
-      context: ./firestore
-      dockerfile: ./Dockerfile
-    volumes:
-      - type: bind
-        source: ./firestore
-        target: /app
-    ports:
-      - 4040:4040 # Emulator Suite UI
-      - 8080:8080 # Cloud Firestore
-      - 9099:9099 # Firebase auth
+  # firebase:
+  #   build:
+  #     context: ./firestore
+  #     dockerfile: ./Dockerfile
+  #   volumes:
+  #     - type: bind
+  #       source: ./firestore
+  #       target: /app
+  #   ports:
+  #     - 4040:4040 # Emulator Suite UI
+  #     - 8080:8080 # Cloud Firestore
+  #     - 9099:9099 # Firebase auth
 
-    tty: true
-    command: firebase emulators:start --only firestore,auth --project devlocal --import ./data --export-on-exit=./data
+  #   tty: true
+  #   command: firebase emulators:start --only firestore,auth --project devlocal --import ./data --export-on-exit=./data
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - ./db:/data/db
