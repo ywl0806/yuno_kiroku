@@ -3,6 +3,7 @@ package photo
 import (
 	"bytes"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -90,8 +91,25 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 
 // @Description get photo list
 // @Router /photo/list [get]
+// @params limit query int false "limit"
+// @params skip query int false "skip"
 func (con *PhotoController) GetPhotoList(c echo.Context) error {
-	photos, err := con.photoStore.FindPictures()
+
+	limit, err := strconv.Atoi(c.QueryParam("limit"))
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	skip, err := strconv.Atoi(c.QueryParam("skip"))
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	parmas := store.FindPictureParams{
+		Limit: &limit,
+		Skip:  &skip,
+	}
+	photos, err := con.photoStore.FindPictures(&parmas)
 	if err != nil {
 		log.Println(err)
 		return err

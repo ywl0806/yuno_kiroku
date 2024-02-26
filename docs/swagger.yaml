@@ -2,6 +2,10 @@ basePath: /api
 info:
   contact: {}
 paths:
+  /photo/list:
+    get:
+      description: get photo list
+      responses: {}
   /photo/upload:
     post:
       consumes:

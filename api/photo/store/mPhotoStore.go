@@ -6,24 +6,31 @@ import (
 	"time"
 
 	"github.com/ywl0806/yuno_kiroku/api/photo/models"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// MPhotoStore represents a store for managing photos in MongoDB.
 type MPhotoStore struct {
 	collection *mongo.Collection
 }
 
+// NewMPhotoStore creates a new instance of MPhotoStore.
 func NewMPhotoStore(db *mongo.Database) *MPhotoStore {
 	return &MPhotoStore{
 		collection: db.Collection("photos"),
 	}
 }
 
-func (s *MPhotoStore) FindPictures() ([]models.Photo, error) {
+// FindPictures retrieves all photos from the store.
+func (s *MPhotoStore) FindPictures(params *FindPictureParams) ([]models.Photo, error) {
 	ctx := context.Background()
-
-	cursor, err := s.collection.Find(ctx, nil)
+	limit := int64(*params.Limit)
+	skip := int64(*params.Skip)
+	options := options.FindOptions{Limit: &limit, Skip: &skip}
+	cursor, err := s.collection.Find(ctx, bson.D{{}}, &options)
 	if err != nil {
 		log.Println("find photo error: ", err)
 		return nil, err
@@ -39,6 +46,7 @@ func (s *MPhotoStore) FindPictures() ([]models.Photo, error) {
 	return photos, nil
 }
 
+// CreatePicture creates a new photo in the store.
 func (s *MPhotoStore) CreatePicture(photo models.Photo) (models.Photo, error) {
 	ctx := context.Background()
 

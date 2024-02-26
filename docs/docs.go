@@ -15,6 +15,12 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/photo/list": {
+            "get": {
+                "description": "get photo list",
+                "responses": {}
+            }
+        },
         "/photo/upload": {
             "post": {
                 "description": "upload photo",
