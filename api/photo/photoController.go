@@ -2,6 +2,7 @@ package photo
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"strconv"
 	"strings"
@@ -48,10 +49,13 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		return err
 	}
 	defer originalFile.Close()
+
+	var buf bytes.Buffer
+	tee := io.TeeReader(originalFile, &buf)
 	// file resize
 	// convert to jpeg
 	resizedFile := bytes.NewBuffer(nil)
-	err = imageHandler.ResizeImage(originalFile, resizedFile, ext)
+	err = imageHandler.ResizeImage(tee, resizedFile, ext)
 	if err != nil {
 		log.Println("resize error: ", err)
 
@@ -59,13 +63,13 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	}
 	originalFilename := strings.Split(file.Filename, ".")[0]
 
-	originalUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
+	thumbnailUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
 	if err != nil {
 		log.Println("Standard Storage Error: ", err)
 		return err
 	}
 
-	thumbnailUrl, err := con.longTermStorage.SaveFile(originalFile, "", file.Filename)
+	originalUrl, err := con.longTermStorage.SaveFile(&buf, "", file.Filename)
 	if err != nil {
 		log.Println("Longterm Storage Error: ", err)
 		return err
@@ -91,19 +95,17 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 
 // @Description get photo list
 // @Router /photo/list [get]
-// @params limit query int false "limit"
-// @params skip query int false "skip"
+// @Param limit query int false "limit"
+// @Param skip query int false "skip"
 func (con *PhotoController) GetPhotoList(c echo.Context) error {
 
 	limit, err := strconv.Atoi(c.QueryParam("limit"))
 	if err != nil {
-		log.Println(err)
-		return err
+		limit = 10
 	}
 	skip, err := strconv.Atoi(c.QueryParam("skip"))
 	if err != nil {
-		log.Println(err)
-		return err
+		skip = 0
 	}
 	parmas := store.FindPictureParams{
 		Limit: &limit,
