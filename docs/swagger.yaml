@@ -5,6 +5,15 @@ paths:
   /photo/list:
     get:
       description: get photo list
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: skip
+        in: query
+        name: skip
+        type: integer
       responses: {}
   /photo/upload:
     post:

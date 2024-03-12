@@ -18,6 +18,20 @@ const docTemplate = `{
         "/photo/list": {
             "get": {
                 "description": "get photo list",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "skip",
+                        "name": "skip",
+                        "in": "query"
+                    }
+                ],
                 "responses": {}
             }
         },

@@ -12,7 +12,6 @@ import (
 
 	"io"
 
-	"github.com/adrium/goheif"
 	"github.com/labstack/echo/v4"
 	"github.com/nfnt/resize"
 )
@@ -27,15 +26,17 @@ func ResizeImage(file io.Reader, resizedFile io.Writer, ext string) (err error) 
 
 	// If the image is in jpeg, jpg, png, or gif format, use the standard library to decode it
 
+	var exifs []byte
 	switch smallExt {
-	case "jpeg", "", "png", "gif":
+	case "jpeg", "jpg", "png", "gif":
 		img, _, err = image.Decode(file)
 		if err != nil {
 			log.Println("image decode error: ", err)
 			return echo.NewHTTPError(500, "image decode error")
 		}
 	case "heic", "heif":
-		img, err = handleHeic(file)
+		img, exifs, err = handleHeic(file)
+
 		if err != nil {
 			log.Println("heic decode error: ", err)
 			return echo.NewHTTPError(500, "heic decode error")
@@ -50,22 +51,13 @@ func ResizeImage(file io.Reader, resizedFile io.Writer, ext string) (err error) 
 	// max width 1500px, max height 1500px
 	resizedImg := resize.Thumbnail(1500, 1500, img, resize.Lanczos3)
 
+	// exifData, err := exif.SearchAndExtractExif(buf)
 	// Encode the image to jpeg format
-	if err := jpeg.Encode(resizedFile, resizedImg, nil); err != nil {
+	w, _ := newWriterExif(resizedFile, exifs)
+	if err := jpeg.Encode(w, resizedImg, nil); err != nil {
 		log.Println("image encode error: ", err)
 		return echo.NewHTTPError(500, "image encode error")
 	}
 
 	return nil
-}
-
-// handleHeic decodes the given heic image file using goheif library.
-// It returns the decoded image and an error if any error occurs during the decoding process.
-func handleHeic(file io.Reader) (image.Image, error) {
-	img, err := goheif.Decode(file)
-	if err != nil {
-		log.Println("heic decode error: ", err)
-		return nil, err
-	}
-	return img, nil
 }
