@@ -3,61 +3,79 @@
 package imageHandler
 
 import (
+	"bytes"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
 	"log"
+	"log/slog"
 	"strings"
 
 	"io"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nfnt/resize"
+	"github.com/rwcarlsen/goexif/exif"
+	"github.com/ywl0806/yuno_kiroku/api/utils"
 )
 
 // ResizeImage resizes the given image file to a suitable size for mobile devices.
 // It takes the original image file as input and writes the resized image to the specified output file.
 // The ext parameter specifies the file extension of the image.
 // It returns an error if any error occurs during the resizing process.
-func ResizeImage(file io.Reader, resizedFile io.Writer, ext string) (err error) {
+func ResizeImage(originalFile io.Reader, resizedFile io.Writer, ext string) (exifData *exif.Exif, err error) {
 	var img image.Image
+
 	smallExt := strings.ToLower(ext)
+	exifFile, file, _ := utils.CopyReader(originalFile)
 
 	// If the image is in jpeg, jpg, png, or gif format, use the standard library to decode it
-
-	var exifs []byte
 	switch smallExt {
 	case "jpeg", "jpg", "png", "gif":
 		img, _, err = image.Decode(file)
-		if err != nil {
-			log.Println("image decode error: ", err)
-			return echo.NewHTTPError(500, "image decode error")
-		}
-	case "heic", "heif":
-		img, exifs, err = handleHeic(file)
 
 		if err != nil {
-			log.Println("heic decode error: ", err)
-			return echo.NewHTTPError(500, "heic decode error")
+			slog.Error("image decode error: ", err)
+			return nil, echo.NewHTTPError(500, "image decode error")
 		}
-		// The heic image has already been handled
+		exifData, err = exif.Decode(exifFile)
+		if err != nil {
+			slog.Error("exif decode error: ", err)
+			return nil, echo.NewHTTPError(500, "exif decode error")
+		}
+
+	case "heic", "heif":
+		var exifsBytes []byte
+		var exifsBuffer *bytes.Buffer
+
+		img, exifsBytes, err = handleHeic(file)
+
+		if err != nil {
+			slog.Error("heic decode error: ", err)
+			return nil, echo.NewHTTPError(500, "heic decode error")
+		}
+		exifsBuffer = new(bytes.Buffer)
+		NewWriterExif(exifsBuffer, exifsBytes)
+		// Write the exif data to the resized file
+		resizedFile, _ = NewWriterExif(resizedFile, exifsBytes)
+
+		exifData, err = exif.Decode(exifsBuffer)
+
 	default:
 		log.Println("unsupported file type")
-		return echo.NewHTTPError(400, "unsupported file type")
+		return nil, echo.NewHTTPError(400, "unsupported file type")
 	}
 
 	// Resize the image to a suitable size for mobile devices
 	// max width 1500px, max height 1500px
 	resizedImg := resize.Thumbnail(1500, 1500, img, resize.Lanczos3)
 
-	// exifData, err := exif.SearchAndExtractExif(buf)
 	// Encode the image to jpeg format
-	w, _ := newWriterExif(resizedFile, exifs)
-	if err := jpeg.Encode(w, resizedImg, nil); err != nil {
+	if err := jpeg.Encode(resizedFile, resizedImg, nil); err != nil {
 		log.Println("image encode error: ", err)
-		return echo.NewHTTPError(500, "image encode error")
+		return nil, echo.NewHTTPError(500, "image encode error")
 	}
 
-	return nil
+	return exifData, err
 }

@@ -2,7 +2,6 @@ package photo
 
 import (
 	"bytes"
-	"io"
 	"log"
 	"strconv"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/api/lib/storage"
 	"github.com/ywl0806/yuno_kiroku/api/photo/models"
 	"github.com/ywl0806/yuno_kiroku/api/photo/store"
+	"github.com/ywl0806/yuno_kiroku/api/utils"
 )
 
 type PhotoController struct {
@@ -50,17 +50,22 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	}
 	defer originalFile.Close()
 
-	var buf bytes.Buffer
-	tee := io.TeeReader(originalFile, &buf)
+	buf1, buf2, _ := utils.CopyReader(originalFile)
 	// file resize
 	// convert to jpeg
 	resizedFile := bytes.NewBuffer(nil)
-	err = imageHandler.ResizeImage(tee, resizedFile, ext)
+	exifData, err := imageHandler.ResizeImage(buf1, resizedFile, ext)
+	log.Println("exifData: ", exifData)
 	if err != nil {
 		log.Println("resize error: ", err)
-
 		return err
 	}
+	// exifData, err := imageHandler.GetExif(resizedFile)
+	// log.Println("exifData: ", exifData)
+	// if err != nil {
+	// 	log.Println("exif error: ", err)
+	// 	return err
+	// }
 	originalFilename := strings.Split(file.Filename, ".")[0]
 
 	thumbnailUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
@@ -69,7 +74,7 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		return err
 	}
 
-	originalUrl, err := con.longTermStorage.SaveFile(&buf, "", file.Filename)
+	originalUrl, err := con.longTermStorage.SaveFile(buf2, "", file.Filename)
 	if err != nil {
 		log.Println("Longterm Storage Error: ", err)
 		return err
