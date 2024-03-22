@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/photo/list": {
+        "/photo": {
             "get": {
                 "description": "get photo list",
                 "parameters": [
@@ -32,6 +32,46 @@ const docTemplate = `{
                         "in": "query"
                     }
                 ],
+                "responses": {}
+            }
+        },
+        "/photo/first": {
+            "get": {
+                "description": "get first photo",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/photo/group": {
+            "get": {
+                "description": "get photo group by date",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-01T00:00:00Z",
+                        "description": "from",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-05-01T00:00:00Z",
+                        "description": "to",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/photo/range": {
+            "get": {
+                "description": "get photo range",
                 "responses": {}
             }
         },

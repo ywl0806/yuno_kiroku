@@ -2,7 +2,7 @@ basePath: /api
 info:
   contact: {}
 paths:
-  /photo/list:
+  /photo:
     get:
       description: get photo list
       parameters:
@@ -14,6 +14,33 @@ paths:
         in: query
         name: skip
         type: integer
+      responses: {}
+  /photo/first:
+    get:
+      description: get first photo
+      responses:
+        "200":
+          description: OK
+  /photo/group:
+    get:
+      description: get photo group by date
+      parameters:
+      - description: from
+        example: "2024-01-01T00:00:00Z"
+        format: date-time
+        in: query
+        name: from
+        type: string
+      - description: to
+        example: "2024-05-01T00:00:00Z"
+        format: date-time
+        in: query
+        name: to
+        type: string
+      responses: {}
+  /photo/range:
+    get:
+      description: get photo range
       responses: {}
   /photo/upload:
     post:

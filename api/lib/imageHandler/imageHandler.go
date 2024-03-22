@@ -23,7 +23,7 @@ import (
 // ResizeImage resizes the given image file to a suitable size for mobile devices.
 // It takes the original image file as input and writes the resized image to the specified output file.
 // The ext parameter specifies the file extension of the image.
-// It returns an error if any error occurs during the resizing process.
+// It returns the exif data of the original image and an error if any error occurs during the resizing process.
 func ResizeImage(originalFile io.Reader, resizedFile io.Writer, ext string) (exifData *exif.Exif, err error) {
 	var img image.Image
 
@@ -39,10 +39,12 @@ func ResizeImage(originalFile io.Reader, resizedFile io.Writer, ext string) (exi
 			slog.Error("image decode error: ", err)
 			return nil, echo.NewHTTPError(500, "image decode error")
 		}
+
 		exifData, err = exif.Decode(exifFile)
 		if err != nil {
-			slog.Error("exif decode error: ", err)
-			return nil, echo.NewHTTPError(500, "exif decode error")
+			slog.Warn("exif decode error: ", err)
+			err = nil
+			exifData = &exif.Exif{}
 		}
 
 	case "heic", "heif":
@@ -61,6 +63,11 @@ func ResizeImage(originalFile io.Reader, resizedFile io.Writer, ext string) (exi
 		resizedFile, _ = NewWriterExif(resizedFile, exifsBytes)
 
 		exifData, err = exif.Decode(exifsBuffer)
+		if err != nil {
+			slog.Warn("exif decode error: ", err)
+			err = nil
+			exifData = &exif.Exif{}
+		}
 
 	default:
 		log.Println("unsupported file type")

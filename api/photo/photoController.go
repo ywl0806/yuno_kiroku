@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/ywl0806/yuno_kiroku/api/lib/imageHandler"
 	"github.com/ywl0806/yuno_kiroku/api/lib/storage"
@@ -16,13 +17,13 @@ import (
 )
 
 type PhotoController struct {
-	photoStore      store.PhotoStore
+	photoStore      *store.PhotoStore
 	standardStorage storage.StorageService
 	longTermStorage storage.StorageService
 }
 
 func NewPhotoController(
-	photoStore store.PhotoStore, standardStorage storage.StorageService, longTermStorage storage.StorageService,
+	photoStore *store.PhotoStore, standardStorage storage.StorageService, longTermStorage storage.StorageService,
 ) *PhotoController {
 	return &PhotoController{
 		photoStore:      photoStore,
@@ -51,21 +52,19 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	defer originalFile.Close()
 
 	buf1, buf2, _ := utils.CopyReader(originalFile)
+
 	// file resize
 	// convert to jpeg
+	// get exif
 	resizedFile := bytes.NewBuffer(nil)
 	exifData, err := imageHandler.ResizeImage(buf1, resizedFile, ext)
-	log.Println("exifData: ", exifData)
+
 	if err != nil {
 		log.Println("resize error: ", err)
 		return err
 	}
-	// exifData, err := imageHandler.GetExif(resizedFile)
-	// log.Println("exifData: ", exifData)
-	// if err != nil {
-	// 	log.Println("exif error: ", err)
-	// 	return err
-	// }
+	photoCreatedAt, _ := exifData.DateTime()
+
 	originalFilename := strings.Split(file.Filename, ".")[0]
 
 	thumbnailUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
@@ -81,11 +80,12 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	}
 
 	var photo = models.Photo{
-		ThumbnailUrl: thumbnailUrl,
-		OriginalUrl:  originalUrl,
-		FileName:     file.Filename,
-		CreatedBy:    "admin",
-		UpdatedBy:    "admin",
+		ThumbnailUrl:   thumbnailUrl,
+		OriginalUrl:    originalUrl,
+		FileName:       file.Filename,
+		PhotoCreatedAt: photoCreatedAt,
+		CreatedBy:      "admin",
+		UpdatedBy:      "admin",
 	}
 
 	newPhoto, err := con.photoStore.CreatePicture(photo)
@@ -99,7 +99,7 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 }
 
 // @Description get photo list
-// @Router /photo/list [get]
+// @Router /photo [get]
 // @Param limit query int false "limit"
 // @Param skip query int false "skip"
 func (con *PhotoController) GetPhotoList(c echo.Context) error {
@@ -122,4 +122,51 @@ func (con *PhotoController) GetPhotoList(c echo.Context) error {
 		return err
 	}
 	return c.JSON(200, photos)
+}
+
+// @Description get photo group by date
+// @Router /photo/group [get]
+// @Param from query string false "from" format(date-time) example(2024-01-01T00:00:00Z)
+// @Param to query string false "to" format(date-time) example(2024-05-01T00:00:00Z)
+func (con *PhotoController) GetPhotosGroup(c echo.Context) error {
+	fromQ := c.QueryParam("from")
+
+	toQ := c.QueryParam("to")
+
+	from := utils.GetDateFromStr(fromQ)
+	to := utils.GetDateFromStr(toQ)
+
+	photos, err := con.photoStore.FindPicturesGroupByDate(from, to)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return c.JSON(200, photos)
+}
+
+// @Description get photo range
+// @Router /photo/range [get]
+func (con *PhotoController) GetPhotoRange(c echo.Context) error {
+	photos, err := con.photoStore.FindPhotosRange()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return c.JSON(200, photos)
+}
+
+// @Description get first photo
+// @Router /photo/first [get]
+// @Success 200
+func (con *PhotoController) GetFirstPhoto(c echo.Context) error {
+	opts := options.FindOne()
+	opts.SetSort(map[string]int{"photo_created_at": 1})
+
+	photo, err := con.photoStore.FindOnePhoto(opts)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return c.JSON(200, photo)
 }

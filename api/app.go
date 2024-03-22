@@ -20,7 +20,7 @@ func Init(e *echo.Echo) {
 
 	// store
 	mUserStore := userStore.NewMUserStore(db)
-	mPhotoStore := photoStore.NewMPhotoStore(db)
+	photoStore := photoStore.NewPhotoStore(db)
 
 	// Storage service
 	sStorage := storage.NewLocalStorageService("standard")
@@ -28,7 +28,7 @@ func Init(e *echo.Echo) {
 
 	// Controller
 	userController := user.NewUserController(mUserStore)
-	photoController := photo.NewPhotoController(mPhotoStore, sStorage, lStorage)
+	photoController := photo.NewPhotoController(photoStore, sStorage, lStorage)
 
 	// root router
 	root := e.Group("/api")
