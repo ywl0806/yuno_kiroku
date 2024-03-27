@@ -1,15 +1,12 @@
 package photo
 
 import (
-	"bytes"
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/ywl0806/yuno_kiroku/api/lib/imageHandler"
 	"github.com/ywl0806/yuno_kiroku/api/lib/storage"
 	"github.com/ywl0806/yuno_kiroku/api/photo/models"
 	"github.com/ywl0806/yuno_kiroku/api/photo/store"
@@ -40,62 +37,32 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	file, err := c.FormFile("file")
 
 	if err != nil {
-		log.Println("formfile error : ", err)
-		return err
-	}
-	ext := strings.Split(file.Filename, ".")[1]
-	originalFile, err := file.Open()
-	if err != nil {
 		log.Println("file open error: ", err)
 		return err
 	}
-	defer originalFile.Close()
 
-	buf1, buf2, _ := utils.CopyReader(originalFile)
-
-	// file resize
-	// convert to jpeg
-	// get exif
-	resizedFile := bytes.NewBuffer(nil)
-	exifData, err := imageHandler.ResizeImage(buf1, resizedFile, ext)
+	uploadResult, err := con.uploadPhoto(file)
 
 	if err != nil {
-		log.Println("resize error: ", err)
-		return err
-	}
-	photoCreatedAt, _ := exifData.DateTime()
-
-	originalFilename := strings.Split(file.Filename, ".")[0]
-
-	thumbnailUrl, err := con.standardStorage.SaveFile(resizedFile, "", originalFilename+".jpeg")
-	if err != nil {
-		log.Println("Standard Storage Error: ", err)
+		log.Println("upload photo error: ", err)
 		return err
 	}
 
-	originalUrl, err := con.longTermStorage.SaveFile(buf2, "", file.Filename)
-	if err != nil {
-		log.Println("Longterm Storage Error: ", err)
-		return err
-	}
-
-	var photo = models.Photo{
-		ThumbnailUrl:   thumbnailUrl,
-		OriginalUrl:    originalUrl,
-		FileName:       file.Filename,
-		PhotoCreatedAt: photoCreatedAt,
+	var newPhoto = models.Photo{
+		ThumbnailUrl:   uploadResult.ThumbnailUrl,
+		OriginalUrl:    uploadResult.OriginalUrl,
+		FileName:       uploadResult.FileName,
+		PhotoCreatedAt: uploadResult.PhotoCreatedAt,
 		CreatedBy:      "admin",
 		UpdatedBy:      "admin",
 	}
 
-	newPhoto, err := con.photoStore.CreatePicture(photo)
-
+	photo, err := con.photoStore.CreatePhoto(newPhoto)
 	if err != nil {
-		log.Println(err)
+		log.Println("upload photo error: ", err)
 		return err
 	}
-
-	return c.JSON(200, newPhoto)
+	return c.JSON(200, photo)
 }
 
 // @Description get photo list
@@ -152,6 +119,7 @@ func (con *PhotoController) GetPhotoRange(c echo.Context) error {
 		log.Println(err)
 		return err
 	}
+
 	return c.JSON(200, photos)
 }
 
@@ -169,4 +137,54 @@ func (con *PhotoController) GetFirstPhoto(c echo.Context) error {
 		return err
 	}
 	return c.JSON(200, photo)
+}
+
+// @Description upload live photo
+// @Accept  multipart/form-data
+// @Param photo formData file true "photo"
+// @Param live formData file true "live"
+// @Router /photo/upload-live [post]
+func (con *PhotoController) UploadLivePhoto(c echo.Context) error {
+	photoFile, err := c.FormFile("photo")
+	if err != nil {
+		log.Println("no photo formfile error: ", err)
+		return c.JSON(400, err)
+	}
+
+	liveMovie, err := c.FormFile("live")
+	if err != nil {
+		log.Println("no live movie formfile error: ", err)
+		return c.JSON(400, err)
+	}
+
+	uploadPhotoResult, err := con.uploadPhoto(photoFile)
+	if err != nil {
+		log.Println("upload photo error: ", err)
+		return err
+	}
+	uploadLiveMovieResult, err := con.uploadLiveMovie(liveMovie)
+
+	if err != nil {
+		log.Println("upload live photo error: ", err)
+		return err
+	}
+
+	photo := models.Photo{
+		ThumbnailUrl:    uploadPhotoResult.ThumbnailUrl,
+		OriginalUrl:     uploadPhotoResult.OriginalUrl,
+		LiveUrl:         uploadLiveMovieResult.LiveUrl,
+		OriginalLiveUrl: uploadLiveMovieResult.OriginalLiveUrl,
+		FileName:        photoFile.Filename,
+		PhotoCreatedAt:  uploadPhotoResult.PhotoCreatedAt,
+		CreatedBy:       "admin",
+		UpdatedBy:       "admin",
+	}
+
+	photo, err = con.photoStore.CreatePhoto(photo)
+	if err != nil {
+		log.Println("upload photo error: ", err)
+		return err
+	}
+	return c.JSON(200, photo)
+
 }

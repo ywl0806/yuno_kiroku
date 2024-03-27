@@ -54,4 +54,21 @@ paths:
         required: true
         type: file
       responses: {}
+  /photo/upload-live:
+    post:
+      consumes:
+      - multipart/form-data
+      description: upload live photo
+      parameters:
+      - description: photo
+        in: formData
+        name: photo
+        required: true
+        type: file
+      - description: live
+        in: formData
+        name: live
+        required: true
+        type: file
+      responses: {}
 swagger: "2.0"

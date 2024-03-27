@@ -92,6 +92,31 @@ const docTemplate = `{
                 ],
                 "responses": {}
             }
+        },
+        "/photo/upload-live": {
+            "post": {
+                "description": "upload live photo",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "photo",
+                        "name": "photo",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "live",
+                        "name": "live",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
         }
     }
 }`

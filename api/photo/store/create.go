@@ -9,8 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// CreatePicture creates a new photo in the store.
-func (s *PhotoStore) CreatePicture(photo models.Photo) (models.Photo, error) {
+// CreatePhoto creates a new photo in the store.
+func (s *PhotoStore) CreatePhoto(photo models.Photo) (models.Photo, error) {
 	ctx := context.Background()
 
 	createdAt := time.Now()

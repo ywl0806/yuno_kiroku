@@ -76,6 +76,9 @@ func (s *PhotoStore) FindPhotosRange() ([]models.PhotoRange, error) {
 		return nil, err
 	}
 
+	if len(photoRange) == 0 {
+		return []models.PhotoRange{}, nil
+	}
 	return photoRange[0].PhotoRange, nil
 }
 func (s *PhotoStore) FindOnePhoto(opt *options.FindOneOptions) (models.Photo, error) {

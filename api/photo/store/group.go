@@ -20,6 +20,8 @@ func (s *PhotoStore) FindPicturesGroupByDate(from, to time.Time) ([]models.Photo
 			{Key: "month", Value: bson.D{{Key: "$month", Value: "$photo_created_at"}}},
 			{Key: "thumbnail_url", Value: 1},
 			{Key: "original_url", Value: 1},
+			{Key: "live_url", Value: 1},
+			{Key: "original_live_url", Value: 1},
 			{Key: "file_name", Value: 1},
 			{Key: "photo_created_at", Value: 1},
 			{Key: "created_at", Value: 1},
@@ -58,7 +60,6 @@ func (s *PhotoStore) FindPicturesGroupByDate(from, to time.Time) ([]models.Photo
 	}
 
 	var photoGroups []models.PhotoGroup
-
 	if err = cursor.All(ctx, &photoGroups); err != nil {
 		log.Println("cursor all error: ", err)
 		return nil, err
