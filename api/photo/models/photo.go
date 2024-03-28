@@ -12,6 +12,8 @@ type Photo struct {
 	OriginalUrl     string             `json:"original_url" bson:"original_url"`
 	LiveUrl         string             `json:"live_url" bson:"live_url,omitempty"`
 	OriginalLiveUrl string             `json:"original_live_url" bson:"original_live_url"`
+	Width           int                `json:"width" bson:"width"`
+	Height          int                `json:"height" bson:"height"`
 	FileName        string             `json:"file_name" bson:"file_name"`
 	PhotoCreatedAt  time.Time          `json:"photo_created_at" bson:"photo_created_at"`
 	CreatedAt       time.Time          `json:"created_at" bson:"created_at"`

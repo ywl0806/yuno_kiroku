@@ -53,6 +53,8 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		OriginalUrl:    uploadResult.OriginalUrl,
 		FileName:       uploadResult.FileName,
 		PhotoCreatedAt: uploadResult.PhotoCreatedAt,
+		Width:          uploadResult.Width,
+		Height:         uploadResult.Height,
 		CreatedBy:      "admin",
 		UpdatedBy:      "admin",
 	}
@@ -176,6 +178,8 @@ func (con *PhotoController) UploadLivePhoto(c echo.Context) error {
 		OriginalLiveUrl: uploadLiveMovieResult.OriginalLiveUrl,
 		FileName:        photoFile.Filename,
 		PhotoCreatedAt:  uploadPhotoResult.PhotoCreatedAt,
+		Width:           uploadPhotoResult.Width,
+		Height:          uploadPhotoResult.Height,
 		CreatedBy:       "admin",
 		UpdatedBy:       "admin",
 	}

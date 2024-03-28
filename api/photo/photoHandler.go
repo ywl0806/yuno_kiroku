@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/ywl0806/yuno_kiroku/api/lib/imageHandler"
-	"github.com/ywl0806/yuno_kiroku/api/utils"
 )
 
 type UploadPhotoReturn struct {
 	ThumbnailUrl   string    `json:"thumbnailUrl"`
 	OriginalUrl    string    `json:"originalUrl"`
 	FileName       string    `json:"fileName"`
+	Width          int       `json:"width"`
+	Height         int       `json:"height"`
 	PhotoCreatedAt time.Time `json:"photoCreatedAt"`
 }
 
@@ -28,19 +29,19 @@ func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhot
 	}
 	defer originalFile.Close()
 
-	buf1, buf2, _ := utils.CopyReader(originalFile)
-
 	// file resize
 	// convert to jpeg
 	// get exif
-	resizedFile := bytes.NewBuffer(nil)
-	exifData, err := imageHandler.ResizeImage(buf1, resizedFile, ext)
+	resizedFile := new(bytes.Buffer)
+	imgHandler := imageHandler.NewImageHandler(originalFile, resizedFile, ext)
+	err = imgHandler.ResizeImage(1500, 1500)
 
 	if err != nil {
 		log.Println("resize error: ", err)
 		return nil, err
 	}
-	photoCreatedAt, _ := exifData.DateTime()
+
+	photoCreatedAt, _ := imgHandler.Exif.DateTime()
 
 	if photoCreatedAt.IsZero() {
 		photoCreatedAt = time.Now()
@@ -59,7 +60,7 @@ func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhot
 		return nil, err
 	}
 
-	originalUrl, err := con.longTermStorage.SaveFile(buf2, "", file.Filename)
+	originalUrl, err := con.longTermStorage.SaveFile(imgHandler.OriginalFile, "", file.Filename)
 	if err != nil {
 		log.Println("Longterm Storage Error: ", err)
 		return nil, err
@@ -69,6 +70,8 @@ func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhot
 		ThumbnailUrl:   thumbnailUrl,
 		OriginalUrl:    originalUrl,
 		FileName:       file.Filename,
+		Width:          imgHandler.OriginalImage.Bounds().Dx(),
+		Height:         imgHandler.OriginalImage.Bounds().Dy(),
 		PhotoCreatedAt: photoCreatedAt,
 	}
 
