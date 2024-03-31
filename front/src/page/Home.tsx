@@ -24,12 +24,13 @@ export const HomePage = () => {
   const { range, isFetched } = usePhotosRange()
 
   const [selectedDate, setSelectedDate] = useState<SelectedDate>({
-    year: parseInt(date?.split('-')[0] ?? '') ?? new Date().getFullYear(),
-    month: parseInt(date?.split('-')[1] ?? '') ?? new Date().getMonth() + 1,
+    year: parseInt(date?.split('-')[0] ?? '0') ?? new Date().getFullYear(),
+    month: parseInt(date?.split('-')[1] ?? '0') ?? new Date().getMonth() + 1,
   })
+
   const currentYearMonthStr = useMemo(() => {
     return `${selectedDate.year}-${selectedDate.month}`
-  }, [selectedDate])
+  }, [selectedDate.month, selectedDate.year])
 
   const years = useMemo(() => {
     const set = new Set<number>()
@@ -46,11 +47,15 @@ export const HomePage = () => {
       year: parseInt(y),
       month: parseInt(m),
     })
-    if (swiper) swiper.slideTo(range.findIndex((r) => r.year === parseInt(y) && r.month === parseInt(m)))
-  }, [date])
+
+    if (swiper) {
+      const findIndex = range.findIndex((r) => r.year === parseInt(y) && r.month === parseInt(m))
+      swiper.slideTo(findIndex)
+    }
+  }, [date, range])
 
   return (
-    <div>
+    <>
       <div>
         <DropdownYear
           years={years}
@@ -113,25 +118,24 @@ export const HomePage = () => {
         )}
       </div>
 
-      <div>
-        <Swiper
-          spaceBetween={10}
-          slidesPerView={1}
-          onSlideChange={(swiper) => {
-            nav(`/${range[swiper.activeIndex].year}-${range[swiper.activeIndex].month}`)
-          }}
-          controller={{ control: swiper }}
-          onSwiper={(swiper) => setSwiper(swiper)}
-        >
-          {range.map((ran) => {
-            return (
-              <SwiperSlide key={`${ran.year}-${ran.month}`}>
-                <PhotoGridContainer year={ran.year} month={ran.month} />
-              </SwiperSlide>
-            )
-          })}
-        </Swiper>
-      </div>
-    </div>
+      <Swiper
+        spaceBetween={10}
+        slidesPerView={1}
+        onSlideChange={(swiper) => {
+          nav(`/${range[swiper.activeIndex].year}-${range[swiper.activeIndex].month}`)
+        }}
+        controller={{ control: swiper }}
+        onSwiper={(swiper) => setSwiper(swiper)}
+        className="h-full w-full"
+      >
+        {range.map((ran) => {
+          return (
+            <SwiperSlide key={`${ran.year}-${ran.month}`} className="min-h-[80vh] w-full">
+              <PhotoGridContainer year={ran.year} month={ran.month} />
+            </SwiperSlide>
+          )
+        })}
+      </Swiper>
+    </>
   )
 }

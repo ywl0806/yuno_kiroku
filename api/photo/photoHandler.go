@@ -16,6 +16,7 @@ type UploadPhotoReturn struct {
 	FileName       string    `json:"fileName"`
 	Width          int       `json:"width"`
 	Height         int       `json:"height"`
+	Orientation    int       `json:"orientation"`
 	PhotoCreatedAt time.Time `json:"photoCreatedAt"`
 }
 
@@ -65,6 +66,15 @@ func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhot
 		log.Println("Longterm Storage Error: ", err)
 		return nil, err
 	}
+	orientationRaw, _ := imgHandler.Exif.Get("Orientation")
+	orientation := 1
+	if orientationRaw != nil {
+		orientation, err = orientationRaw.Int(0)
+	}
+	if err != nil {
+		orientation = 1
+		err = nil
+	}
 
 	result := UploadPhotoReturn{
 		ThumbnailUrl:   thumbnailUrl,
@@ -72,6 +82,7 @@ func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhot
 		FileName:       file.Filename,
 		Width:          imgHandler.OriginalImage.Bounds().Dx(),
 		Height:         imgHandler.OriginalImage.Bounds().Dy(),
+		Orientation:    orientation,
 		PhotoCreatedAt: photoCreatedAt,
 	}
 

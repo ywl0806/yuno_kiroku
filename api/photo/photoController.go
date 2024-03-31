@@ -55,6 +55,7 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		PhotoCreatedAt: uploadResult.PhotoCreatedAt,
 		Width:          uploadResult.Width,
 		Height:         uploadResult.Height,
+		Orientation:    uploadResult.Orientation,
 		CreatedBy:      "admin",
 		UpdatedBy:      "admin",
 	}
@@ -180,6 +181,7 @@ func (con *PhotoController) UploadLivePhoto(c echo.Context) error {
 		PhotoCreatedAt:  uploadPhotoResult.PhotoCreatedAt,
 		Width:           uploadPhotoResult.Width,
 		Height:          uploadPhotoResult.Height,
+		Orientation:     uploadPhotoResult.Orientation,
 		CreatedBy:       "admin",
 		UpdatedBy:       "admin",
 	}
