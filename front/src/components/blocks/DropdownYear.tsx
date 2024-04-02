@@ -13,6 +13,7 @@ export const DropdownYear: FC<Props> = ({ years, selectedYear, onChange }) => {
         <Select
           value={selectedYear}
           sx={{ fontSize: '1rem' }}
+          disableUnderline
           onChange={(e) => {
             onChange(e.target.value as number)
           }}

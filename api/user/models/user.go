@@ -15,9 +15,8 @@ type User struct {
 }
 
 type UserCred struct {
-	ID       primitive.ObjectID `bson:"_id"`
-	Password string             `bson:"password"`
-
-	CreatedAt time.Time `bson:"create_at"`
-	UpdatedAt time.Time `bson:"updated_at"`
+	ID        primitive.ObjectID `bson:"_id"`
+	Password  string             `bson:"password"`
+	CreatedAt time.Time          `bson:"create_at"`
+	UpdatedAt time.Time          `bson:"updated_at"`
 }

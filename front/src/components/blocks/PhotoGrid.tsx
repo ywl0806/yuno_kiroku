@@ -5,9 +5,10 @@ import PhotoAlbum, { Photo as AlbumPhoto } from 'react-photo-album'
 
 type Props = {
   photos: Photo[]
+  onClick?: (index: number) => void
 }
 
-export const PhotoGrid: FC<Props> = ({ photos }) => {
+export const PhotoGrid: FC<Props> = ({ photos, onClick }) => {
   const photoAlbum: AlbumPhoto[] = useMemo(() => {
     return photos.map((photo) => {
       const { width, height } = resizeImageView(photo.width, photo.height, 1500, 1500, photo.orientation)
@@ -21,5 +22,17 @@ export const PhotoGrid: FC<Props> = ({ photos }) => {
       }
     })
   }, [photos])
-  return <PhotoAlbum photos={photoAlbum} columns={2} layout="masonry" spacing={2} padding={2} targetRowHeight={300} />
+  return (
+    <PhotoAlbum
+      onClick={(props) => {
+        onClick && onClick(props.index)
+      }}
+      photos={photoAlbum}
+      columns={2}
+      layout="masonry"
+      spacing={2}
+      padding={2}
+      targetRowHeight={300}
+    />
+  )
 }

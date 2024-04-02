@@ -1,3 +1,4 @@
+import colors from '@/colors'
 import { DropdownYear } from '@/components/blocks/DropdownYear'
 import { PhotoGridContainer } from '@/components/blocks/PhotoGridContainer'
 import { usePhotosRange } from '@/hooks/usePhotosRange'
@@ -18,8 +19,8 @@ type SelectedDate = {
 
 export const HomePage = () => {
   const { date } = useParams<{ date: string }>()
-
   const [swiper, setSwiper] = useState<SwiperClass | null>(null)
+
   const nav = useNavigate()
   const { range, isFetched } = usePhotosRange()
 
@@ -56,7 +57,7 @@ export const HomePage = () => {
 
   return (
     <>
-      <div>
+      <div className="shadow-darkGray mb-[0.5rem] bg-white pb-[0.5rem] shadow-[0px_0px_5px_1px]">
         <DropdownYear
           years={years}
           selectedYear={selectedDate.year}
@@ -69,55 +70,62 @@ export const HomePage = () => {
             }
           }}
         />
+
+        <div>
+          {isFetched && (
+            <Tabs
+              sx={{
+                '&.MuiTabs-root': {
+                  minHeight: '0rem',
+                },
+              }}
+              variant="scrollable"
+              value={currentYearMonthStr}
+              onChange={(_, v) => {
+                nav(`/${v}`)
+              }}
+              scrollButtons
+              TabIndicatorProps={{
+                style: {
+                  backgroundColor: colors.amethyst,
+                },
+              }}
+            >
+              {range.length > 0 ? (
+                range.map((ran) => {
+                  return (
+                    <Tab
+                      sx={{
+                        '&.MuiButtonBase-root': {
+                          fontSize: '1rem',
+                          minWidth: '0rem',
+                          width: '20%',
+
+                          minHeight: '0',
+                          height: '2.5rem',
+                          paddingBottom: '0',
+                          paddingTop: '0',
+                          '&.Mui-selected': {
+                            color: colors.amethyst,
+                          },
+                        },
+                      }}
+                      key={`${ran.year}-${ran.month}`}
+                      label={ran.month}
+                      value={`${ran.year}-${ran.month}`}
+                      onClick={() => {
+                        nav(`/${ran.year}-${ran.month}`)
+                      }}
+                    ></Tab>
+                  )
+                })
+              ) : (
+                <Tab label={currentYearMonthStr.split('-')[1]} value={currentYearMonthStr} />
+              )}
+            </Tabs>
+          )}
+        </div>
       </div>
-
-      <div>
-        {isFetched && (
-          <Tabs
-            sx={{
-              '&.MuiTabs-root': {
-                minHeight: '0rem',
-              },
-            }}
-            variant="scrollable"
-            value={currentYearMonthStr}
-            onChange={(_, v) => {
-              nav(`/${v}`)
-            }}
-            scrollButtons
-          >
-            {range.length > 0 ? (
-              range.map((ran) => {
-                return (
-                  <Tab
-                    sx={{
-                      '&.MuiButtonBase-root': {
-                        fontSize: '1rem',
-                        minWidth: '0rem',
-                        width: '20%',
-
-                        minHeight: '0',
-                        height: '2.5rem',
-                        paddingBottom: '0',
-                        paddingTop: '0',
-                      },
-                    }}
-                    key={`${ran.year}-${ran.month}`}
-                    label={ran.month}
-                    value={`${ran.year}-${ran.month}`}
-                    onClick={() => {
-                      nav(`/${ran.year}-${ran.month}`)
-                    }}
-                  ></Tab>
-                )
-              })
-            ) : (
-              <Tab label={currentYearMonthStr.split('-')[1]} value={currentYearMonthStr} />
-            )}
-          </Tabs>
-        )}
-      </div>
-
       <Swiper
         spaceBetween={10}
         slidesPerView={1}
@@ -126,7 +134,7 @@ export const HomePage = () => {
         }}
         controller={{ control: swiper }}
         onSwiper={(swiper) => setSwiper(swiper)}
-        className="h-full w-full"
+        className="bg-clouds h-full w-full"
       >
         {range.map((ran) => {
           return (
