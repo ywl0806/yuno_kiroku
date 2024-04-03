@@ -6,7 +6,7 @@ import { RouterProvider } from 'react-router-dom'
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen w-screen">
+      <div className="bg-clouds min-h-screen w-screen">
         <RouterProvider router={router} />
       </div>
     </QueryClientProvider>

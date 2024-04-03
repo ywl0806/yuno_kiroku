@@ -1,3 +1,5 @@
+import { HeaderContainer } from '../layouts/HeaderContainer'
+import { LivePhoto } from './LivePhoto'
 import { Photo } from '@/types/photo'
 import CloseIcon from '@mui/icons-material/Close'
 import { Dialog, IconButton, Slide } from '@mui/material'
@@ -33,14 +35,14 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
 
   return (
     <Dialog open={open} onClose={onClose} fullScreen TransitionComponent={Transition}>
-      <div className="flex h-full flex-col justify-between">
-        <div className="mt-[2rem] ">
+      <div className="h-screen overflow-hidden">
+        <HeaderContainer className=" flex h-[4rem] items-center">
           <IconButton onClick={onClose}>
             <CloseIcon fontSize="large" />
           </IconButton>
-          <div className="my-[2rem] h-[1px] bg-gray-300" />
-        </div>
-        <div className="flex-1">
+        </HeaderContainer>
+
+        <div className="my-[2rem] h-[90vh] overflow-y-auto">
           <Swiper
             slidesPerView={1}
             onSlideChange={(swiper) => {
@@ -50,13 +52,12 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
             onSwiper={(swiper) => setSwiper(swiper)}
           >
             {photos.map((photo) => (
-              <SwiperSlide key={photo._id}>
-                <img src={photo.thumbnail_url} alt={photo.file_name} />
+              <SwiperSlide key={photo._id} className="flex items-center justify-center px-1">
+                {photo.live_url ? <LivePhoto photo={photo} /> : <img src={photo.thumbnail_url} alt={photo.file_name} />}
               </SwiperSlide>
             ))}
           </Swiper>
         </div>
-        <div className="flex-1"></div>
       </div>
     </Dialog>
   )

@@ -1,6 +1,7 @@
 import colors from '@/colors'
 import { DropdownYear } from '@/components/blocks/DropdownYear'
 import { PhotoGridContainer } from '@/components/blocks/PhotoGridContainer'
+import { HeaderContainer } from '@/components/layouts/HeaderContainer'
 import { usePhotosRange } from '@/hooks/usePhotosRange'
 import { Tab, Tabs } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
@@ -57,7 +58,7 @@ export const HomePage = () => {
 
   return (
     <>
-      <div className="shadow-darkGray mb-[0.5rem] bg-white pb-[0.5rem] shadow-[0px_0px_5px_1px]">
+      <HeaderContainer>
         <DropdownYear
           years={years}
           selectedYear={selectedDate.year}
@@ -125,7 +126,7 @@ export const HomePage = () => {
             </Tabs>
           )}
         </div>
-      </div>
+      </HeaderContainer>
       <Swiper
         spaceBetween={10}
         slidesPerView={1}
@@ -134,7 +135,7 @@ export const HomePage = () => {
         }}
         controller={{ control: swiper }}
         onSwiper={(swiper) => setSwiper(swiper)}
-        className="bg-clouds h-full w-full"
+        className="h-full w-full py-[0.6rem]"
       >
         {range.map((ran) => {
           return (
