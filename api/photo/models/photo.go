@@ -8,6 +8,8 @@ import (
 
 type Photo struct {
 	ID              primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	GroupId         primitive.ObjectID `json:"group_id" bson:"group_id"`
+	AlbumId         primitive.ObjectID `json:"album_id" bson:"album_id"`
 	ThumbnailUrl    string             `json:"thumbnail_url" bson:"thumbnail_url"`
 	OriginalUrl     string             `json:"original_url" bson:"original_url"`
 	LiveUrl         string             `json:"live_url" bson:"live_url,omitempty"`

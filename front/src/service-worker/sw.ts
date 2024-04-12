@@ -1,9 +1,7 @@
 //Import Cache Names and ClientClaim module for providing the cache name and taking control of all pages immediately
 import { cacheNames, clientsClaim } from 'workbox-core'
-
 //Import routing modules for registering routes and setting default and catch handlers
 import { setCatchHandler, setDefaultHandler } from 'workbox-routing'
-
 //Import caching modules for caching strategies
 import { NetworkFirst } from 'workbox-strategies'
 
@@ -12,9 +10,9 @@ import { NetworkFirst } from 'workbox-strategies'
 //Firebase
 // declare let firebase: any;
 // importScripts('https://www.gstatic.com/firebasejs/9.6.8/firebase-app-compat.js');
-import { initializeApp } from 'firebase/app'
 // importScripts('https://www.gstatic.com/firebasejs/9.6.8/firebase-messaging-compat.js');
-import { getMessaging, isSupported } from 'firebase/messaging/sw'
+// import { initializeApp } from 'firebase/app'
+// import { getMessaging, isSupported } from 'firebase/messaging/sw'
 
 //Extend the ServiceWorkerGlobalScope to include the __WB_MANIFEST property
 interface MyServiceWorkerGlobalScope extends ServiceWorkerGlobalScope {
@@ -93,16 +91,16 @@ setCatchHandler(({ event }: any): Promise<Response> => {
 self.skipWaiting()
 clientsClaim()
 
-const config = {
-  apiKey: import.meta.env['VITE_API_KEY'],
-  authDomain: import.meta.env['VITE_AUTH_DOMAIN'],
-  projectId: import.meta.env['VITE_PROJECT_ID'],
-  storageBucket: import.meta.env['VITE_STORAGE_BUCKET'],
-  messagingSenderId: import.meta.env['VITE_MESSAGING_SENDER_ID'],
-  appId: import.meta.env['VITE_APP_ID'],
-}
+// const config = {
+//   apiKey: import.meta.env['VITE_API_KEY'],
+//   authDomain: import.meta.env['VITE_AUTH_DOMAIN'],
+//   projectId: import.meta.env['VITE_PROJECT_ID'],
+//   storageBucket: import.meta.env['VITE_STORAGE_BUCKET'],
+//   messagingSenderId: import.meta.env['VITE_MESSAGING_SENDER_ID'],
+//   appId: import.meta.env['VITE_APP_ID'],
+// }
 
-const app = initializeApp(config)
+// const app = initializeApp(config)
 
 // let messages: string[] = []
 
@@ -115,8 +113,8 @@ const app = initializeApp(config)
 //   }
 // }
 
-isSupported().then((supported) => {
-  if (supported) {
-    getMessaging(app)
-  }
-})
+// isSupported().then((supported) => {
+//   if (supported) {
+//     getMessaging(app)
+//   }
+// })

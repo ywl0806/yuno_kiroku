@@ -1,6 +1,6 @@
 import { LivePhotoBadge } from '../LivePhotoBadge'
 import { Photo } from '@/types/photo'
-import { Button, Fade, IconButton } from '@mui/material'
+import { Fade, IconButton } from '@mui/material'
 import { FC, useEffect, useRef, useState } from 'react'
 
 type Props = {
@@ -51,7 +51,6 @@ export const LivePhoto: FC<Props> = ({ photo }) => {
           ref={videoRef}
           className="w-full"
           src={photo.live_url}
-          autoPlay
           playsInline
           onClick={() => setLivePhotoPlay((prev) => !prev)}
         />

@@ -26,7 +26,10 @@ func NewPhotoStore(db *mongo.Database) *PhotoStore {
 	col.Indexes().CreateOne(
 		context.Background(),
 		mongo.IndexModel{
-			Keys: bson.D{{Key: "photo_created_at", Value: 1}},
+			Keys: bson.D{
+				{Key: "group_id", Value: 1},
+				{Key: "album_id", Value: 1},
+				{Key: "photo_created_at", Value: 1}},
 		},
 	)
 
