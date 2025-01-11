@@ -1,23 +1,18 @@
-package main
+package api
 
 import (
-	"embed"
-	"net/http"
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/ywl0806/yuno_kiroku/api"
-	"github.com/ywl0806/yuno_kiroku/api/setting"
-
 	echoSwagger "github.com/swaggo/echo-swagger"
 	_ "github.com/ywl0806/yuno_kiroku/docs"
+	"github.com/ywl0806/yuno_kiroku/internal/api"
+	"github.com/ywl0806/yuno_kiroku/internal/api/setting"
 )
-
-//go:embed dist
-var webAssets embed.FS
 
 // @BasePath /api
 func main() {
@@ -26,6 +21,7 @@ func main() {
 	mode := os.Getenv("APP_MODE")
 	e := echo.New()
 
+	fmt.Println("hogehoge")
 	// static file
 	e.Static("/uploads", "uploads")
 	var skipper middleware.Skipper = middleware.DefaultSkipper
@@ -36,10 +32,9 @@ func main() {
 	}
 
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Skipper:    skipper,
-		HTML5:      true,
-		Root:       "dist",
-		Filesystem: http.FS(webAssets),
+		Skipper: skipper,
+		HTML5:   true,
+		Root:    "dist",
 	}))
 
 	// swagger setting

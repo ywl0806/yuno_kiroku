@@ -17,7 +17,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nfnt/resize"
 	"github.com/rwcarlsen/goexif/exif"
-	"github.com/ywl0806/yuno_kiroku/api/utils"
+	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 )
 
 type Imagehandler struct {

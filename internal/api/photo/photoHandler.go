@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ywl0806/yuno_kiroku/api/lib/imageHandler"
+	"github.com/ywl0806/yuno_kiroku/internal/api/lib/imageHandler"
 )
 
 type UploadPhotoReturn struct {
