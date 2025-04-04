@@ -6,14 +6,14 @@ paths:
     get:
       description: get photo list
       parameters:
-      - description: limit
-        in: query
-        name: limit
-        type: integer
-      - description: skip
-        in: query
-        name: skip
-        type: integer
+        - description: limit
+          in: query
+          name: limit
+          type: integer
+        - description: skip
+          in: query
+          name: skip
+          type: integer
       responses: {}
   /photo/first:
     get:
@@ -25,18 +25,18 @@ paths:
     get:
       description: get photo group by date
       parameters:
-      - description: from
-        example: "2024-01-01T00:00:00Z"
-        format: date-time
-        in: query
-        name: from
-        type: string
-      - description: to
-        example: "2024-05-01T00:00:00Z"
-        format: date-time
-        in: query
-        name: to
-        type: string
+        - description: from
+          example: "2024-01-01T00:00:00Z"
+          format: date-time
+          in: query
+          name: from
+          type: string
+        - description: to
+          example: "2024-05-01T00:00:00Z"
+          format: date-time
+          in: query
+          name: to
+          type: string
       responses: {}
   /photo/range:
     get:
@@ -45,30 +45,30 @@ paths:
   /photo/upload:
     post:
       consumes:
-      - multipart/form-data
+        - multipart/form-data
       description: upload photo
       parameters:
-      - description: file
-        in: formData
-        name: file
-        required: true
-        type: file
+        - description: file
+          in: formData
+          name: file
+          required: true
+          type: file
       responses: {}
   /photo/upload-live:
     post:
       consumes:
-      - multipart/form-data
+        - multipart/form-data
       description: upload live photo
       parameters:
-      - description: photo
-        in: formData
-        name: photo
-        required: true
-        type: file
-      - description: live
-        in: formData
-        name: live
-        required: true
-        type: file
+        - description: photo
+          in: formData
+          name: photo
+          required: true
+          type: file
+        - description: live
+          in: formData
+          name: live
+          required: true
+          type: file
       responses: {}
 swagger: "2.0"
