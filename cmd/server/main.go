@@ -1,12 +1,12 @@
-package api
+package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/spf13/viper"
 
 	echoSwagger "github.com/swaggo/echo-swagger"
 	_ "github.com/ywl0806/yuno_kiroku/docs"
@@ -18,10 +18,11 @@ import (
 func main() {
 	// config
 	setting.SettingEnv()
-	mode := os.Getenv("APP_MODE")
+	mode := viper.GetString("APP_MODE")
+
+	fmt.Println("mode: ", mode)
 	e := echo.New()
 
-	fmt.Println("hogehoge")
 	// static file
 	e.Static("/uploads", "uploads")
 	var skipper middleware.Skipper = middleware.DefaultSkipper

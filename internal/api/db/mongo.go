@@ -7,7 +7,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 func ConnectDB() *mongo.Client {
@@ -21,11 +20,11 @@ func ConnectDB() *mongo.Client {
 		log.Fatal("DB connection failed : ", err)
 	}
 
-	err = client.Ping(ctx, readpref.Primary())
+	// err = client.Ping(ctx, readpref.Primary())
 
-	if err != nil {
-		log.Fatal("DB ping failed : ", err)
-	}
+	// if err != nil {
+	// 	log.Fatal("DB ping failed : ", err)
+	// }
 
 	return client
 }
