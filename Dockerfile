@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine
+FROM golang:1.24-alpine
 
 # libde265-dev 설치 (HEIF 관련 라이브러리)
 RUN apk update && apk add --no-cache libde265-dev pkgconfig gcc musl-dev g++
@@ -18,4 +18,4 @@ COPY .air.toml /app/.air.toml
 
 EXPOSE 1323
 # air 설정 파일을 사용하여 개발 서버 실행
-CMD ["air"]
+CMD ["air", "-c", ".air.toml"]

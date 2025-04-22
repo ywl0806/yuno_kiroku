@@ -33,6 +33,10 @@ func Init(e *echo.Echo) {
 	// root router
 	root := e.Group("/api")
 
+	// health check
+	root.GET("/health", func(c echo.Context) error {
+		return c.String(200, "OK")
+	})
 	// init routers
 	user.Register(root, *userController)
 	photo.Register(root, *photoController)
