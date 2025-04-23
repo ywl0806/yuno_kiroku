@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/ywl0806/yuno_kiroku/api/photo/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/photo/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -79,6 +79,8 @@ func (s *PhotoStore) FindPhotosRange() ([]models.PhotoRange, error) {
 	if len(photoRange) == 0 {
 		return []models.PhotoRange{}, nil
 	}
+
+	log.Println("photo range: ", photoRange)
 	return photoRange[0].PhotoRange, nil
 }
 func (s *PhotoStore) FindOnePhoto(opt *options.FindOneOptions) (models.Photo, error) {

@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/api/user/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/user/store"
 )
 
 type UserController struct {

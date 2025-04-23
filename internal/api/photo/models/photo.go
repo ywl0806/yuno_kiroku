@@ -12,7 +12,7 @@ type Photo struct {
 	AlbumId         primitive.ObjectID `json:"album_id" bson:"album_id"`
 	ThumbnailUrl    string             `json:"thumbnail_url" bson:"thumbnail_url"`
 	OriginalUrl     string             `json:"original_url" bson:"original_url"`
-	LiveUrl         string             `json:"live_url" bson:"live_url,omitempty"`
+	LiveUrl         string             `json:"live_url" bson:"live_url"`
 	OriginalLiveUrl string             `json:"original_live_url" bson:"original_live_url"`
 	Width           int                `json:"width" bson:"width"`
 	Height          int                `json:"height" bson:"height"`

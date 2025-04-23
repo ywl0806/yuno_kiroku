@@ -1,6 +1,7 @@
 package setting
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -18,6 +19,8 @@ func SettingEnv() {
 	}
 
 	envFile := ".env" + modePrefix
+
+	fmt.Println(envFile)
 	viper.SetConfigFile(envFile)
 	// Find and read the config file
 	err := viper.ReadInConfig()

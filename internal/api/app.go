@@ -3,12 +3,12 @@ package api
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/ywl0806/yuno_kiroku/api/db"
-	"github.com/ywl0806/yuno_kiroku/api/lib/storage"
-	"github.com/ywl0806/yuno_kiroku/api/photo"
-	photoStore "github.com/ywl0806/yuno_kiroku/api/photo/store"
-	"github.com/ywl0806/yuno_kiroku/api/user"
-	userStore "github.com/ywl0806/yuno_kiroku/api/user/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/db"
+	"github.com/ywl0806/yuno_kiroku/internal/api/lib/storage"
+	"github.com/ywl0806/yuno_kiroku/internal/api/photo"
+	photoStore "github.com/ywl0806/yuno_kiroku/internal/api/photo/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/user"
+	userStore "github.com/ywl0806/yuno_kiroku/internal/api/user/store"
 )
 
 // Initialize the root router on the app
@@ -33,6 +33,10 @@ func Init(e *echo.Echo) {
 	// root router
 	root := e.Group("/api")
 
+	// health check
+	root.GET("/health", func(c echo.Context) error {
+		return c.String(200, "OK")
+	})
 	// init routers
 	user.Register(root, *userController)
 	photo.Register(root, *photoController)
