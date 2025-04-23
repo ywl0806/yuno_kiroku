@@ -47,7 +47,7 @@ func main() {
 
 	// logger
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "method=${method},\n uri=${uri},\n status=${status},\n latency=${latency_human}\n  ${error}\n ",
+		Format: "${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n  ${error}\n ",
 	}))
 	e.Use(middleware.Recover())
 
