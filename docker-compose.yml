@@ -13,6 +13,8 @@ services:
     volumes:
       - .:/app
     depends_on: [mongo]
+    networks:
+      - app-net
   mongo:
     image: mongo
     ports:
@@ -22,9 +24,10 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
       - ./db:/data/db
+    networks:
+      - app-net
   mongo-express:
     image: mongo-express
-    restart: always
     ports:
       - 8082:8081
     environment:
@@ -32,7 +35,10 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: password
       ME_CONFIG_MONGODB_URL: mongodb://root:password@mongo:27017/
       ME_CONFIG_BASICAUTH: false
-
+    depends_on:
+      - mongo
+    networks:
+      - app-net
   minio:
     image: minio/minio:RELEASE.2025-04-08T15-41-24Z
     container_name: s3-minio
@@ -46,3 +52,8 @@ services:
     command: -c "/opt/bin/minio server /data --address :9000 --console-address :9090"
     volumes:
       - 'minio:/data'
+    networks:
+      - app-net
+networks:
+  app-net:
+    driver: bridge

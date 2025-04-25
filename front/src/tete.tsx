@@ -53,7 +53,7 @@ function App() {
               required
             ></input>
           </div>
-          <button id={'add-button'} className={'add-button'} onClick={(event) => addTodo(todo)}>
+          <button id={'add-button'} className={'add-button'} onClick={() => addTodo(todo)}>
             Add
           </button>
         </div>
