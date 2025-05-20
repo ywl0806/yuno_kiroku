@@ -107,6 +107,40 @@
                 ],
                 "responses": {}
             }
+        },
+        "/user": {
+            "get": {
+                "description": "get users",
+                "responses": {}
+            },
+            "post": {
+                "description": "create user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "email",
+                        "description": "email",
+                        "name": "email",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "password",
+                        "name": "password",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
         }
     }
 }

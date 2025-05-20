@@ -3,8 +3,9 @@ package api
 import (
 	"github.com/labstack/echo/v4"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/db"
-	"github.com/ywl0806/yuno_kiroku/internal/api/lib/storage"
+	"github.com/ywl0806/yuno_kiroku/pkg/db"
+	"github.com/ywl0806/yuno_kiroku/pkg/storage"
+
 	"github.com/ywl0806/yuno_kiroku/internal/api/photo"
 	photoStore "github.com/ywl0806/yuno_kiroku/internal/api/photo/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/user"
@@ -19,7 +20,7 @@ func Init(e *echo.Echo) {
 	db := client.Database("yuno")
 
 	// store
-	mUserStore := userStore.NewMUserStore(db)
+	userStore := userStore.NewUserStore(db)
 	photoStore := photoStore.NewPhotoStore(db)
 
 	// Storage service
@@ -27,7 +28,7 @@ func Init(e *echo.Echo) {
 	lStorage := storage.NewLocalStorageService("longterm")
 
 	// Controller
-	userController := user.NewUserController(mUserStore)
+	userController := user.NewUserController(userStore)
 	photoController := photo.NewPhotoController(photoStore, sStorage, lStorage)
 
 	// root router

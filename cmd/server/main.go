@@ -11,7 +11,9 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 	_ "github.com/ywl0806/yuno_kiroku/docs"
 	"github.com/ywl0806/yuno_kiroku/internal/api"
-	"github.com/ywl0806/yuno_kiroku/internal/api/setting"
+	"github.com/ywl0806/yuno_kiroku/pkg/setting"
+
+	"github.com/ywl0806/yuno_kiroku/internal/api/validator"
 )
 
 // @BasePath /api
@@ -40,7 +42,7 @@ func main() {
 	if mode == "dev" {
 		e.GET("/api/swagger/*", echoSwagger.WrapHandler)
 	}
-
+	e.Validator = validator.NewCustomValidator()
 	// /api/* 경로는 API 라우팅
 	api.Init(e)
 	e.GET("/*", func(c echo.Context) error {

@@ -7,6 +7,7 @@ import (
 func Register(root *echo.Group, userController UserController) {
 	userRouter := root.Group("/user")
 
-	userRouter.GET("", userController.GetUser)
+	userRouter.GET("", userController.GetUsers)
+	userRouter.POST("", userController.CreateUser)
 
 }

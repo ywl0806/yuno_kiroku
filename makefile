@@ -1,5 +1,5 @@
 swag:
-	~/go/bin/swag i --output docs
+	~/go/bin/swag i --output docs --generalInfo cmd/server/main.go
 kill:
 	kill -9 $(shell lsof -t -i:1323)
 
