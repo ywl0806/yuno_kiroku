@@ -6,10 +6,11 @@ import (
 	"github.com/ywl0806/yuno_kiroku/pkg/db"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/photo"
-	photoStore "github.com/ywl0806/yuno_kiroku/internal/api/photo/store"
-	"github.com/ywl0806/yuno_kiroku/internal/api/user"
-	userStore "github.com/ywl0806/yuno_kiroku/internal/api/user/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/auth"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo"
+	photoStore "github.com/ywl0806/yuno_kiroku/internal/api/services/photo/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/user"
+	userStore "github.com/ywl0806/yuno_kiroku/internal/api/services/user/store"
 )
 
 // Initialize the root router on the app
@@ -41,4 +42,7 @@ func Init(e *echo.Echo) {
 	// init routers
 	user.Register(root, *userController)
 	photo.Register(root, *photoController)
+	// auth
+	authController := auth.NewAuthController(userStore)
+	auth.Register(root, *authController)
 }

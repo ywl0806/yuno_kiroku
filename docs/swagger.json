@@ -5,6 +5,23 @@
     },
     "basePath": "/api",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "login",
+                "parameters": [
+                    {
+                        "description": "Login Request",
+                        "name": "auth.LoginRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/photo": {
             "get": {
                 "description": "get photo list",
@@ -140,6 +157,23 @@
                     }
                 ],
                 "responses": {}
+            }
+        }
+    },
+    "definitions": {
+        "auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
             }
         }
     }

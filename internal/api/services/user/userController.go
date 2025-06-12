@@ -2,8 +2,8 @@ package user
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/api/user/models"
-	"github.com/ywl0806/yuno_kiroku/internal/api/user/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/user/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/user/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 )
 

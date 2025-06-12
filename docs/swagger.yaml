@@ -1,7 +1,29 @@
 basePath: /api
+definitions:
+  auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
 info:
   contact: {}
 paths:
+  /auth/login:
+    post:
+      description: login
+      parameters:
+      - description: Login Request
+        in: body
+        name: auth.LoginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      responses: {}
   /photo:
     get:
       description: get photo list

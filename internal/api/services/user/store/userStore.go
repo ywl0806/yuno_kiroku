@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/api/user/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/user/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,7 +40,20 @@ func (s *UserStore) FindUsers(ctx context.Context) ([]models.User, error) {
 	fmt.Println("result: ", result)
 	return result, nil
 }
-func (s *UserStore) FindUserById() {}
+
+func (s *UserStore) FindUserByEmail(ctx context.Context, email string) (models.User, error) {
+	var user models.User
+	err := s.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return models.User{}, echo.NewHTTPError(404, "User not found")
+		}
+		return models.User{}, err
+	}
+	return user, nil
+}
+
 func (s *UserStore) CreateUser(ctx context.Context, user models.User) (models.User, error) {
 
 	// Check if the user already exists

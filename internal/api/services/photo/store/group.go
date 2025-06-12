@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/photo/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

@@ -7,8 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/photo/models"
-	"github.com/ywl0806/yuno_kiroku/internal/api/photo/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
