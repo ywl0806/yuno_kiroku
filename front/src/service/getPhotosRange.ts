@@ -1,4 +1,4 @@
-import { MyAxios } from '../lib/myAxios'
+import { MyAxiosWithAuth } from '../lib/myAxios'
 
 type Range = {
   year: number
@@ -6,7 +6,7 @@ type Range = {
 }
 
 export const getPhotosRange = async (): Promise<Range[]> => {
-  const response = await MyAxios.get('/photo/range')
+  const response = await MyAxiosWithAuth.get('/photo/range')
 
   return response.data
 }

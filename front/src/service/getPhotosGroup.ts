@@ -1,4 +1,4 @@
-import { MyAxios } from '@/lib/myAxios'
+import { MyAxiosWithAuth } from '@/lib/myAxios'
 import { Photo } from '@/types/photo'
 
 export type GetPhotosGroupOptions = {
@@ -15,7 +15,7 @@ export type PhotosGroup = {
 }
 
 export const getPhotosGroup = async (options: GetPhotosGroupOptions): Promise<PhotosGroup[]> => {
-  const response = await MyAxios.get('/photo/group', {
+  const response = await MyAxiosWithAuth.get('/photo/group', {
     params: {
       from: options.from.toISOString(),
       to: options.to.toISOString(),
