@@ -7,6 +7,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/auth"
+	groupStore "github.com/ywl0806/yuno_kiroku/internal/api/services/group/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo"
 	photoStore "github.com/ywl0806/yuno_kiroku/internal/api/services/photo/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/user"
@@ -23,13 +24,13 @@ func Init(e *echo.Echo) {
 	// store
 	userStore := userStore.NewUserStore(db)
 	photoStore := photoStore.NewPhotoStore(db)
-
+	groupStore := groupStore.NewGroupStore(db)
 	// Storage service
 	sStorage := storage.NewLocalStorageService("standard")
 	lStorage := storage.NewLocalStorageService("longterm")
 
 	// Controller
-	userController := user.NewUserController(userStore)
+	userController := user.NewUserController(userStore, groupStore)
 	photoController := photo.NewPhotoController(photoStore, sStorage, lStorage)
 
 	// root router

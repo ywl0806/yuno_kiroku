@@ -20,7 +20,7 @@ type UploadPhotoReturn struct {
 	PhotoCreatedAt time.Time `json:"photoCreatedAt"`
 }
 
-func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhotoReturn, error) {
+func (con *PhotoController) uploadPhoto(file *multipart.FileHeader, uploadPath string) (*UploadPhotoReturn, error) {
 
 	ext := strings.Split(file.Filename, ".")[1]
 	originalFile, err := file.Open()
@@ -53,7 +53,7 @@ func (con *PhotoController) uploadPhoto(file *multipart.FileHeader) (*UploadPhot
 	var folderName string
 
 	now := time.Now()
-	folderName = now.Format("2006-01-02")
+	folderName = uploadPath + "/" + now.Format("2006-01-02")
 
 	thumbnailUrl, err := con.standardStorage.SaveFile(resizedFile, folderName, originalFilename+".jpeg")
 	if err != nil {

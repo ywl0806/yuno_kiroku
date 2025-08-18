@@ -59,10 +59,16 @@ func (con *AuthController) Login(c echo.Context) error {
 	}
 
 	accessTokenClaims := &utils.AccessTokenClaims{
-		ID:    user.ID.Hex(),
-		Email: *user.Email,
+		ID:      user.ID.Hex(),
+		Email:   *user.Email,
+		GroupId: user.GroupID.Hex(),
 	}
-	token, err := utils.GenerateJWT(accessTokenClaims, viper.GetString("AUTH_SECRET_KEY"), 60)
+	if user.ClanGroupId != nil {
+		accessTokenClaims.ClanGroupId = user.ClanGroupId.Hex()
+	} else {
+		accessTokenClaims.ClanGroupId = ""
+	}
+	token, err := utils.GenerateJWT(accessTokenClaims, viper.GetString("AUTH_SECRET_KEY"), 60*24*30)
 
 	if err != nil {
 		return c.JSON(500, map[string]string{"error": "Failed to generate token"})

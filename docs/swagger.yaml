@@ -10,20 +10,65 @@ definitions:
     - email
     - password
     type: object
+  user.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
 info:
   contact: {}
 paths:
   /auth/login:
     post:
+      consumes:
+      - application/json
       description: login
       parameters:
-      - description: Login Request
+      - description: Login credentials
         in: body
-        name: auth.LoginRequest
+        name: loginRequest
         required: true
         schema:
           $ref: '#/definitions/auth.LoginRequest'
-      responses: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - auth
   /photo:
     get:
       description: get photo list
@@ -40,6 +85,14 @@ paths:
   /photo/first:
     get:
       description: get first photo
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
       responses:
         "200":
           description: OK
@@ -75,6 +128,17 @@ paths:
         name: file
         required: true
         type: file
+      - description: Clan Group ID
+        in: path
+        name: clan_group_id
+        type: string
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
       responses: {}
   /photo/upload-live:
     post:
@@ -92,6 +156,17 @@ paths:
         name: live
         required: true
         type: file
+      - description: Clan Group ID
+        in: path
+        name: clan_group_id
+        type: string
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
       responses: {}
   /user:
     get:
@@ -100,21 +175,16 @@ paths:
     post:
       description: create user
       parameters:
-      - description: name
-        in: formData
-        name: name
+      - description: Create User Request
+        in: body
+        name: user
         required: true
-        type: string
-      - description: email
-        format: email
-        in: formData
-        name: email
-        required: true
-        type: string
-      - description: password
-        in: formData
-        name: password
-        required: true
-        type: string
-      responses: {}
+        schema:
+          $ref: '#/definitions/user.CreateUserRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
 swagger: "2.0"

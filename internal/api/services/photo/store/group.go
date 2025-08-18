@@ -11,8 +11,7 @@ import (
 )
 
 // FindPicturesGroupByDate retrieves all photos from the store grouped by date.
-func (s *PhotoStore) FindPicturesGroupByDate(from, to time.Time) ([]models.PhotoGroup, error) {
-	ctx := context.Background()
+func (s *PhotoStore) FindPicturesGroupByDate(from, to time.Time, groupId string, ctx context.Context) ([]models.PhotoGroup, error) {
 
 	projectStage := bson.D{
 		{Key: "$project", Value: bson.D{

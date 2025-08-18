@@ -1,12 +1,15 @@
 package photo
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
+	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
@@ -32,6 +35,8 @@ func NewPhotoController(
 // @Description upload photo
 // @Accept  multipart/form-data
 // @Param file formData file true "file"
+// @Param clan_group_id path string false "Clan Group ID"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /photo/upload [post]
 func (con *PhotoController) UploadPhoto(c echo.Context) error {
 	file, err := c.FormFile("file")
@@ -40,17 +45,29 @@ func (con *PhotoController) UploadPhoto(c echo.Context) error {
 		log.Println("file open error: ", err)
 		return err
 	}
+	groupId := c.Get(consts.UserGroupIdKey)
+	fmt.Println(groupId)
+	if groupId == nil {
+		return c.JSON(400, "user group id is required")
+	}
 
-	uploadResult, err := con.uploadPhoto(file)
+	clanGroupId := c.Param("clan_group_id")
+
+	uploadPath := groupId.(string)
+	if clanGroupId != "" {
+		uploadPath += "/" + clanGroupId
+	}
+	uploadResult, err := con.uploadPhoto(file, uploadPath)
 
 	if err != nil {
 		log.Println("upload photo error: ", err)
 		return err
 	}
-
+	groupIdObjId, _ := primitive.ObjectIDFromHex(groupId.(string))
 	var newPhoto = models.Photo{
 		ThumbnailUrl:   uploadResult.ThumbnailUrl,
 		OriginalUrl:    uploadResult.OriginalUrl,
+		GroupId:        groupIdObjId,
 		FileName:       uploadResult.FileName,
 		PhotoCreatedAt: uploadResult.PhotoCreatedAt,
 		Width:          uploadResult.Width,
@@ -105,8 +122,14 @@ func (con *PhotoController) GetPhotosGroup(c echo.Context) error {
 
 	from := utils.GetDateFromStr(fromQ)
 	to := utils.GetDateFromStr(toQ)
+	groupIdInterface := c.Get(consts.UserGroupIdKey)
 
-	photos, err := con.photoStore.FindPicturesGroupByDate(from, to)
+	var groupId string
+	if groupIdInterface != nil {
+		groupId = groupIdInterface.(string)
+	}
+
+	photos, err := con.photoStore.FindPicturesGroupByDate(from, to, groupId, c.Request().Context())
 	if err != nil {
 		log.Println(err)
 		return err
@@ -128,6 +151,7 @@ func (con *PhotoController) GetPhotoRange(c echo.Context) error {
 
 // @Description get first photo
 // @Router /photo/first [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Success 200
 func (con *PhotoController) GetFirstPhoto(c echo.Context) error {
 	opts := options.FindOne()
@@ -146,6 +170,8 @@ func (con *PhotoController) GetFirstPhoto(c echo.Context) error {
 // @Accept  multipart/form-data
 // @Param photo formData file true "photo"
 // @Param live formData file true "live"
+// @Param clan_group_id path string false "Clan Group ID"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /photo/upload-live [post]
 func (con *PhotoController) UploadLivePhoto(c echo.Context) error {
 	photoFile, err := c.FormFile("photo")
@@ -159,8 +185,20 @@ func (con *PhotoController) UploadLivePhoto(c echo.Context) error {
 		log.Println("no live movie formfile error: ", err)
 		return c.JSON(400, err)
 	}
+	groupId := c.Get(consts.UserGroupIdKey)
 
-	uploadPhotoResult, err := con.uploadPhoto(photoFile)
+	if groupId == nil {
+		return c.JSON(400, "user group id is required")
+	}
+
+	clanGroupId := c.Param("clan_group_id")
+
+	uploadPath := groupId.(string)
+	if clanGroupId != "" {
+		uploadPath += "/" + clanGroupId
+	}
+
+	uploadPhotoResult, err := con.uploadPhoto(photoFile, uploadPath)
 	if err != nil {
 		log.Println("upload photo error: ", err)
 		return err

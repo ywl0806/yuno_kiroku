@@ -2,29 +2,31 @@ import react from '@vitejs/plugin-react-swc'
 import path from 'path'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import tailwindcss from '@tailwindcss/vite'
+
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  server: {
-    port: 5155,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:1323',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/uploads': {
-        target: 'http://127.0.0.1:1323',
-        changeOrigin: true,
-        secure: false,
+export default defineConfig(async () => {
+  const tailwindcss = await import('@tailwindcss/vite').then(m => m.default)
+  return {
+    server: {
+      port: 5155,
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:1323',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/uploads': {
+          target: 'http://127.0.0.1:1323',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
-  },
-  plugins: [
-    react(),
-    tailwindcss(),
-    VitePWA({
+    plugins: [
+      react(),
+      tailwindcss(),
+      VitePWA({
       registerType: 'autoUpdate',
       strategies: 'injectManifest',
       injectManifest: {
@@ -69,9 +71,10 @@ export default defineConfig({
   build: {
     outDir: '../dist',
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+      },
     },
-  },
+  }
 })

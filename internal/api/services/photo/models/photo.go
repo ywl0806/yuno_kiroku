@@ -8,7 +8,7 @@ import (
 
 type Photo struct {
 	ID              primitive.ObjectID  `json:"_id" bson:"_id,omitempty"`
-	FamilyGroupId   primitive.ObjectID  `json:"group_id" bson:"group_id"`
+	GroupId         primitive.ObjectID  `json:"group_id" bson:"group_id"`
 	ClanGroupId     *primitive.ObjectID `json:"clan_group_id" bson:"clan_group_id"`
 	AlbumId         primitive.ObjectID  `json:"album_id" bson:"album_id"`
 	ThumbnailUrl    string              `json:"thumbnail_url" bson:"thumbnail_url"`

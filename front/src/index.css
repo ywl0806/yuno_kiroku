@@ -3,7 +3,7 @@
 /*
 ---break---
 */
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:is(.dark *));
 
 /*
 * Reset CSS
