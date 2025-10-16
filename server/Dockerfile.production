@@ -1,0 +1,24 @@
+FROM golang:1.24-alpine as build
+
+# libde265-dev 설치 (HEIF 관련 라이브러리)
+RUN apk update && apk add --no-cache libde265-dev pkgconfig gcc musl-dev g++
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd/lambda/main.go ./cmd/lambda/main.go
+COPY ./pkg ./pkg
+COPY ./internal ./internal
+COPY ./docs ./docs
+
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+    go build -ldflags '-extldflags "-static"' -o bootstrap ./cmd/lambda/main.go
+
+FROM public.ecr.aws/lambda/provided:al2-arm64
+
+COPY --from=build /app/bootstrap /var/task/bootstrap
+RUN chmod +x /var/task/bootstrap
+
+ENTRYPOINT [ "/var/task/bootstrap" ]

@@ -12,8 +12,6 @@ import (
 	_ "github.com/ywl0806/yuno_kiroku/docs"
 	"github.com/ywl0806/yuno_kiroku/internal/api"
 	"github.com/ywl0806/yuno_kiroku/pkg/setting"
-
-	"github.com/ywl0806/yuno_kiroku/internal/api/validator"
 )
 
 // @BasePath /api
@@ -25,9 +23,12 @@ func main() {
 	fmt.Println("mode: ", mode)
 	e := echo.New()
 
+	// /api/* 경로는 API 라우팅
+	api.Init(e)
+
+	// /swagger/* 경로는 swagger docs
 	// 정적 파일 (업로드된 파일)
 	e.Static("/uploads", "uploads")
-
 	// 정적 파일 (React 등) - /api/경로는 제외
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
 		Skipper: func(c echo.Context) bool {
@@ -38,13 +39,8 @@ func main() {
 		Root:  "dist", // React 빌드 결과물이 들어 있는 디렉토리
 	}))
 
-	// /swagger/* 경로는 swagger docs
-	if mode == "dev" {
-		e.GET("/api/swagger/*", echoSwagger.WrapHandler)
-	}
-	e.Validator = validator.NewCustomValidator()
-	// /api/* 경로는 API 라우팅
-	api.Init(e)
+	e.GET("/api/swagger/*", echoSwagger.WrapHandler)
+
 	e.GET("/*", func(c echo.Context) error {
 		path := c.Request().URL.Path
 		if strings.HasPrefix(path, "/api/") {
@@ -52,11 +48,6 @@ func main() {
 		}
 		return c.File("dist/index.html")
 	})
-	// 로거 & 에러 복구
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n  ${error}\n ",
-	}))
-	e.Use(middleware.Recover())
-
 	e.Logger.Fatal(e.Start(":1323"))
+
 }

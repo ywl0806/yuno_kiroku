@@ -5,7 +5,7 @@ firestore/data
 api/tmp
 node_modules
 tmp/
-# /uploads
+/uploads
 .DS_Store
 /mongo-data
 terraform.tfvars

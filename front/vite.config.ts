@@ -3,10 +3,9 @@ import path from 'path'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-
 // https://vitejs.dev/config/
 export default defineConfig(async () => {
-  const tailwindcss = await import('@tailwindcss/vite').then(m => m.default)
+  const tailwindcss = await import('@tailwindcss/vite').then((m) => m.default)
   return {
     server: {
       port: 5155,
@@ -27,50 +26,50 @@ export default defineConfig(async () => {
       react(),
       tailwindcss(),
       VitePWA({
-      registerType: 'autoUpdate',
-      strategies: 'injectManifest',
-      injectManifest: {
-        injectionPoint: undefined,
-      },
-      devOptions: {
-        enabled: true,
-        type: 'module',
-      },
-      srcDir: 'src/service-worker',
-      filename: 'sw.ts',
-      manifest: {
-        name: 'My App',
-        short_name: 'My App',
-        description: 'My App',
-        icons: [
-          {
-            src: 'app_icon/vite.svg',
-            type: 'image/png',
-            sizes: '192x192',
-          },
-          {
-            src: 'app_icon/vite.svg',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-          {
-            src: 'app_icon/vite.svg',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
-        ],
-        start_url: 'index.html',
-        display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#42b883',
-        lang: 'ja',
-      },
-    }),
-  ],
-  build: {
-    outDir: '../dist',
-  },
+        registerType: 'autoUpdate',
+        strategies: 'injectManifest',
+        injectManifest: {
+          injectionPoint: undefined,
+        },
+        devOptions: {
+          enabled: true,
+          type: 'module',
+        },
+        srcDir: 'src/service-worker',
+        filename: 'sw.ts',
+        manifest: {
+          name: 'My App',
+          short_name: 'My App',
+          description: 'My App',
+          icons: [
+            {
+              src: 'app_icon/vite.svg',
+              type: 'image/png',
+              sizes: '192x192',
+            },
+            {
+              src: 'app_icon/vite.svg',
+              sizes: '512x512',
+              type: 'image/png',
+            },
+            {
+              src: 'app_icon/vite.svg',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable',
+            },
+          ],
+          start_url: 'index.html',
+          display: 'standalone',
+          background_color: '#ffffff',
+          theme_color: '#42b883',
+          lang: 'ja',
+        },
+      }),
+    ],
+    build: {
+      outDir: './dist',
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),

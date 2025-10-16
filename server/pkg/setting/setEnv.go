@@ -1,27 +1,15 @@
 package setting
 
 import (
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/spf13/viper"
 )
 
 func SettingEnv() {
-	mode := os.Getenv("APP_MODE")
 	viper.SetConfigType("env")
 
-	modePrefix := ""
-
-	if mode != "" {
-		modePrefix = "." + mode
-	}
-
-	envFile := ".env" + modePrefix
-
-	fmt.Println(envFile)
-	viper.SetConfigFile(envFile)
+	viper.SetConfigFile(".env")
 	// Find and read the config file
 	err := viper.ReadInConfig()
 
