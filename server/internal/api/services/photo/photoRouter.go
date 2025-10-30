@@ -5,7 +5,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
 )
 
-func Register(root *echo.Group, photoController PhotoController) {
+func Register(root *echo.Group, photoController PhotoHandler) {
 	photoRouter := root.Group("/photo")
 	guard := middlewares.NewGuard()
 

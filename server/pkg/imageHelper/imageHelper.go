@@ -9,18 +9,17 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"log"
-	"log/slog"
 	"strings"
 
 	"io"
 
+	"github.com/disintegration/imaging"
 	"github.com/labstack/echo/v4"
-	"github.com/nfnt/resize"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 )
 
-type Imagehandler struct {
+type ImageHelper struct {
 	OriginalFile  io.Reader
 	ResizedFile   io.Writer
 	OriginalImage image.Image
@@ -30,9 +29,9 @@ type Imagehandler struct {
 	Exif *exif.Exif
 }
 
-func NewImageHandler(originalFile io.Reader, resizedFile io.Writer, ext string) *Imagehandler {
+func NewImageHandler(originalFile io.Reader, resizedFile io.Writer, ext string) *ImageHelper {
 	smallExt := strings.ToLower(ext)
-	handler := &Imagehandler{
+	handler := &ImageHelper{
 		OriginalFile: originalFile,
 		Ext:          smallExt,
 		ResizedFile:  resizedFile,
@@ -42,17 +41,17 @@ func NewImageHandler(originalFile io.Reader, resizedFile io.Writer, ext string) 
 	return handler
 }
 
-// ResizeImage resizes the given image file to a suitable size for mobile devices.
-// It takes the original image file as input and writes the resized image to the specified output file.
-// The ext parameter specifies the file extension of the image.
-// It returns the exif data of the original image and an error if any error occurs during the resizing process.
-func (ih *Imagehandler) ResizeImage(maxWidth, maxHeight uint) (err error) {
+// @description 이미지 리사이즈
+// @param maxWidth uint
+// @param maxHeight uint
+// @return err error
+func (ih *ImageHelper) ResizeImage(maxWidth, maxHeight uint) (err error) {
 
-	// Resize the image to a suitable size for mobile devices
+	// 이미지를 적절한 크기로 리사이즈
 	// max width 1500px, max height 1500px
-	ih.ResizedImage = resize.Thumbnail(maxWidth, maxHeight, ih.OriginalImage, resize.Lanczos3)
+	ih.ResizedImage = imaging.Resize(ih.OriginalImage, int(maxWidth), int(maxHeight), imaging.Lanczos)
 
-	// Encode the image to jpeg format
+	// 이미지를 jpeg 포맷으로 인코딩
 	if err := jpeg.Encode(ih.ResizedFile, ih.ResizedImage, nil); err != nil {
 		log.Println("image encode error: ", err)
 		return echo.NewHTTPError(500, "image encode error")
@@ -61,8 +60,10 @@ func (ih *Imagehandler) ResizeImage(maxWidth, maxHeight uint) (err error) {
 	return err
 }
 
-// decode image
-func (ih *Imagehandler) decodeImage() (err error) {
+// @description 이미지 디코딩
+// @param err error
+// @return err error
+func (ih *ImageHelper) decodeImage() (err error) {
 	switch ih.Ext {
 	case "jpeg", "jpg", "png", "gif":
 		err = ih.decodeNomalImage()
@@ -76,28 +77,29 @@ func (ih *Imagehandler) decodeImage() (err error) {
 }
 
 // decode heic, heif image
-func (ih *Imagehandler) decodeHeicImage() (err error) {
+func (ih *ImageHelper) decodeHeicImage() (err error) {
 	file := new(bytes.Buffer)
 	file, ih.OriginalFile, _ = utils.CopyReader(ih.OriginalFile)
 
 	var exifsBytes []byte
 	var exifsBuffer *bytes.Buffer
 
+	// heic 이미지 디코딩
 	ih.OriginalImage, exifsBytes, err = handleHeic(file)
 
 	if err != nil {
-		slog.Error("heic decode error: ", err)
+		log.Println("heic decode error: ", err)
 		return echo.NewHTTPError(500, "heic decode error")
 	}
 	exifsBuffer = new(bytes.Buffer)
 	NewWriterExif(exifsBuffer, exifsBytes)
 
-	// Write the exif data to the resized file
+	// exif 데이터를 리사이즈된 파일에 쓰기
 	ih.ResizedFile, _ = NewWriterExif(ih.ResizedFile, exifsBytes)
 
 	ih.Exif, err = exif.Decode(exifsBuffer)
 	if err != nil {
-		slog.Warn("exif decode error: ", err)
+		log.Println("exif decode error: ", err)
 		err = nil
 		ih.Exif = &exif.Exif{}
 	}
@@ -105,8 +107,10 @@ func (ih *Imagehandler) decodeHeicImage() (err error) {
 	return
 }
 
-// decode "jpeg", "jpg", "png", "gif" image
-func (ih *Imagehandler) decodeNomalImage() (err error) {
+// @description "jpeg", "jpg", "png", "gif" 이미지를 디코딩
+// @param err error
+// @return err error
+func (ih *ImageHelper) decodeNomalImage() (err error) {
 	file := new(bytes.Buffer)
 	file, ih.OriginalFile, _ = utils.CopyReader(ih.OriginalFile)
 
@@ -116,13 +120,13 @@ func (ih *Imagehandler) decodeNomalImage() (err error) {
 	ih.OriginalImage, _, err = image.Decode(file)
 
 	if err != nil {
-		slog.Error("image decode error: ", err)
+		log.Println("image decode error: ", err)
 		return echo.NewHTTPError(500, "image decode error")
 	}
 
 	ih.Exif, err = exif.Decode(exifFile)
 	if err != nil {
-		slog.Warn("exif decode error: ", err)
+		log.Println("exif decode error: ", err)
 		err = nil
 		ih.Exif = &exif.Exif{}
 	}

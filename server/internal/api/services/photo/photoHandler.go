@@ -1,120 +1,226 @@
 package photo
 
 import (
-	"bytes"
 	"log"
-	"mime/multipart"
-	"strings"
-	"time"
+	"strconv"
 
-	"github.com/ywl0806/yuno_kiroku/pkg/imageHandler"
+	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/store"
+	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
+	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
-type UploadPhotoReturn struct {
-	ThumbnailUrl   string    `json:"thumbnailUrl"`
-	OriginalUrl    string    `json:"originalUrl"`
-	FileName       string    `json:"fileName"`
-	Width          int       `json:"width"`
-	Height         int       `json:"height"`
-	Orientation    int       `json:"orientation"`
-	PhotoCreatedAt time.Time `json:"photoCreatedAt"`
+type PhotoHandler struct {
+	photoStore   *store.PhotoStore
+	photoService *PhotoService
 }
 
-func (con *PhotoController) uploadPhoto(file *multipart.FileHeader, uploadPath string) (*UploadPhotoReturn, error) {
+func NewPhotoHandler(
+	photoStore *store.PhotoStore, photoService *PhotoService,
+) *PhotoHandler {
+	return &PhotoHandler{
+		photoStore:   photoStore,
+		photoService: photoService,
+	}
+}
 
-	ext := strings.Split(file.Filename, ".")[1]
-	originalFile, err := file.Open()
+// @Description 사진 업로드
+// @Accept  multipart/form-data
+// @Param file formData file true "file"
+// @Param clan_group_id path string false "Clan Group ID"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /photo/upload [post]
+func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
+	file, err := c.FormFile("file")
+
 	if err != nil {
 		log.Println("file open error: ", err)
-		return nil, err
+		return err
 	}
-	defer originalFile.Close()
+	// 그룹ID 가져오기
+	groupId, err := strconv.Atoi(c.Get(consts.UserGroupIdKey).(string))
+	if err != nil {
+		return c.JSON(400, "user group id is required")
+	}
 
-	// file resize
-	// convert to jpeg
-	// get exif
-	resizedFile := new(bytes.Buffer)
-	imgHandler := imageHandler.NewImageHandler(originalFile, resizedFile, ext)
-	err = imgHandler.ResizeImage(1500, 1500)
+	// 클랜 그룹ID 가져오기
+	clanGroupId, err := strconv.Atoi(c.Param("clan_group_id"))
+
+	// 업로드 경로 생성
+	uploadPath := con.photoService.CreateUploadPath(int32(groupId), &int32(clanGroupId))
+
+	// 사진 업로드
+	uploadResult, err := con.photoService.UploadPhoto(file, uploadPath)
 
 	if err != nil {
-		log.Println("resize error: ", err)
-		return nil, err
+		log.Println("사진 업로드 실패: ", err)
+		return err
 	}
 
-	photoCreatedAt, _ := imgHandler.Exif.DateTime()
+	// 사진 저장 파라미터 생성
+	var params = db.CreatePhotoParams{}
+	utils.ConvertStruct(&params, uploadResult)
 
-	if photoCreatedAt.IsZero() {
-		photoCreatedAt = time.Now()
-	}
+	params.ClanGroupID = int32(clanGroupId)
+	// 사진 저장
+	photo, err := con.photoService.CreatePhoto(c.Request().Context(), params)
 
-	originalFilename := strings.Split(file.Filename, ".")[0]
-
-	var folderName string
-
-	now := time.Now()
-	folderName = uploadPath + "/" + now.Format("2006-01-02")
-
-	thumbnailUrl, err := con.standardStorage.SaveFile(resizedFile, folderName, originalFilename+".jpeg")
 	if err != nil {
-		log.Println("Standard Storage Error: ", err)
-		return nil, err
+		log.Println("사진 저장 실패: ", err)
+		return err
 	}
 
-	originalUrl, err := con.longTermStorage.SaveFile(imgHandler.OriginalFile, "", file.Filename)
-	if err != nil {
-		log.Println("Longterm Storage Error: ", err)
-		return nil, err
-	}
-	orientationRaw, _ := imgHandler.Exif.Get("Orientation")
-	orientation := 1
-	if orientationRaw != nil {
-		orientation, err = orientationRaw.Int(0)
-	}
-	if err != nil {
-		orientation = 1
-		err = nil
-	}
-
-	result := UploadPhotoReturn{
-		ThumbnailUrl:   thumbnailUrl,
-		OriginalUrl:    originalUrl,
-		FileName:       file.Filename,
-		Width:          imgHandler.OriginalImage.Bounds().Dx(),
-		Height:         imgHandler.OriginalImage.Bounds().Dy(),
-		Orientation:    orientation,
-		PhotoCreatedAt: photoCreatedAt,
-	}
-
-	return &result, nil
+	return c.JSON(200, photo)
 }
 
-type UploadLiveMovieReturn struct {
-	LiveUrl         string `json:"liveUrl"`
-	OriginalLiveUrl string `json:"originalLiveUrl"`
+// @Description get photo list
+// @Router /photo [get]
+// @Param limit query int false "limit"
+// @Param skip query int false "skip"
+func (con *PhotoHandler) GetPhotoList(c echo.Context) error {
+
+	limit, err := strconv.Atoi(c.QueryParam("limit"))
+	if err != nil {
+		limit = 10
+	}
+	skip, err := strconv.Atoi(c.QueryParam("skip"))
+	if err != nil {
+		skip = 0
+	}
+	parmas := store.FindPictureParams{
+		Limit: &limit,
+		Skip:  &skip,
+	}
+	photos, err := con.photoStore.FindPictures(&parmas)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return c.JSON(200, photos)
 }
 
-func (con *PhotoController) uploadLiveMovie(liveMovie *multipart.FileHeader) (*UploadLiveMovieReturn, error) {
+// @Description get photo group by date
+// @Router /photo/group [get]
+// @Param from query string false "from" format(date-time) example(2024-01-01T00:00:00Z)
+// @Param to query string false "to" format(date-time) example(2024-05-01T00:00:00Z)
+func (con *PhotoHandler) GetPhotosGroup(c echo.Context) error {
+	fromQ := c.QueryParam("from")
 
-	live, err := liveMovie.Open()
+	toQ := c.QueryParam("to")
+
+	from := utils.GetDateFromStr(fromQ)
+	to := utils.GetDateFromStr(toQ)
+	groupIdInterface := c.Get(consts.UserGroupIdKey)
+
+	var groupId string
+	if groupIdInterface != nil {
+		groupId = groupIdInterface.(string)
+	}
+
+	photos, err := con.photoStore.FindPicturesGroupByDate(from, to, groupId, c.Request().Context())
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return c.JSON(200, photos)
+}
+
+// @Description get photo range
+// @Router /photo/range [get]
+func (con *PhotoHandler) GetPhotoRange(c echo.Context) error {
+	photos, err := con.photoStore.FindPhotosRange()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return c.JSON(200, photos)
+}
+
+// @Description get first photo
+// @Router /photo/first [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200
+func (con *PhotoHandler) GetFirstPhoto(c echo.Context) error {
+	opts := options.FindOne()
+	opts.SetSort(map[string]int{"photo_created_at": 1})
+
+	photo, err := con.photoStore.FindOnePhoto(opts)
 
 	if err != nil {
-		log.Println("live movie file open error: ", err)
-		return nil, err
+		log.Println(err)
+		return err
 	}
+	return c.JSON(200, photo)
+}
 
-	// todo: resize live movie
-
-	url, err := con.standardStorage.SaveFile(live, "live", liveMovie.Filename)
+// @Description upload live photo
+// @Accept  multipart/form-data
+// @Param photo formData file true "photo"
+// @Param live formData file true "live"
+// @Param clan_group_id path string false "Clan Group ID"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /photo/upload-live [post]
+func (con *PhotoHandler) UploadLivePhoto(c echo.Context) error {
+	photoFile, err := c.FormFile("photo")
 	if err != nil {
-		log.Println("Standard Storage Error : ", err)
-		return nil, err
+		log.Println("no photo formfile error: ", err)
+		return c.JSON(400, err)
 	}
 
-	result := UploadLiveMovieReturn{
-		LiveUrl:         url,
-		OriginalLiveUrl: url,
+	liveMovie, err := c.FormFile("live")
+	if err != nil {
+		log.Println("no live movie formfile error: ", err)
+		return c.JSON(400, err)
+	}
+	groupId := c.Get(consts.UserGroupIdKey)
+
+	if groupId == nil {
+		return c.JSON(400, "user group id is required")
 	}
 
-	return &result, nil
+	clanGroupId := c.Param("clan_group_id")
+
+	uploadPath := groupId.(string)
+	if clanGroupId != "" {
+		uploadPath += "/" + clanGroupId
+	}
+
+	uploadPhotoResult, err := con.photoService.UploadPhoto(photoFile, uploadPath)
+	if err != nil {
+		log.Println("upload photo error: ", err)
+		return err
+	}
+	uploadLiveMovieResult, err := con.photoService.UploadLiveMovie(liveMovie)
+
+	if err != nil {
+		log.Println("upload live photo error: ", err)
+		return err
+	}
+
+	photo := models.Photo{
+		ThumbnailUrl:    uploadPhotoResult.ThumbnailUrl,
+		OriginalUrl:     uploadPhotoResult.OriginalUrl,
+		LiveUrl:         uploadLiveMovieResult.LiveUrl,
+		OriginalLiveUrl: uploadLiveMovieResult.OriginalLiveUrl,
+		FileName:        photoFile.Filename,
+		PhotoCreatedAt:  uploadPhotoResult.PhotoCreatedAt,
+		Width:           uploadPhotoResult.Width,
+		Height:          uploadPhotoResult.Height,
+		Orientation:     uploadPhotoResult.Orientation,
+		CreatedBy:       "admin",
+		UpdatedBy:       "admin",
+	}
+
+	photo, err = con.photoStore.CreatePhoto(photo)
+	if err != nil {
+		log.Println("upload photo error: ", err)
+		return err
+	}
+	return c.JSON(200, photo)
+
 }

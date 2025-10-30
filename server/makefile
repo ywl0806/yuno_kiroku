@@ -6,3 +6,6 @@ kill:
 run:
 	docker compose up -d
 	docker compose logs -f app
+
+sqlc:
+	docker compose exec app sqlc generate -f db/sqlc.yaml

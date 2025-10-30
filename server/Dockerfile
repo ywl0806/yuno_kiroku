@@ -1,12 +1,12 @@
 FROM golang:1.24-alpine
 
-# libde265-dev 설치 (HEIF 관련 라이브러리)
-RUN apk update && apk add --no-cache libde265-dev pkgconfig gcc musl-dev g++
 
-ENV CGO_ENABLED=1
 WORKDIR /app
 
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.61.5
+
+# sqlc 설치
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
 
 COPY go.mod go.sum ./
 RUN go mod download

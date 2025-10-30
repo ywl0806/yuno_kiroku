@@ -45,47 +45,57 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const findUserByEmail = `-- name: FindUserByEmail :one
-SELECT id, name, username, password, group_id, clan_group_id, created_at, updated_at FROM users WHERE username = $1
+SELECT id, name, username, group_id, clan_group_id FROM users WHERE username = $1
 `
 
-func (q *Queries) FindUserByEmail(ctx context.Context, username string) (User, error) {
+type FindUserByEmailRow struct {
+	ID          int32
+	Name        sql.NullString
+	Username    string
+	GroupID     int32
+	ClanGroupID int32
+}
+
+func (q *Queries) FindUserByEmail(ctx context.Context, username string) (FindUserByEmailRow, error) {
 	row := q.db.QueryRowContext(ctx, findUserByEmail, username)
-	var i User
+	var i FindUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Username,
-		&i.Password,
 		&i.GroupID,
 		&i.ClanGroupID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const findUsers = `-- name: FindUsers :many
-SELECT id, name, username, password, group_id, clan_group_id, created_at, updated_at FROM users
+SELECT id, name, username, group_id, clan_group_id FROM users
 `
 
-func (q *Queries) FindUsers(ctx context.Context) ([]User, error) {
+type FindUsersRow struct {
+	ID          int32
+	Name        sql.NullString
+	Username    string
+	GroupID     int32
+	ClanGroupID int32
+}
+
+func (q *Queries) FindUsers(ctx context.Context) ([]FindUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, findUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	var items []FindUsersRow
 	for rows.Next() {
-		var i User
+		var i FindUsersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Username,
-			&i.Password,
 			&i.GroupID,
 			&i.ClanGroupID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

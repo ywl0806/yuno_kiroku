@@ -32,9 +32,13 @@ func Init(e *echo.Echo) {
 	sStorage := storage.NewLocalStorageService("standard")
 	lStorage := storage.NewLocalStorageService("longterm")
 
+	// Service
+	photoService := photo.NewPhotoService(sStorage, lStorage)
+
 	// Controller
 	userController := user.NewUserController(userStore, groupStore)
-	photoController := photo.NewPhotoController(photoStore, sStorage, lStorage)
+	photoController := photo.NewPhotoHandler(photoStore, photoService)
+	authHandler := auth.NewAuthHandler(userStore)
 
 	// root router
 	root := e.Group("/api")
@@ -46,9 +50,7 @@ func Init(e *echo.Echo) {
 	// init routers
 	user.Register(root, *userController)
 	photo.Register(root, *photoController)
-	// auth
-	authController := auth.NewAuthController(userStore)
-	auth.Register(root, *authController)
+	auth.Register(root, *authHandler)
 
 	e.Validator = validator.NewCustomValidator()
 	// 로거 & 에러 복구

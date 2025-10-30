@@ -1,24 +1,18 @@
 package auth
 
 import (
-	"fmt"
-
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/user/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 )
 
-type AuthController struct {
+type AuthHandler struct {
 	userStore *store.UserStore
 }
 
-func NewAuthController(
-	userStore *store.UserStore,
-) *AuthController {
-	return &AuthController{
-		userStore: userStore,
-	}
+func NewAuthHandler(userStore *store.UserStore) *AuthHandler {
+	return &AuthHandler{userStore: userStore}
 }
 
 type LoginRequest struct {
@@ -34,20 +28,14 @@ type LoginRequest struct {
 // @Produce json
 // @Param loginRequest body LoginRequest true "Login credentials"
 // @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 401 {object} map[string]string
-// @Failure 500 {object} map[string]string
 // @Router /auth/login [post]
-func (con *AuthController) Login(c echo.Context) error {
-	var loginRequest struct {
-		Email    string `json:"email" validate:"required"`
-		Password string `json:"password" validate:"required"`
+func (con *AuthHandler) Login(c echo.Context) error {
+	var loginRequest LoginRequest
+
+	if err := c.Validate(loginRequest); err != nil {
+		return err
 	}
 
-	if err := c.Bind(&loginRequest); err != nil {
-		fmt.Println("error binding request: ", err)
-		return c.JSON(400, map[string]string{"error": "Invalid request"})
-	}
 	user, err := con.userStore.FindUserByEmail(c.Request().Context(), loginRequest.Email)
 
 	if err != nil {
