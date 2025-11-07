@@ -1,4 +1,4 @@
-package utils
+package jwt
 
 import (
 	"time"
@@ -15,7 +15,6 @@ type AccessTokenClaims struct {
 	Email       string `json:"email"`
 	GroupId     string `json:"group_id"`
 	ClanGroupId string `json:"clan_group_id"`
-	Role        string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -32,13 +31,13 @@ func GenerateJWT(claims JWTClaims, secretKey string, expireMinute int) (string, 
 	switch c := claims.(type) {
 	case *AccessTokenClaims:
 		c.RegisteredClaims = jwt.RegisteredClaims{
-			Issuer:    "your-app-name",
+			Issuer:    "app",
 			ExpiresAt: jwt.NewNumericDate(expireAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		}
 	case *RefreshTokenClaims:
 		c.RegisteredClaims = jwt.RegisteredClaims{
-			Issuer:    "your-app-name",
+			Issuer:    "app",
 			ExpiresAt: jwt.NewNumericDate(expireAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		}

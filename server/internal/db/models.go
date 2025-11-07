@@ -11,6 +11,8 @@ import (
 
 type ClanGroup struct {
 	ID        int32
+	GroupID   int32
+	IsAdmin   bool
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -26,11 +28,11 @@ type Group struct {
 type Photo struct {
 	ID              int32
 	GroupID         int32
-	ClanGroupID     int32
+	ClanGroupID     sql.NullInt32
 	ThumbnailUrl    string
-	OriginalUrl     string
-	LiveUrl         string
-	OriginalLiveUrl string
+	OriginalUrl     sql.NullString
+	LiveUrl         sql.NullString
+	OriginalLiveUrl sql.NullString
 	Width           int32
 	Height          int32
 	Orientation     int32

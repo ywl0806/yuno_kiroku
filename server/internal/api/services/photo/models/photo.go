@@ -42,3 +42,24 @@ type PhotoRange struct {
 type PhotoRanges struct {
 	PhotoRange []PhotoRange `json:"photo_range" bson:"photo_range"`
 }
+
+type PhotoResponse struct {
+	ID              int32     `json:"id"`
+	GroupID         int32     `json:"group_id"`
+	ClanGroupID     *int32    `json:"clan_group_id"`
+	ThumbnailUrl    string    `json:"thumbnail_url"`
+	OriginalUrl     *string   `json:"original_url"`
+	LiveUrl         *string   `json:"live_url"`
+	OriginalLiveUrl *string   `json:"original_live_url"`
+	Width           int32     `json:"width"`
+	Height          int32     `json:"height"`
+	Orientation     int32     `json:"orientation"`
+	PhotoCreatedAt  time.Time `json:"photo_created_at"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type PhotoGroupResponse struct {
+	Year   int             `json:"year" `
+	Month  int             `json:"month" `
+	Photos []PhotoResponse `json:"photos"`
+}

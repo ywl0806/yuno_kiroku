@@ -4,10 +4,9 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func Register(root *echo.Group, userController UserController) {
+func Register(root *echo.Group, userHandler UserHandler) {
 	userRouter := root.Group("/user")
 
-	userRouter.GET("", userController.GetUsers)
-	userRouter.POST("", userController.CreateUser)
+	userRouter.POST("", userHandler.CreateUser)
 
 }

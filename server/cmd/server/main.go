@@ -39,8 +39,10 @@ func main() {
 		Root:  "dist", // React 빌드 결과물이 들어 있는 디렉토리
 	}))
 
+	// swagger docs
 	e.GET("/api/swagger/*", echoSwagger.WrapHandler)
 
+	fmt.Println("Swagger docs: http://localhost:1323/api/swagger/index.html")
 	e.GET("/*", func(c echo.Context) error {
 		path := c.Request().URL.Path
 		if strings.HasPrefix(path, "/api/") {

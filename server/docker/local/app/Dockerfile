@@ -4,9 +4,15 @@ FROM golang:1.24-alpine
 RUN apk update && apk add --no-cache libde265-dev pkgconfig gcc musl-dev g++
 
 ENV CGO_ENABLED=1
+
 WORKDIR /app
 
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.61.5
+
+# sqlc 설치
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+# swag 설치
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.2
 
 COPY go.mod go.sum ./
 RUN go mod download
