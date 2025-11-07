@@ -1,5 +1,4 @@
 import App from './App.tsx'
-import './config/firebaseInit'
 import './index.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'

@@ -1,16 +1,24 @@
+import { DefaultLayout } from './components/layouts/DefaultLayout'
 import { HomePage } from './page/Home'
+import { LoginPage } from './page/Login'
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
-    <Route path="/" element={<HomePage />}>
-      <Route path="/login" element={<div>Login</div>} />
-      <Route path="/register" element={<div>Register</div>} />
-      <Route path="/dashboard" element={<div>Dashboard</div>} />
-      <Route path="/profile" element={<div>Profile</div>} />
-      <Route path="/settings" element={<div>Settings</div>} />
-      <Route path="/logout" element={<div>Logout</div>} />
-      <Route path="*" element={<div>404</div>} />
+    <Route>
+      <Route>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+      <Route path="/" element={<DefaultLayout />}>
+        <Route index element={<HomePage />} />
+        <Route path={'/:date'} element={<HomePage />} />
+        <Route path="/register" element={<div>Register</div>} />
+        <Route path="/dashboard" element={<div>Dashboard</div>} />
+        <Route path="/profile" element={<div>Profile</div>} />
+        <Route path="/settings" element={<div>Settings</div>} />
+        <Route path="/logout" element={<div>Logout</div>} />
+        <Route path="*" element={<div>404</div>} />
+      </Route>
     </Route>,
   ),
 )

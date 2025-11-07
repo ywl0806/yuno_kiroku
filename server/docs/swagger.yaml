@@ -1,0 +1,99 @@
+basePath: /api
+definitions:
+  auth.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  user.CreateUserRequest:
+    properties:
+      clan_group_id:
+        type: integer
+      group_id:
+        type: integer
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        type: string
+    required:
+    - clan_group_id
+    - group_id
+    - name
+    - password
+    - username
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: login
+      parameters:
+      - description: Login credentials
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - auth
+  /photo/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 사진 업로드
+      parameters:
+      - description: file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Clan Group ID
+        in: query
+        name: clan_group_id
+        type: string
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses: {}
+  /user:
+    post:
+      description: create user
+      parameters:
+      - description: Create User Request
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/user.CreateUserRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+swagger: "2.0"

@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS photos;
+
+DROP TABLE IF EXISTS refresh_tokens;
+
+DROP TABLE IF EXISTS users;
+
+DROP TABLE IF EXISTS clan_groups;
+
+DROP TABLE IF EXISTS groups;

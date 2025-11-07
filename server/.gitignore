@@ -1,0 +1,11 @@
+/dist
+.env
+*/*.log
+firestore/data
+api/tmp
+node_modules
+tmp/
+/uploads
+.DS_Store
+/mongo-data
+terraform.tfvars
