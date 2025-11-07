@@ -48,111 +48,13 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
-            }
-        },
-        "/photo": {
-            "get": {
-                "description": "get photo list",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "skip",
-                        "name": "skip",
-                        "in": "query"
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/photo/first": {
-            "get": {
-                "description": "get first photo",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "bearer",
-                        "example": "bearer token",
-                        "description": "Authorization",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
-        "/photo/group": {
-            "get": {
-                "description": "get photo group by date",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2024-01-01T00:00:00Z",
-                        "description": "from",
-                        "name": "from",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "format": "date-time",
-                        "example": "2024-05-01T00:00:00Z",
-                        "description": "to",
-                        "name": "to",
-                        "in": "query"
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/photo/range": {
-            "get": {
-                "description": "get photo range",
-                "responses": {}
             }
         },
         "/photo/upload": {
             "post": {
-                "description": "upload photo",
+                "description": "사진 업로드",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -168,47 +70,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Clan Group ID",
                         "name": "clan_group_id",
-                        "in": "path"
-                    },
-                    {
-                        "type": "string",
-                        "format": "bearer",
-                        "example": "bearer token",
-                        "description": "Authorization",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/photo/upload-live": {
-            "post": {
-                "description": "upload live photo",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "photo",
-                        "name": "photo",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "live",
-                        "name": "live",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Clan Group ID",
-                        "name": "clan_group_id",
-                        "in": "path"
+                        "in": "query"
                     },
                     {
                         "type": "string",
@@ -224,10 +86,6 @@ const docTemplate = `{
             }
         },
         "/user": {
-            "get": {
-                "description": "get users",
-                "responses": {}
-            },
             "post": {
                 "description": "create user",
                 "parameters": [
@@ -257,14 +115,14 @@ const docTemplate = `{
         "auth.LoginRequest": {
             "type": "object",
             "required": [
-                "email",
-                "password"
+                "password",
+                "username"
             ],
             "properties": {
-                "email": {
+                "password": {
                     "type": "string"
                 },
-                "password": {
+                "username": {
                     "type": "string"
                 }
             }
@@ -272,13 +130,18 @@ const docTemplate = `{
         "user.CreateUserRequest": {
             "type": "object",
             "required": [
-                "email",
+                "clan_group_id",
+                "group_id",
                 "name",
-                "password"
+                "password",
+                "username"
             ],
             "properties": {
-                "email": {
-                    "type": "string"
+                "clan_group_id": {
+                    "type": "integer"
+                },
+                "group_id": {
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -286,6 +149,9 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "minLength": 6
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         }

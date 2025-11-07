@@ -1,5 +1,5 @@
 swag:
-	~/go/bin/swag i --output docs --generalInfo cmd/server/main.go
+	docker compose exec app swag i --output docs --generalInfo cmd/server/main.go
 kill:
 	kill -9 $(shell lsof -t -i:1323)
 
@@ -9,3 +9,17 @@ run:
 
 sqlc:
 	docker compose exec app sqlc generate -f db/sqlc.yaml
+
+migrate:
+	docker compose exec app go run cmd/db/migrate/main.go
+
+seed:
+	docker compose exec app go run cmd/db/seed/main.go
+
+destroy:
+	docker compose exec app go run cmd/db/destroy/main.go
+
+refresh:
+	make destroy
+	make migrate
+	make seed

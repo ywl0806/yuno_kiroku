@@ -1,19 +1,22 @@
+name: yuno
+
 services:
   app:
     build:
       context: .
-      # Correct the path to your Dockerfile
-      dockerfile: Dockerfile
+      dockerfile: docker/local/app/Dockerfile
     ports:
       - 1323:1323
     volumes:
       - .:/app
     depends_on: [postgres]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
     networks:
       - app-net
 
   postgres:
-    image: postgres:17.6
+    image: pgvector/pgvector:pg17
     container_name: postgres
     environment:
       POSTGRES_USER: postgres
@@ -35,8 +38,7 @@ services:
     environment:
       MINIO_ROOT_USER: access_key
       MINIO_ROOT_PASSWORD: secret_key
-    entrypoint: bash
-    command: -c "/opt/bin/minio server /data --address :9000 --console-address :9090"
+    command: server /data --console-address ":9090"
     volumes:
       - "minio:/data"
     networks:

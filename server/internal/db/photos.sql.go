@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -46,11 +47,11 @@ RETURNING
 
 type CreatePhotoParams struct {
 	GroupID         int32
-	ClanGroupID     int32
+	ClanGroupID     sql.NullInt32
 	ThumbnailUrl    string
-	OriginalUrl     string
-	LiveUrl         string
-	OriginalLiveUrl string
+	OriginalUrl     sql.NullString
+	LiveUrl         sql.NullString
+	OriginalLiveUrl sql.NullString
 	Width           int32
 	Height          int32
 	Orientation     int32
@@ -90,4 +91,73 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const findPhotosByPhotoCreatedAt = `-- name: FindPhotosByPhotoCreatedAt :many
+SELECT
+    id, group_id, clan_group_id, thumbnail_url, original_url, live_url, original_live_url, width, height, orientation, photo_created_at, file_name, created_at, updated_at
+FROM
+    photos
+WHERE
+    group_id = $1::int
+    AND photo_created_at >= $2::time
+    AND photo_created_at <= $3::time
+    AND (
+        CASE
+            WHEN $4::int IS NOT NULL THEN clan_group_id IS NULL
+            OR clan_group_id = $4::int
+        END
+    )
+ORDER BY
+    photo_created_at DESC
+`
+
+type FindPhotosByPhotoCreatedAtParams struct {
+	GroupID            int32
+	PhotoCreatedAtFrom time.Time
+	PhotoCreatedAtTo   time.Time
+	ClanGroupID        int32
+}
+
+func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotosByPhotoCreatedAtParams) ([]Photo, error) {
+	rows, err := q.db.QueryContext(ctx, findPhotosByPhotoCreatedAt,
+		arg.GroupID,
+		arg.PhotoCreatedAtFrom,
+		arg.PhotoCreatedAtTo,
+		arg.ClanGroupID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Photo
+	for rows.Next() {
+		var i Photo
+		if err := rows.Scan(
+			&i.ID,
+			&i.GroupID,
+			&i.ClanGroupID,
+			&i.ThumbnailUrl,
+			&i.OriginalUrl,
+			&i.LiveUrl,
+			&i.OriginalLiveUrl,
+			&i.Width,
+			&i.Height,
+			&i.Orientation,
+			&i.PhotoCreatedAt,
+			&i.FileName,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

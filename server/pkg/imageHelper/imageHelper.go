@@ -41,10 +41,7 @@ func NewImageHandler(originalFile io.Reader, resizedFile io.Writer, ext string) 
 	return handler
 }
 
-// @description 이미지 리사이즈
-// @param maxWidth uint
-// @param maxHeight uint
-// @return err error
+// 이미지 리사이즈
 func (ih *ImageHelper) ResizeImage(maxWidth, maxHeight uint) (err error) {
 
 	// 이미지를 적절한 크기로 리사이즈
@@ -60,9 +57,7 @@ func (ih *ImageHelper) ResizeImage(maxWidth, maxHeight uint) (err error) {
 	return err
 }
 
-// @description 이미지 디코딩
-// @param err error
-// @return err error
+// 이미지 디코딩
 func (ih *ImageHelper) decodeImage() (err error) {
 	switch ih.Ext {
 	case "jpeg", "jpg", "png", "gif":
@@ -107,9 +102,7 @@ func (ih *ImageHelper) decodeHeicImage() (err error) {
 	return
 }
 
-// @description "jpeg", "jpg", "png", "gif" 이미지를 디코딩
-// @param err error
-// @return err error
+// "jpeg", "jpg", "png", "gif" 이미지를 디코딩
 func (ih *ImageHelper) decodeNomalImage() (err error) {
 	file := new(bytes.Buffer)
 	file, ih.OriginalFile, _ = utils.CopyReader(ih.OriginalFile)

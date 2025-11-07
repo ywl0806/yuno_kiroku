@@ -11,7 +11,12 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (name, username, password, group_id, clan_group_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, password, group_id, clan_group_id, created_at, updated_at
+INSERT INTO
+    users (name, username, password, group_id, clan_group_id)
+VALUES
+    ($1, $2, $3, $4, $5)
+RETURNING
+    id, name, username, password, group_id, clan_group_id, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -44,33 +49,40 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const findUserByEmail = `-- name: FindUserByEmail :one
-SELECT id, name, username, group_id, clan_group_id FROM users WHERE username = $1
+const findUserByUsername = `-- name: FindUserByUsername :one
+SELECT
+    id, name, username, password, group_id, clan_group_id, created_at, updated_at
+FROM
+    users
+WHERE
+    username = $1
 `
 
-type FindUserByEmailRow struct {
-	ID          int32
-	Name        sql.NullString
-	Username    string
-	GroupID     int32
-	ClanGroupID int32
-}
-
-func (q *Queries) FindUserByEmail(ctx context.Context, username string) (FindUserByEmailRow, error) {
-	row := q.db.QueryRowContext(ctx, findUserByEmail, username)
-	var i FindUserByEmailRow
+func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByUsername, username)
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.Password,
 		&i.GroupID,
 		&i.ClanGroupID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const findUsers = `-- name: FindUsers :many
-SELECT id, name, username, group_id, clan_group_id FROM users
+SELECT
+    id,
+    name,
+    username,
+    group_id,
+    clan_group_id
+FROM
+    users
 `
 
 type FindUsersRow struct {

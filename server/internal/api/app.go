@@ -1,44 +1,41 @@
 package api
 
 import (
+	"database/sql"
+
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
-	"github.com/ywl0806/yuno_kiroku/pkg/db"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
+
+	_ "github.com/lib/pq"
 
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/auth"
-	groupStore "github.com/ywl0806/yuno_kiroku/internal/api/services/group/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo"
-	photoStore "github.com/ywl0806/yuno_kiroku/internal/api/services/photo/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/user"
-	userStore "github.com/ywl0806/yuno_kiroku/internal/api/services/user/store"
 	"github.com/ywl0806/yuno_kiroku/internal/api/validator"
+	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
 // Initialize the root router on the app
 func Init(e *echo.Echo) {
 
-	// db
-	client := db.ConnectDB()
-	db := client.Database(viper.GetString("MONGO_DB_NAME"))
-
-	// store
-	userStore := userStore.NewUserStore(db)
-	photoStore := photoStore.NewPhotoStore(db)
-	groupStore := groupStore.NewGroupStore(db)
+	dbTx, err := sql.Open("postgres", viper.GetString("DATABASE_URL"))
+	if err != nil {
+		panic(err)
+	}
+	queries := db.New(dbTx)
 
 	// Storage service
 	sStorage := storage.NewLocalStorageService("standard")
 	lStorage := storage.NewLocalStorageService("longterm")
 
-	// Service
+	userService := user.NewUserService(queries)
 	photoService := photo.NewPhotoService(sStorage, lStorage)
 
-	// Controller
-	userController := user.NewUserController(userStore, groupStore)
-	photoController := photo.NewPhotoHandler(photoStore, photoService)
-	authHandler := auth.NewAuthHandler(userStore)
+	userHandler := user.NewUserHandler(userService)
+	photoHandler := photo.NewPhotoHandler(photoService)
+	authHandler := auth.NewAuthHandler(userService)
 
 	// root router
 	root := e.Group("/api")
@@ -48,8 +45,8 @@ func Init(e *echo.Echo) {
 		return c.String(200, "OK")
 	})
 	// init routers
-	user.Register(root, *userController)
-	photo.Register(root, *photoController)
+	user.Register(root, *userHandler)
+	photo.Register(root, *photoHandler)
 	auth.Register(root, *authHandler)
 
 	e.Validator = validator.NewCustomValidator()

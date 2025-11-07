@@ -2,27 +2,33 @@ basePath: /api
 definitions:
   auth.LoginRequest:
     properties:
-      email:
-        type: string
       password:
         type: string
+      username:
+        type: string
     required:
-    - email
     - password
+    - username
     type: object
   user.CreateUserRequest:
     properties:
-      email:
-        type: string
+      clan_group_id:
+        type: integer
+      group_id:
+        type: integer
       name:
         type: string
       password:
         minLength: 6
         type: string
+      username:
+        type: string
     required:
-    - email
+    - clan_group_id
+    - group_id
     - name
     - password
+    - username
     type: object
 info:
   contact: {}
@@ -48,80 +54,14 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       summary: User login
       tags:
       - auth
-  /photo:
-    get:
-      description: get photo list
-      parameters:
-      - description: limit
-        in: query
-        name: limit
-        type: integer
-      - description: skip
-        in: query
-        name: skip
-        type: integer
-      responses: {}
-  /photo/first:
-    get:
-      description: get first photo
-      parameters:
-      - description: Authorization
-        example: bearer token
-        format: bearer
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-  /photo/group:
-    get:
-      description: get photo group by date
-      parameters:
-      - description: from
-        example: "2024-01-01T00:00:00Z"
-        format: date-time
-        in: query
-        name: from
-        type: string
-      - description: to
-        example: "2024-05-01T00:00:00Z"
-        format: date-time
-        in: query
-        name: to
-        type: string
-      responses: {}
-  /photo/range:
-    get:
-      description: get photo range
-      responses: {}
   /photo/upload:
     post:
       consumes:
       - multipart/form-data
-      description: upload photo
+      description: 사진 업로드
       parameters:
       - description: file
         in: formData
@@ -129,35 +69,7 @@ paths:
         required: true
         type: file
       - description: Clan Group ID
-        in: path
-        name: clan_group_id
-        type: string
-      - description: Authorization
-        example: bearer token
-        format: bearer
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      responses: {}
-  /photo/upload-live:
-    post:
-      consumes:
-      - multipart/form-data
-      description: upload live photo
-      parameters:
-      - description: photo
-        in: formData
-        name: photo
-        required: true
-        type: file
-      - description: live
-        in: formData
-        name: live
-        required: true
-        type: file
-      - description: Clan Group ID
-        in: path
+        in: query
         name: clan_group_id
         type: string
       - description: Authorization
@@ -169,9 +81,6 @@ paths:
         type: string
       responses: {}
   /user:
-    get:
-      description: get users
-      responses: {}
     post:
       description: create user
       parameters:

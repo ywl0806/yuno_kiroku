@@ -21,7 +21,7 @@ func main() {
 	}
 
 	log.Printf("마이그레이션 경로: %s", migrationsPath)
-
+	log.Printf("DATABASE_URL: %s", viper.GetString("DATABASE_URL"))
 	m, err := migrate.New(
 		"file://"+migrationsPath,
 		viper.GetString("DATABASE_URL"),

@@ -151,3 +151,26 @@ func (s *PhotoService) CreateUploadPath(groupId int32, clanGroupId *int32) strin
 	}
 	return uploadPath
 }
+
+func (s *PhotoService) FindPhotosByPhotoCreatedAt(ctx context.Context, params *db.FindPhotosByPhotoCreatedAtParams) ([]db.Photo, error) {
+	photos, err := s.queries.FindPhotosByPhotoCreatedAt(ctx, *params)
+	if err != nil {
+		return nil, err
+	}
+	return photos, nil
+}
+
+// func (s *PhotoService) FindPhotosGroupByDate(ctx context.Context, params *db.FindPhotosByPhotoCreatedAtParams) ([]db.PhotoGroup, error) {
+// 	photos, err := s.FindPhotosByPhotoCreatedAt(ctx, params)
+
+// }
+
+type PhotoGroup struct {
+	Year   int        `json:"year" bson:"year"`
+	Month  int        `json:"month" bson:"month"`
+	Photos []db.Photo `json:"photos" bson:"photos"`
+}
+
+func (s *PhotoService) groupPhotosByDate(photos []db.Photo) {
+
+}
