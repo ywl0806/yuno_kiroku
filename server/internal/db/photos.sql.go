@@ -116,7 +116,7 @@ type FindPhotosByPhotoCreatedAtParams struct {
 	GroupID            int32
 	PhotoCreatedAtFrom time.Time
 	PhotoCreatedAtTo   time.Time
-	ClanGroupID        int32
+	ClanGroupID        sql.NullInt32
 }
 
 func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotosByPhotoCreatedAtParams) ([]Photo, error) {
@@ -149,6 +149,69 @@ func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotos
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPhotoRange = `-- name: GetPhotoRange :many
+SELECT
+    EXTRACT(
+        YEAR
+        FROM
+            photo_created_at
+    ) AS year,
+    EXTRACT(
+        MONTH
+        FROM
+            photo_created_at
+    ) AS month
+FROM
+    photos
+WHERE
+    group_id = $1::int
+    AND (
+        CASE
+            WHEN $2::int IS NOT NULL THEN clan_group_id IS NULL
+            OR clan_group_id = $2::int
+        END
+    )
+GROUP BY
+    year,
+    month
+ORDER BY
+    year DESC,
+    month DESC
+`
+
+type GetPhotoRangeParams struct {
+	GroupID     int32
+	ClanGroupID sql.NullInt32
+}
+
+type GetPhotoRangeRow struct {
+	Year  string
+	Month string
+}
+
+func (q *Queries) GetPhotoRange(ctx context.Context, arg GetPhotoRangeParams) ([]GetPhotoRangeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPhotoRange, arg.GroupID, arg.ClanGroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPhotoRangeRow
+	for rows.Next() {
+		var i GetPhotoRangeRow
+		if err := rows.Scan(&i.Year, &i.Month); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -42,11 +42,11 @@ func NewImageHandler(originalFile io.Reader, resizedFile io.Writer, ext string) 
 }
 
 // 이미지 리사이즈
-func (ih *ImageHelper) ResizeImage(maxWidth, maxHeight uint) (err error) {
+func (ih *ImageHelper) ResizeImage(maxWidth uint) (err error) {
 
 	// 이미지를 적절한 크기로 리사이즈
 	// max width 1500px, max height 1500px
-	ih.ResizedImage = imaging.Resize(ih.OriginalImage, int(maxWidth), int(maxHeight), imaging.Lanczos)
+	ih.ResizedImage = imaging.Resize(ih.OriginalImage, int(maxWidth), 0, imaging.Lanczos)
 
 	// 이미지를 jpeg 포맷으로 인코딩
 	if err := jpeg.Encode(ih.ResizedFile, ih.ResizedImage, nil); err != nil {

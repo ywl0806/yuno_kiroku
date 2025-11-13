@@ -22,8 +22,8 @@ func NewAuthHandler(userService *user.UserService) *AuthHandler {
 }
 
 type LoginRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username string `json:"username" validate:"required" example:"admin"`
+	Password string `json:"password" validate:"required" example:"password"`
 }
 
 // @Description login
@@ -41,6 +41,7 @@ func (con *AuthHandler) Login(c echo.Context) error {
 	if err := c.Bind(&loginRequest); err != nil {
 		log.Println("Bind error: ", err)
 		return err
+
 	}
 
 	if err := c.Validate(loginRequest); err != nil {

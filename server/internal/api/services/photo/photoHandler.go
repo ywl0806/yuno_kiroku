@@ -3,11 +3,11 @@ package photo
 import (
 	"database/sql"
 	"log"
-	"mime/multipart"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
@@ -24,22 +24,6 @@ func NewPhotoHandler(
 	}
 }
 
-type UploadPhotoRequest struct {
-	File        *multipart.FileHeader `form:"file" validate:"required"`
-	ClanGroupId *int32                `query:"clan_group_id"`
-}
-
-func (UploadPhotoRequest) bind(c echo.Context) error {
-	var req UploadPhotoRequest
-	if err := c.Bind(&req); err != nil {
-		return err
-	}
-	if err := c.Validate(req); err != nil {
-		return err
-	}
-	return nil
-}
-
 // @Description 사진 업로드
 // @Accept  multipart/form-data
 // @Param file formData file true "file"
@@ -47,36 +31,57 @@ func (UploadPhotoRequest) bind(c echo.Context) error {
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /photo/upload [post]
 func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
-	req := new(UploadPhotoRequest)
-
-	if err := req.bind(c); err != nil {
-		return err
+	// 파일 가져오기
+	file, err := c.FormFile("file")
+	if err != nil {
+		log.Println("파일 가져오기 실패: ", err)
+		return echo.NewHTTPError(400, "file is required")
 	}
-	// 그룹ID 가져오기
+
+	// clan_group_id 쿼리 파라미터 가져오기
+	var clanGroupId *int32
+	if clanGroupIdStr := c.QueryParam("clan_group_id"); clanGroupIdStr != "" {
+		clanGroupIdInt, err := utils.ConvertToInt32(clanGroupIdStr)
+		if err == nil {
+			clanGroupId = &clanGroupIdInt
+		}
+	}
+
 	authUser := middlewares.GetAuthUser(c)
 	groupId := authUser.GroupId
 
 	// 업로드 경로 생성
-	uploadPath := con.photoService.CreateUploadPath(groupId, req.ClanGroupId)
-
+	uploadPath := con.photoService.CreateUploadPath(groupId, clanGroupId)
 	// 사진 업로드
-	uploadResult, err := con.photoService.UploadPhoto(req.File, uploadPath)
+	uploadResult, err := con.photoService.UploadPhoto(file, uploadPath)
 
 	if err != nil {
 		log.Println("사진 업로드 실패: ", err)
 		return echo.NewHTTPError(400, err.Error())
 	}
 
-	// 사진 저장 파라미터 생성
+	// 사진 저장 파라미터
 	var params = db.CreatePhotoParams{}
-	utils.ConvertStruct(&params, uploadResult)
 
-	if req.ClanGroupId != nil {
+	params.FileName = uploadResult.FileName
+	params.PhotoCreatedAt = uploadResult.PhotoCreatedAt
+	params.ThumbnailUrl = uploadResult.ThumbnailUrl
+	params.Width = uploadResult.Width
+	params.Height = uploadResult.Height
+	params.Orientation = uploadResult.Orientation
+	params.GroupID = groupId
+
+	if uploadResult.OriginalUrl != "" {
+		params.OriginalUrl = sql.NullString{String: uploadResult.OriginalUrl, Valid: true}
+	}
+
+	if clanGroupId != nil {
 		params.ClanGroupID = sql.NullInt32{
-			Int32: *req.ClanGroupId,
+			Int32: *clanGroupId,
 			Valid: true,
 		}
 	}
+
 	// 사진 저장
 	photo, err := con.photoService.CreatePhoto(c.Request().Context(), params)
 
@@ -84,8 +89,22 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 		log.Println("사진 저장 실패: ", err)
 		return err
 	}
+	uploadPhotoResponse := models.NewUploadPhotoResponse(photo)
+	return c.JSON(200, uploadPhotoResponse)
+}
 
-	return c.JSON(200, photo)
+// @Description 사진이 있는 년도와 월 목록 조회
+// @Router /photo/range [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200 {object} []db.GetPhotoRangeRow
+func (con *PhotoHandler) GetPhotoRange(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	ranges, err := con.photoService.GetPhotoRange(c.Request().Context(), authUser.GroupId, authUser.ClanGroupId)
+	if err != nil {
+		log.Println("사진 년도와 월 목록 조회 실패: ", err)
+		return err
+	}
+	return c.JSON(200, ranges)
 }
 
 // type GetPhotosGroupRequest struct {
@@ -113,59 +132,6 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 // 	}
 
 // 	return nil
-// }
-
-// @Description get photo group by date
-// @Router /photo/group [get]
-// @Param from query string false "from" format(date-time) example(2024-01-01T00:00:00Z)
-// @Param to query string false "to" format(date-time) example(2024-05-01T00:00:00Z)
-// func (con *PhotoHandler) GetPhotosGroup(c echo.Context) error {
-// 	fromQ := c.QueryParam("from")
-
-// 	toQ := c.QueryParam("to")
-
-// 	from := utils.GetDateFromStr(fromQ)
-// 	to := utils.GetDateFromStr(toQ)
-// 	groupId, err := utils.ContextInt32(c, consts.UserGroupIdKey)
-
-// 	clanGroupId, err := utils.QueryParamInt32(c, "clan_group_id")
-// 	if err != nil {
-// 		clanGroupId = 0
-// 	}
-
-// 	params := db.FindPhotosByPhotoCreatedAtParams{
-// 		GroupID:            int32(groupId),
-// 		PhotoCreatedAtFrom: from,
-// 		PhotoCreatedAtTo:   to,
-// 		ClanGroupID: sql.NullInt32{
-// 			Int32: clanGroupId,
-// 			Valid: true,
-// 		},
-// 	}
-
-// 	photos, err := con.photoService.FindPhotosByPhotoCreatedAt(c.Request().Context(), &params)
-// 	if err != nil {
-// 		log.Println(err)
-// 		return err
-// 	}
-// 	return c.JSON(200, photos)
-// }
-
-// @Description get first photo
-// @Router /photo/first [get]
-// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
-// @Success 200
-// func (con *PhotoHandler) GetFirstPhoto(c echo.Context) error {
-// 	opts := options.FindOne()
-// 	opts.SetSort(map[string]int{"photo_created_at": 1})
-
-// 	photo, err := con.photoStore.FindOnePhoto(opts)
-
-// 	if err != nil {
-// 		log.Println(err)
-// 		return err
-// 	}
-// 	return c.JSON(200, photo)
 // }
 
 // @Description upload live photo
