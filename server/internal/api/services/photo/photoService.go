@@ -3,6 +3,7 @@ package photo
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"log"
 	"mime/multipart"
 	"strconv"
@@ -20,8 +21,13 @@ type PhotoService struct {
 	longTermStorage storage.StorageService
 }
 
-func NewPhotoService(standardStorage storage.StorageService, longTermStorage storage.StorageService) *PhotoService {
+func NewPhotoService(
+	queries *db.Queries,
+	standardStorage storage.StorageService,
+	longTermStorage storage.StorageService,
+) *PhotoService {
 	return &PhotoService{
+		queries:         queries,
 		standardStorage: standardStorage,
 		longTermStorage: longTermStorage,
 	}
@@ -60,7 +66,7 @@ func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string
 	// get exif
 	resizedFile := new(bytes.Buffer)
 	imgHandler := imageHelper.NewImageHandler(originalFile, resizedFile, ext)
-	err = imgHandler.ResizeImage(1500, 1500)
+	err = imgHandler.ResizeImage(1500)
 
 	if err != nil {
 		log.Println("resize error: ", err)
@@ -86,7 +92,7 @@ func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string
 		return nil, err
 	}
 
-	originalUrl, err := s.longTermStorage.SaveFile(imgHandler.OriginalFile, "", file.Filename)
+	originalUrl, err := s.longTermStorage.SaveFile(imgHandler.OriginalFile, folderName, file.Filename)
 	if err != nil {
 		log.Println("Longterm Storage Error: ", err)
 		return nil, err
@@ -173,4 +179,33 @@ type PhotoGroup struct {
 
 func (s *PhotoService) groupPhotosByDate(photos []db.Photo) {
 
+}
+
+type PhotoRange struct {
+	Year  string `json:"year"`
+	Month string `json:"month"`
+}
+
+func (s *PhotoService) GetPhotoRange(ctx context.Context, groupId int32, clanGroupId *int32) ([]PhotoRange, error) {
+	// 사진들을 년도와 월로 그룹화
+	ranges, err := s.queries.GetPhotoRange(ctx, db.GetPhotoRangeParams{
+		GroupID: groupId,
+		ClanGroupID: sql.NullInt32{
+			Int32: *clanGroupId,
+			Valid: clanGroupId != nil,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	photoRanges := make([]PhotoRange, len(ranges))
+	for i, r := range ranges {
+		photoRanges[i] = PhotoRange{
+			Year:  r.Year,
+			Month: r.Month,
+		}
+	}
+
+	return photoRanges, nil
 }

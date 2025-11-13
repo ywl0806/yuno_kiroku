@@ -42,9 +42,38 @@ WHERE
     AND photo_created_at <= sqlc.arg (photo_created_at_to)::time
     AND (
         CASE
-            WHEN sqlc.arg (clan_group_id)::int IS NOT NULL THEN clan_group_id IS NULL
-            OR clan_group_id = sqlc.arg (clan_group_id)::int
+            WHEN sqlc.narg (clan_group_id)::int IS NOT NULL THEN clan_group_id IS NULL
+            OR clan_group_id = sqlc.narg (clan_group_id)::int
         END
     )
 ORDER BY
     photo_created_at DESC;
+
+-- name: GetPhotoRange :many
+SELECT
+    EXTRACT(
+        YEAR
+        FROM
+            photo_created_at
+    ) AS year,
+    EXTRACT(
+        MONTH
+        FROM
+            photo_created_at
+    ) AS month
+FROM
+    photos
+WHERE
+    group_id = sqlc.arg (group_id)::int
+    AND (
+        CASE
+            WHEN sqlc.narg (clan_group_id)::int IS NOT NULL THEN clan_group_id IS NULL
+            OR clan_group_id = sqlc.narg (clan_group_id)::int
+        END
+    )
+GROUP BY
+    year,
+    month
+ORDER BY
+    year DESC,
+    month DESC;

@@ -24,6 +24,12 @@ func Init(e *echo.Echo) {
 	if err != nil {
 		panic(err)
 	}
+
+	// 연결 테스트
+	if err := dbTx.Ping(); err != nil {
+		panic("Failed to connect to database: " + err.Error())
+	}
+
 	queries := db.New(dbTx)
 
 	// Storage service
@@ -31,7 +37,7 @@ func Init(e *echo.Echo) {
 	lStorage := storage.NewLocalStorageService("longterm")
 
 	userService := user.NewUserService(queries)
-	photoService := photo.NewPhotoService(sStorage, lStorage)
+	photoService := photo.NewPhotoService(queries, sStorage, lStorage)
 
 	userHandler := user.NewUserHandler(userService)
 	photoHandler := photo.NewPhotoHandler(photoService)

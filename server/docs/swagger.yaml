@@ -3,8 +3,10 @@ definitions:
   auth.LoginRequest:
     properties:
       password:
+        example: password
         type: string
       username:
+        example: admin
         type: string
     required:
     - password
