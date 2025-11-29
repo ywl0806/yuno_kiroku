@@ -1,0 +1,82 @@
+import os
+import uuid
+import requests
+
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.exceptions import HTTPException
+
+from src.service.face import detect_face
+
+app = FastAPI()
+
+TMP_DIR = "tmp/files"
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello, World!"}
+
+
+@app.post("/face-detection/file")
+def detect_face_endpoint(file: UploadFile = File(...)) -> dict:
+    """
+    파일로 부터 얼굴 인식
+
+    Args:
+        file: 이미지 파일
+    Returns:
+        dict: 얼굴 정보
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File name is required")
+    if not file.filename.split(".")[-1]:
+        raise HTTPException(status_code=400, detail="File extension is required")
+
+    file_path = f"tmp/files/{uuid.uuid4()}.{file.filename.split('.')[-1]}"
+    _check_tmp_dir()
+    with open(file_path, "wb") as f:
+        f.write(file.file.read())
+    face_detection = detect_face(file_path)
+    _clean_tmp_files()
+    if face_detection:
+        return face_detection
+    else:
+        raise HTTPException(status_code=400, detail="No face detected")
+
+
+@app.post("/face-detection/url")
+def detect_face_url_endpoint(url: str = Form(...)) -> dict:
+    """
+    URL로 부터 얼굴 인식
+
+    Args:
+        url: 이미지 URL
+    Returns:
+        dict: 얼굴 정보
+    """
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+    if not url.startswith("http"):
+        raise HTTPException(status_code=400, detail="URL must start with http")
+
+    file_path = f"tmp/files/{uuid.uuid4()}.{url.split('.')[-1]}"
+    _check_tmp_dir()
+    with open(file_path, "wb") as f:
+        f.write(requests.get(url).content)
+
+    face_detection = detect_face(file_path)
+    _clean_tmp_files()
+    if face_detection:
+        return face_detection
+    else:
+        raise HTTPException(status_code=400, detail="No face detected")
+
+
+def _check_tmp_dir():
+    if not os.path.exists(TMP_DIR):
+        os.makedirs(TMP_DIR, exist_ok=True)
+
+
+def _clean_tmp_files():
+    for file in os.listdir(TMP_DIR):
+        os.remove(os.path.join(TMP_DIR, file))

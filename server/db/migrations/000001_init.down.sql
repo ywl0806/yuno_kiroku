@@ -7,3 +7,7 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS clan_groups;
 
 DROP TABLE IF EXISTS groups;
+
+DROP TABLE IF EXISTS face_detections;
+
+DROP TABLE IF EXISTS people;

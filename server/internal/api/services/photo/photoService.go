@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/imageHelper"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
@@ -34,13 +35,14 @@ func NewPhotoService(
 }
 
 type UploadPhotoReturn struct {
-	ThumbnailUrl   string    `json:"thumbnailUrl"`
-	OriginalUrl    string    `json:"originalUrl"`
-	FileName       string    `json:"fileName"`
-	Width          int32     `json:"width"`
-	Height         int32     `json:"height"`
-	Orientation    int32     `json:"orientation"`
-	PhotoCreatedAt time.Time `json:"photoCreatedAt"`
+	ThumbnailUrl   string                 `json:"thumbnailUrl"`
+	OriginalUrl    string                 `json:"originalUrl"`
+	FileName       string                 `json:"fileName"`
+	Width          int32                  `json:"width"`
+	Height         int32                  `json:"height"`
+	Orientation    int32                  `json:"orientation"`
+	PhotoCreatedAt time.Time              `json:"photoCreatedAt"`
+	FaceDetections []models.FaceDetection `json:"faceDetections"`
 }
 
 func (s *PhotoService) CreatePhoto(ctx context.Context, params db.CreatePhotoParams) (*db.Photo, error) {
@@ -51,6 +53,16 @@ func (s *PhotoService) CreatePhoto(ctx context.Context, params db.CreatePhotoPar
 	return &photo, nil
 }
 
+/*
+*
+
+	Photo 업로드
+	1. 파일을 업로드하고 썸네일 이미지를 생성합니다.
+	2. 파일 확장자를 확인하고 이미지 파일인 경우 썸네일 이미지를 생성합니다.
+	3. 썸네일 이미지를 생성하고 원본 이미지를 저장합니다.
+	4. 썸네일 이미지와 원본 이미지의 URL을 반환합니다.
+	5. 얼굴 인식 결과를 반환합니다.
+*/
 func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string) (*UploadPhotoReturn, error) {
 
 	ext := strings.Split(file.Filename, ".")[1]
@@ -67,7 +79,12 @@ func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string
 	resizedFile := new(bytes.Buffer)
 	imgHandler := imageHelper.NewImageHandler(originalFile, resizedFile, ext)
 	err = imgHandler.ResizeImage(1500)
-
+	if err != nil {
+		log.Println("resize error: ", err)
+		return nil, err
+	}
+	// resizedFile의 데이터를 새로운 Reader로 만들어서 전달 (버퍼가 이미 읽혔을 수 있으므로)
+	faceDetections, err := GetFaceDetection(bytes.NewReader(resizedFile.Bytes()))
 	if err != nil {
 		log.Println("resize error: ", err)
 		return nil, err
@@ -115,6 +132,7 @@ func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string
 		Height:         int32(imgHandler.OriginalImage.Bounds().Dy()),
 		Orientation:    int32(orientation),
 		PhotoCreatedAt: photoCreatedAt,
+		FaceDetections: *faceDetections,
 	}
 
 	return &result, nil

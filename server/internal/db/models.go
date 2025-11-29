@@ -18,9 +18,30 @@ type ClanGroup struct {
 	UpdatedAt time.Time
 }
 
+type FaceDetection struct {
+	ID             int32
+	PhotoID        int32
+	PersonID       int32
+	LocationTop    int32
+	LocationRight  int32
+	LocationBottom int32
+	LocationLeft   int32
+	Embedding      interface{}
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 type Group struct {
 	ID        int32
 	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type Person struct {
+	ID        int32
+	Name      sql.NullString
+	GroupID   int32
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

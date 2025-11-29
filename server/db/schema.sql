@@ -1,3 +1,6 @@
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS groups (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -49,3 +52,26 @@ CREATE TABLE IF NOT EXISTS photos (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS people (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    group_id INTEGER NOT NULL REFERENCES groups (id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS face_detections (
+    id SERIAL PRIMARY KEY,
+    photo_id INTEGER NOT NULL REFERENCES photos (id),
+    person_id INTEGER NOT NULL REFERENCES people (id),
+    location_top INTEGER NOT NULL,
+    location_right INTEGER NOT NULL,
+    location_bottom INTEGER NOT NULL,
+    location_left INTEGER NOT NULL,
+    embedding vector (128),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING ivfflat (embedding vector_cosine_ops);

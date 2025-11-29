@@ -67,23 +67,22 @@ type PhotoGroupResponse struct {
 }
 
 type UploadPhotoResponse struct {
-	ID              int32       `json:"id"`
-	GroupID         int32       `json:"group_id"`
-	ClanGroupID     null.Int32  `json:"clan_group_id"`
-	ThumbnailUrl    string      `json:"thumbnail_url"`
-	OriginalUrl     null.String `json:"original_url"`
-	LiveUrl         null.String `json:"live_url"`
-	OriginalLiveUrl null.String `json:"original_live_url"`
-	FileName        string      `json:"file_name"`
-	Width           int32       `json:"width"`
-	Height          int32       `json:"height"`
-	Orientation     int32       `json:"orientation"`
-	PhotoCreatedAt  time.Time   `json:"photo_created_at"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	ID              int32           `json:"id"`
+	GroupID         int32           `json:"group_id"`
+	ClanGroupID     null.Int32      `json:"clan_group_id"`
+	ThumbnailUrl    string          `json:"thumbnail_url"`
+	OriginalUrl     null.String     `json:"original_url"`
+	LiveUrl         null.String     `json:"live_url"`
+	OriginalLiveUrl null.String     `json:"original_live_url"`
+	FileName        string          `json:"file_name"`
+	Width           int32           `json:"width"`
+	Height          int32           `json:"height"`
+	Orientation     int32           `json:"orientation"`
+	PhotoCreatedAt  time.Time       `json:"photo_created_at"`
+	FaceDetections  []FaceDetection `json:"face_detections"`
 }
 
-func NewUploadPhotoResponse(photo *db.Photo) *UploadPhotoResponse {
+func NewUploadPhotoResponse(photo *db.Photo, faceDetections []FaceDetection) *UploadPhotoResponse {
 	return &UploadPhotoResponse{
 		ID:              photo.ID,
 		GroupID:         photo.GroupID,
@@ -97,7 +96,6 @@ func NewUploadPhotoResponse(photo *db.Photo) *UploadPhotoResponse {
 		Height:          photo.Height,
 		Orientation:     photo.Orientation,
 		PhotoCreatedAt:  photo.PhotoCreatedAt,
-		CreatedAt:       photo.CreatedAt,
-		UpdatedAt:       photo.UpdatedAt,
+		FaceDetections:  faceDetections,
 	}
 }

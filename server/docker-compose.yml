@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: docker/local/app/Dockerfile
+      dockerfile: docker/local/Dockerfile
     ports:
       - 1323:1323
     volumes:
@@ -12,9 +12,19 @@ services:
     depends_on: [postgres]
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
+      AI_API_URL: http://ai:8000
     networks:
       - app-net
-
+  ai:
+    build:
+      context: ../ai
+      dockerfile: docker/local/Dockerfile
+    ports:
+      - 8000:8000
+    volumes:
+      - ../ai:/app
+    networks:
+      - app-net
   postgres:
     image: pgvector/pgvector:pg17
     container_name: postgres

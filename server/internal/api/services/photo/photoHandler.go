@@ -89,7 +89,7 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 		log.Println("사진 저장 실패: ", err)
 		return err
 	}
-	uploadPhotoResponse := models.NewUploadPhotoResponse(photo)
+	uploadPhotoResponse := models.NewUploadPhotoResponse(photo, uploadResult.FaceDetections)
 	return c.JSON(200, uploadPhotoResponse)
 }
 
