@@ -14,13 +14,16 @@ import (
 
 type PhotoHandler struct {
 	photoService *PhotoService
+	faceService  *FaceService
 }
 
 func NewPhotoHandler(
 	photoService *PhotoService,
+	faceService *FaceService,
 ) *PhotoHandler {
 	return &PhotoHandler{
 		photoService: photoService,
+		faceService:  faceService,
 	}
 }
 
@@ -89,7 +92,20 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 		log.Println("사진 저장 실패: ", err)
 		return err
 	}
-	uploadPhotoResponse := models.NewUploadPhotoResponse(photo, uploadResult.FaceDetections)
+
+	// 얼굴 인식 결과를 저장
+	_, err = con.faceService.SearchAndSaveFaceDetections(c.Request().Context(), groupId, photo.ID, uploadResult.FaceDetections)
+	if err != nil {
+		log.Println("얼굴 인식 결과 저장 실패: ", err)
+		return err
+	}
+
+	faceDetectionRows, err := con.faceService.GetFaceDetections(c.Request().Context(), photo.ID)
+	if err != nil {
+		return err
+	}
+
+	uploadPhotoResponse := models.NewUploadPhotoResponse(photo, faceDetectionRows)
 	return c.JSON(200, uploadPhotoResponse)
 }
 

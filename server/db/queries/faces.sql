@@ -16,19 +16,34 @@ RETURNING
 
 -- name: FindMostSimilarFace :one
 SELECT
+    ave.person_id,
+    p.name,
+    p.group_id,
+    ave.embedding <=> sqlc.arg (embedding)::vector AS distance
+FROM
+    average_face_embeddings AS ave
+    INNER JOIN people AS p ON ave.person_id = p.id
+WHERE
+    p.group_id = sqlc.arg (group_id)::int
+    AND ave.embedding <=> sqlc.arg (embedding)::vector < sqlc.arg (similarity_threshold)::float
+ORDER BY
+    ave.embedding <=> sqlc.arg (embedding)::vector ASC
+LIMIT
+    1;
+
+-- name: GetFaceDetectionsByPhotoId :many
+SELECT
     fd.id,
     fd.photo_id,
     fd.person_id,
     p.name,
-    ph.group_id,
+    fd.location_top,
+    fd.location_right,
+    fd.location_bottom,
+    fd.location_left,
+    fd.embedding
 FROM
     face_detections AS fd
-    INNER JOIN people AS p ON fd.person_id = p.id
-    INNER JOIN photos AS ph ON fd.photo_id = ph.id
+    JOIN people AS p ON fd.person_id = p.id
 WHERE
-    ph.group_id = sqlc.arg (group_id)::int
-    AND fd.embedding <=> sqlc.arg (embedding)::vector < sqlc.arg (similarity_threshold)::float
-ORDER BY
-    fd.embedding <=> sqlc.arg (embedding)::vector ASC
-LIMIT
-    1;
+    fd.photo_id = $1;

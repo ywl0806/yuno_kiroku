@@ -2,6 +2,8 @@ package photo
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,12 +13,13 @@ import (
 	"os"
 
 	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
+	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
 const (
 	// 얼굴 유사도 임계값
-	FACE_SEARCH_THRESHOLD = 0.6
+	FACE_SEARCH_THRESHOLD = 0.5
 )
 
 type FaceService struct {
@@ -25,6 +28,102 @@ type FaceService struct {
 
 func NewFaceService(queries *db.Queries) *FaceService {
 	return &FaceService{queries: queries}
+}
+
+/*
+*
+
+	얼굴 인식 결과를 검색 후 저장
+	1. 얼굴 임베딩을 데이터베이스에서 검색
+	2. 얼굴 임베딩이 있으면 FaceDetection을 생성
+	3. 얼굴 임베딩이 없으면 Person을 생성 후 FaceDetection을 생성
+*/
+func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId int32, photoId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
+
+	// 얼굴인식 결과를 저장할 파라미터 리스트
+	var createFaceDetectionParams []db.CreateFaceDetectionParams
+	// 얼굴인식 결과리스트
+	var createdFaceDetections []db.FaceDetection
+
+	for _, faceDetection := range faceDetections {
+		// 얼굴인식 결과를 저장할 파라미터 생성
+		faceDetectionParams := db.CreateFaceDetectionParams{
+			PhotoID:        photoId,
+			LocationTop:    int32(faceDetection.FaceLocation.Top),
+			LocationRight:  int32(faceDetection.FaceLocation.Right),
+			LocationBottom: int32(faceDetection.FaceLocation.Bottom),
+			LocationLeft:   int32(faceDetection.FaceLocation.Left),
+			Embedding:      utils.Float64SliceToVectorString(faceDetection.Embedding),
+		}
+		// 얼굴인식 결과를 검색
+		similarFace, err := s.FindMostSimilarFace(ctx, groupId, faceDetection.Embedding)
+
+		// 검색 에러 시 로깅, 다음 얼굴인식 결과 처리
+		if err != nil {
+			log.Println("FindMostSimilarFace error: ", err)
+			continue
+		}
+
+		// 유사 얼굴 검색 결과가 있으면 해당 사람 ID 설정
+		if similarFace != nil {
+			faceDetectionParams.PersonID = similarFace.PersonID
+		} else {
+			// 유사 얼굴 검색 결과가 없으면 새로운 사람 생성
+			newPerson, err := s.queries.CreatePerson(ctx, db.CreatePersonParams{
+				Name:    sql.NullString{String: "", Valid: false},
+				GroupID: groupId,
+			})
+			if err != nil {
+				log.Println("CreatePerson error: ", err)
+				continue
+			}
+			faceDetectionParams.PersonID = newPerson.ID
+		}
+
+		// 얼굴인식 결과를 저장할 파라미터 리스트에 추가
+		createFaceDetectionParams = append(createFaceDetectionParams, faceDetectionParams)
+	}
+
+	// 얼굴인식 결과를 저장
+	for _, faceDetectionParams := range createFaceDetectionParams {
+		createdFaceDetection, err := s.queries.CreateFaceDetection(ctx, faceDetectionParams)
+		if err != nil {
+			log.Println("CreateFaceDetection error: ", err)
+			continue
+		}
+		createdFaceDetections = append(createdFaceDetections, createdFaceDetection)
+	}
+	return createdFaceDetections, nil
+}
+
+/*
+*
+
+	얼굴 임베딩을 데이터베이스에서 검색
+	1. 얼굴 임베딩이 없으면 nil 반환
+*/
+func (s *FaceService) FindMostSimilarFace(ctx context.Context, groupId int32, embedding []float64) (*db.FindMostSimilarFaceRow, error) {
+	faceDetection, err := s.queries.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
+		GroupID:             groupId,
+		Embedding:           utils.Float64SliceToVectorString(embedding),
+		SimilarityThreshold: FACE_SEARCH_THRESHOLD,
+	})
+	log.Println("faceDetection distance: ", faceDetection.Distance)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &faceDetection, nil
+}
+
+func (s *FaceService) GetFaceDetections(ctx context.Context, photoId int32) ([]db.GetFaceDetectionsByPhotoIdRow, error) {
+	faceDetections, err := s.queries.GetFaceDetectionsByPhotoId(ctx, photoId)
+	if err != nil {
+		return nil, err
+	}
+	return faceDetections, nil
 }
 
 /*
@@ -90,6 +189,12 @@ func GetFaceDetection(image io.Reader) (*[]models.FaceDetection, error) {
 
 	// 응답 바디 파싱
 	var faceDetectionResponse models.FaceDetectionResponse
+
+	// 응답 바디가 없으면 빈 얼굴 인식 결과 반환
+	if response.StatusCode == http.StatusNoContent {
+		return &[]models.FaceDetection{}, nil
+	}
+
 	err = json.Unmarshal(responseBody, &faceDetectionResponse)
 	if err != nil {
 		return nil, err

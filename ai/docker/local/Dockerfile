@@ -1,16 +1,18 @@
-FROM python:3.9-alpine
+FROM python:3.11-slim
 
-RUN apk update && apk add --no-cache \
-    cmake \
-    gcc \
-    g++ \
-    make 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* 
 
 WORKDIR /app
 
 COPY . .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+
+# insightface 모델 사전 다운로드
+RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_s', providers=['CPUExecutionProvider']); app.prepare(ctx_id=0, det_size=(640, 640))"
 
 EXPOSE 8000
 

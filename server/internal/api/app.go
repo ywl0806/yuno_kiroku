@@ -38,9 +38,10 @@ func Init(e *echo.Echo) {
 
 	userService := user.NewUserService(queries)
 	photoService := photo.NewPhotoService(queries, sStorage, lStorage)
+	faceService := photo.NewFaceService(queries)
 
 	userHandler := user.NewUserHandler(userService)
-	photoHandler := photo.NewPhotoHandler(photoService)
+	photoHandler := photo.NewPhotoHandler(photoService, faceService)
 	authHandler := auth.NewAuthHandler(userService)
 
 	// root router

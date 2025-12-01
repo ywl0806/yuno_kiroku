@@ -1,8 +1,9 @@
+from http import HTTPStatus
 import os
 import uuid
 import requests
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Response, UploadFile
 from fastapi.exceptions import HTTPException
 
 from src.service.face import detect_face
@@ -18,7 +19,7 @@ def read_root():
 
 
 @app.post("/face-detection/file")
-def detect_face_endpoint(file: UploadFile = File(...)) -> dict:
+def detect_face_endpoint(file: UploadFile = File(...)):
     """
     파일로 부터 얼굴 인식
 
@@ -38,14 +39,14 @@ def detect_face_endpoint(file: UploadFile = File(...)) -> dict:
         f.write(file.file.read())
     face_detection = detect_face(file_path)
     _clean_tmp_files()
-    if face_detection:
+    if len(face_detection["faces"]) > 0:
         return face_detection
     else:
-        raise HTTPException(status_code=400, detail="No face detected")
+        return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @app.post("/face-detection/url")
-def detect_face_url_endpoint(url: str = Form(...)) -> dict:
+def detect_face_url_endpoint(url: str = Form(...)):
     """
     URL로 부터 얼굴 인식
 
@@ -66,10 +67,10 @@ def detect_face_url_endpoint(url: str = Form(...)) -> dict:
 
     face_detection = detect_face(file_path)
     _clean_tmp_files()
-    if face_detection:
+    if len(face_detection["faces"]) > 0:
         return face_detection
     else:
-        raise HTTPException(status_code=400, detail="No face detected")
+        return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 def _check_tmp_dir():

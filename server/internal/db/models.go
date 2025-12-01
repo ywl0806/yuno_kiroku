@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+type AverageFaceEmbedding struct {
+	PersonID  int32
+	Embedding interface{}
+}
+
 type ClanGroup struct {
 	ID        int32
 	GroupID   int32
