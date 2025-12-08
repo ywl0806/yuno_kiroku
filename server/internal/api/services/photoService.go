@@ -1,4 +1,4 @@
-package photo
+package services
 
 import (
 	"bytes"
@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo/models"
+	apiErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
+	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/imageHelper"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
@@ -34,6 +35,23 @@ func NewPhotoService(
 	}
 }
 
+func (s *PhotoService) GetPhotos(ctx context.Context, params *db.FindPhotosByPhotoCreatedAtParams) ([]db.Photo, error) {
+
+	photos, err := s.queries.FindPhotosByPhotoCreatedAt(ctx, *params)
+	if err != nil {
+		return nil, err
+	}
+	return photos, nil
+}
+
+func (s *PhotoService) CreatePhoto(ctx context.Context, params db.CreatePhotoParams) (*db.Photo, error) {
+	photo, err := s.queries.CreatePhoto(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return &photo, nil
+}
+
 type UploadPhotoReturn struct {
 	ThumbnailUrl   string                 `json:"thumbnailUrl"`
 	OriginalUrl    string                 `json:"originalUrl"`
@@ -45,23 +63,15 @@ type UploadPhotoReturn struct {
 	FaceDetections []models.FaceDetection `json:"faceDetections"`
 }
 
-func (s *PhotoService) CreatePhoto(ctx context.Context, params db.CreatePhotoParams) (*db.Photo, error) {
-	photo, err := s.queries.CreatePhoto(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	return &photo, nil
-}
-
 /*
 *
 
-	Photo 업로드
-	1. 파일을 업로드하고 썸네일 이미지를 생성합니다.
-	2. 파일 확장자를 확인하고 이미지 파일인 경우 썸네일 이미지를 생성합니다.
-	3. 썸네일 이미지를 생성하고 원본 이미지를 저장합니다.
-	4. 썸네일 이미지와 원본 이미지의 URL을 반환합니다.
-	5. 얼굴 인식 결과를 반환합니다.
+Photo 업로드
+1. 파일을 업로드하고 썸네일 이미지를 생성합니다.
+2. 파일 확장자를 확인하고 이미지 파일인 경우 썸네일 이미지를 생성합니다.
+3. 썸네일 이미지를 생성하고 원본 이미지를 저장합니다.
+4. 썸네일 이미지와 원본 이미지의 URL을 반환합니다.
+5. 얼굴 인식 결과를 반환합니다.
 */
 func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string) (*UploadPhotoReturn, error) {
 
@@ -168,10 +178,10 @@ func (s *PhotoService) UploadLiveMovie(liveMovie *multipart.FileHeader) (*Upload
 	return &result, nil
 }
 
-func (s *PhotoService) CreateUploadPath(groupId int32, clanGroupId *int32) string {
+func (s *PhotoService) CreateUploadPath(groupId int32, albumId int32) string {
 	uploadPath := strconv.Itoa(int(groupId))
-	if clanGroupId != nil {
-		uploadPath += "/" + strconv.Itoa(int(*clanGroupId))
+	if albumId != 0 {
+		uploadPath += "/" + strconv.Itoa(int(albumId))
 	}
 	return uploadPath
 }
@@ -200,30 +210,54 @@ func (s *PhotoService) groupPhotosByDate(photos []db.Photo) {
 }
 
 type PhotoRange struct {
-	Year  string `json:"year"`
-	Month string `json:"month"`
+	Year  int `json:"year"`
+	Month int `json:"month"`
 }
 
-func (s *PhotoService) GetPhotoRange(ctx context.Context, groupId int32, clanGroupId *int32) ([]PhotoRange, error) {
+func (s *PhotoService) GetPhotoRange(ctx context.Context, clanGroupId int32) ([]PhotoRange, error) {
 	// 사진들을 년도와 월로 그룹화
-	ranges, err := s.queries.GetPhotoRange(ctx, db.GetPhotoRangeParams{
-		GroupID: groupId,
-		ClanGroupID: sql.NullInt32{
-			Int32: *clanGroupId,
-			Valid: clanGroupId != nil,
-		},
-	})
+	ranges, err := s.queries.GetPhotoRange(ctx, clanGroupId)
 	if err != nil {
 		return nil, err
 	}
 
 	photoRanges := make([]PhotoRange, len(ranges))
+
 	for i, r := range ranges {
+		year, err := strconv.Atoi(r.Year)
+		if err != nil {
+			return nil, err
+		}
+		month, err := strconv.Atoi(r.Month)
+		if err != nil {
+			return nil, err
+		}
 		photoRanges[i] = PhotoRange{
-			Year:  r.Year,
-			Month: r.Month,
+			Year:  year,
+			Month: month,
 		}
 	}
 
 	return photoRanges, nil
+}
+
+/*
+*
+
+신원 ID를 기반으로 랜덤 사진을 가져옵니다.
+1. 신원 ID를 기반으로 랜덤 사진을 가져옵니다.
+2. 사진을 반환합니다.
+*/
+func (s *PhotoService) GetIdentityRandomPhoto(ctx context.Context, clanGroupId int32, identityId int32) (*db.GetIdentityRandomPhotoRow, error) {
+	photo, err := s.queries.GetIdentityRandomPhoto(ctx, db.GetIdentityRandomPhotoParams{
+		ClanGroupID: clanGroupId,
+		IdentityID:  identityId,
+	})
+	if err == sql.ErrNoRows {
+		return nil, apiErrors.ErrPhotoNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &photo, nil
 }

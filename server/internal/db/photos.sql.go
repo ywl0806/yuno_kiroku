@@ -15,7 +15,7 @@ const createPhoto = `-- name: CreatePhoto :one
 INSERT INTO
     photos (
         group_id,
-        clan_group_id,
+        album_id,
         thumbnail_url,
         original_url,
         live_url,
@@ -31,7 +31,7 @@ VALUES
 RETURNING
     id,
     group_id,
-    clan_group_id,
+    album_id,
     thumbnail_url,
     original_url,
     live_url,
@@ -47,7 +47,7 @@ RETURNING
 
 type CreatePhotoParams struct {
 	GroupID         int32
-	ClanGroupID     sql.NullInt32
+	AlbumID         int32
 	ThumbnailUrl    string
 	OriginalUrl     sql.NullString
 	LiveUrl         sql.NullString
@@ -62,7 +62,7 @@ type CreatePhotoParams struct {
 func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo, error) {
 	row := q.db.QueryRowContext(ctx, createPhoto,
 		arg.GroupID,
-		arg.ClanGroupID,
+		arg.AlbumID,
 		arg.ThumbnailUrl,
 		arg.OriginalUrl,
 		arg.LiveUrl,
@@ -77,7 +77,7 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo
 	err := row.Scan(
 		&i.ID,
 		&i.GroupID,
-		&i.ClanGroupID,
+		&i.AlbumID,
 		&i.ThumbnailUrl,
 		&i.OriginalUrl,
 		&i.LiveUrl,
@@ -95,37 +95,28 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo
 
 const findPhotosByPhotoCreatedAt = `-- name: FindPhotosByPhotoCreatedAt :many
 SELECT
-    id, group_id, clan_group_id, thumbnail_url, original_url, live_url, original_live_url, width, height, orientation, photo_created_at, file_name, created_at, updated_at
+    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.width, p.height, p.orientation, p.photo_created_at, p.file_name, p.created_at, p.updated_at
 FROM
-    photos
+    photos AS p
+    INNER JOIN albums AS a ON p.album_id = a.id
+    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
 WHERE
-    group_id = $1::int
-    AND photo_created_at >= $2::time
-    AND photo_created_at <= $3::time
-    AND (
-        CASE
-            WHEN $4::int IS NOT NULL THEN clan_group_id IS NULL
-            OR clan_group_id = $4::int
-        END
-    )
+    acgp.clan_group_id = $1::int
+    AND acgp.permission = 'R'
+    AND p.photo_created_at >= $2::timestamp
+    AND p.photo_created_at <= $3::timestamp
 ORDER BY
     photo_created_at DESC
 `
 
 type FindPhotosByPhotoCreatedAtParams struct {
-	GroupID            int32
+	ClanGroupID        int32
 	PhotoCreatedAtFrom time.Time
 	PhotoCreatedAtTo   time.Time
-	ClanGroupID        sql.NullInt32
 }
 
 func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotosByPhotoCreatedAtParams) ([]Photo, error) {
-	rows, err := q.db.QueryContext(ctx, findPhotosByPhotoCreatedAt,
-		arg.GroupID,
-		arg.PhotoCreatedAtFrom,
-		arg.PhotoCreatedAtTo,
-		arg.ClanGroupID,
-	)
+	rows, err := q.db.QueryContext(ctx, findPhotosByPhotoCreatedAt, arg.ClanGroupID, arg.PhotoCreatedAtFrom, arg.PhotoCreatedAtTo)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +127,7 @@ func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotos
 		if err := rows.Scan(
 			&i.ID,
 			&i.GroupID,
-			&i.ClanGroupID,
+			&i.AlbumID,
 			&i.ThumbnailUrl,
 			&i.OriginalUrl,
 			&i.LiveUrl,
@@ -162,6 +153,81 @@ func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotos
 	return items, nil
 }
 
+const getIdentityRandomPhoto = `-- name: GetIdentityRandomPhoto :one
+SELECT
+    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.width, p.height, p.orientation, p.photo_created_at, p.file_name, p.created_at, p.updated_at,
+    fd.location_top,
+    fd.location_right,
+    fd.location_bottom,
+    fd.location_left
+FROM
+    (
+        SELECT photo_id, location_top, location_right, location_bottom, location_left
+        FROM face_detections 
+        WHERE identity_id = $1::int
+        ORDER BY RANDOM()
+        LIMIT 1
+    ) AS fd
+    INNER JOIN photos AS p ON fd.photo_id = p.id
+    INNER JOIN albums AS a ON p.album_id = a.id
+    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+WHERE
+    acgp.clan_group_id = $2::int
+    AND acgp.permission = 'R'
+`
+
+type GetIdentityRandomPhotoParams struct {
+	IdentityID  int32
+	ClanGroupID int32
+}
+
+type GetIdentityRandomPhotoRow struct {
+	ID              int32
+	GroupID         int32
+	AlbumID         int32
+	ThumbnailUrl    string
+	OriginalUrl     sql.NullString
+	LiveUrl         sql.NullString
+	OriginalLiveUrl sql.NullString
+	Width           int32
+	Height          int32
+	Orientation     int32
+	PhotoCreatedAt  time.Time
+	FileName        string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	LocationTop     int32
+	LocationRight   int32
+	LocationBottom  int32
+	LocationLeft    int32
+}
+
+func (q *Queries) GetIdentityRandomPhoto(ctx context.Context, arg GetIdentityRandomPhotoParams) (GetIdentityRandomPhotoRow, error) {
+	row := q.db.QueryRowContext(ctx, getIdentityRandomPhoto, arg.IdentityID, arg.ClanGroupID)
+	var i GetIdentityRandomPhotoRow
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.AlbumID,
+		&i.ThumbnailUrl,
+		&i.OriginalUrl,
+		&i.LiveUrl,
+		&i.OriginalLiveUrl,
+		&i.Width,
+		&i.Height,
+		&i.Orientation,
+		&i.PhotoCreatedAt,
+		&i.FileName,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LocationTop,
+		&i.LocationRight,
+		&i.LocationBottom,
+		&i.LocationLeft,
+	)
+	return i, err
+}
+
 const getPhotoRange = `-- name: GetPhotoRange :many
 SELECT
     EXTRACT(
@@ -175,15 +241,12 @@ SELECT
             photo_created_at
     ) AS month
 FROM
-    photos
+    photos AS p
+    INNER JOIN albums AS a ON p.album_id = a.id
+    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
 WHERE
-    group_id = $1::int
-    AND (
-        CASE
-            WHEN $2::int IS NOT NULL THEN clan_group_id IS NULL
-            OR clan_group_id = $2::int
-        END
-    )
+    acgp.clan_group_id = $1::int
+    AND acgp.permission = 'R'
 GROUP BY
     year,
     month
@@ -192,18 +255,13 @@ ORDER BY
     month DESC
 `
 
-type GetPhotoRangeParams struct {
-	GroupID     int32
-	ClanGroupID sql.NullInt32
-}
-
 type GetPhotoRangeRow struct {
 	Year  string
 	Month string
 }
 
-func (q *Queries) GetPhotoRange(ctx context.Context, arg GetPhotoRangeParams) ([]GetPhotoRangeRow, error) {
-	rows, err := q.db.QueryContext(ctx, getPhotoRange, arg.GroupID, arg.ClanGroupID)
+func (q *Queries) GetPhotoRange(ctx context.Context, clanGroupID int32) ([]GetPhotoRangeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPhotoRange, clanGroupID)
 	if err != nil {
 		return nil, err
 	}

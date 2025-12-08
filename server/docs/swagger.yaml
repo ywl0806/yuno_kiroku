@@ -1,18 +1,13 @@
 basePath: /api
 definitions:
-  auth.LoginRequest:
+  db.GetPhotoRangeRow:
     properties:
-      password:
-        example: password
+      month:
         type: string
-      username:
-        example: admin
+      year:
         type: string
-    required:
-    - password
-    - username
     type: object
-  user.CreateUserRequest:
+  handlers.CreateUserRequest:
     properties:
       clan_group_id:
         type: integer
@@ -32,6 +27,70 @@ definitions:
     - password
     - username
     type: object
+  handlers.LoginRequest:
+    properties:
+      password:
+        example: password
+        type: string
+      username:
+        example: admin
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.IdentityListResponse:
+    properties:
+      identities:
+        items:
+          $ref: '#/definitions/models.IdentityResponse'
+        type: array
+    type: object
+  models.IdentityRandomPhotoResponse:
+    properties:
+      album_id:
+        type: integer
+      file_name:
+        type: string
+      group_id:
+        type: integer
+      id:
+        type: integer
+      location_bottom:
+        type: integer
+      location_left:
+        type: integer
+      location_right:
+        type: integer
+      location_top:
+        type: integer
+      orientation:
+        type: integer
+      photo_created_at:
+        type: string
+      thumbnail_url:
+        type: string
+    type: object
+  models.IdentityResponse:
+    properties:
+      created_at:
+        type: string
+      group_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.UpdateIdentityByIdAndGroupIdRequest:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
@@ -46,7 +105,7 @@ paths:
         name: loginRequest
         required: true
         schema:
-          $ref: '#/definitions/auth.LoginRequest'
+          $ref: '#/definitions/handlers.LoginRequest'
       produces:
       - application/json
       responses:
@@ -59,6 +118,120 @@ paths:
       summary: User login
       tags:
       - auth
+  /identities:
+    get:
+      description: identity 목록을 조회
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityListResponse'
+      tags:
+      - Identity
+  /identity:
+    put:
+      description: identity를 수정
+      parameters:
+      - description: Update Identity Request
+        in: body
+        name: updateIdentityRequest
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateIdentityByIdAndGroupIdRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityResponse'
+      tags:
+      - Identity
+  /identity/{id}:
+    get:
+      description: identity를 조회
+      parameters:
+      - description: Identity ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityResponse'
+      tags:
+      - Identity
+  /photo:
+    get:
+      description: 사진 목록 조회
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: From
+        example: "2025-01-01"
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: To
+        example: "2025-01-01"
+        in: query
+        name: to
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+      tags:
+      - Photo
+  /photo/identity/{identity_id}/random:
+    get:
+      description: 신원 ID를 기반으로 랜덤 사진 조회
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Identity ID
+        in: path
+        name: identity_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityRandomPhotoResponse'
+      tags:
+      - Photo
+  /photo/range:
+    get:
+      description: 사진이 있는 년도와 월 목록 조회
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.GetPhotoRangeRow'
+            type: array
+      tags:
+      - Photo
   /photo/upload:
     post:
       consumes:
@@ -70,9 +243,10 @@ paths:
         name: file
         required: true
         type: file
-      - description: Clan Group ID
+      - description: Album ID
         in: query
-        name: clan_group_id
+        name: album_id
+        required: true
         type: string
       - description: Authorization
         example: bearer token
@@ -82,6 +256,39 @@ paths:
         required: true
         type: string
       responses: {}
+      tags:
+      - Photo
+  /photo/upload-live/{album_id}:
+    post:
+      consumes:
+      - multipart/form-data
+      description: upload live photo
+      parameters:
+      - description: photo
+        in: formData
+        name: photo
+        required: true
+        type: file
+      - description: live
+        in: formData
+        name: live
+        required: true
+        type: file
+      - description: Album ID
+        in: path
+        name: album_id
+        required: true
+        type: integer
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses: {}
+      tags:
+      - Photo
   /user:
     post:
       description: create user
@@ -91,11 +298,13 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/user.CreateUserRequest'
+          $ref: '#/definitions/handlers.CreateUserRequest'
       responses:
         "200":
           description: OK
           schema:
             additionalProperties: true
             type: object
+      tags:
+      - User
 swagger: "2.0"

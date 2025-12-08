@@ -14,7 +14,7 @@ type AuthUser struct {
 	ID          int32  `json:"id" validate:"required"`
 	Email       string `json:"email" validate:"required,email"`
 	GroupId     int32  `json:"group_id" validate:"required"`
-	ClanGroupId *int32 `json:"clan_group_id"`
+	ClanGroupId int32  `json:"clan_group_id" validate:"required"`
 }
 type Guard struct {
 }
@@ -42,17 +42,10 @@ func (g *Guard) Handler(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		authUser := AuthUser{
-			ID:      cast.ToInt32(claims.ID),
-			Email:   claims.Email,
-			GroupId: cast.ToInt32(claims.GroupId),
-		}
-
-		clanGroupId, err := cast.ToInt32E(claims.ClanGroupId)
-
-		if err != nil {
-			authUser.ClanGroupId = nil
-		} else {
-			authUser.ClanGroupId = &clanGroupId
+			ID:          cast.ToInt32(claims.ID),
+			Email:       claims.Email,
+			GroupId:     cast.ToInt32(claims.GroupId),
+			ClanGroupId: cast.ToInt32(claims.ClanGroupId),
 		}
 
 		c.Set(consts.AuthUserKey, &authUser)

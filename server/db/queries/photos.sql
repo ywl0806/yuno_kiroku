@@ -2,7 +2,7 @@
 INSERT INTO
     photos (
         group_id,
-        clan_group_id,
+        album_id,
         thumbnail_url,
         original_url,
         live_url,
@@ -18,7 +18,7 @@ VALUES
 RETURNING
     id,
     group_id,
-    clan_group_id,
+    album_id,
     thumbnail_url,
     original_url,
     live_url,
@@ -33,19 +33,16 @@ RETURNING
 
 -- name: FindPhotosByPhotoCreatedAt :many
 SELECT
-    *
+    p.*
 FROM
-    photos
+    photos AS p
+    INNER JOIN albums AS a ON p.album_id = a.id
+    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
 WHERE
-    group_id = sqlc.arg (group_id)::int
-    AND photo_created_at >= sqlc.arg (photo_created_at_from)::time
-    AND photo_created_at <= sqlc.arg (photo_created_at_to)::time
-    AND (
-        CASE
-            WHEN sqlc.narg (clan_group_id)::int IS NOT NULL THEN clan_group_id IS NULL
-            OR clan_group_id = sqlc.narg (clan_group_id)::int
-        END
-    )
+    acgp.clan_group_id = sqlc.arg (clan_group_id)::int
+    AND acgp.permission = 'R'
+    AND p.photo_created_at >= sqlc.arg (photo_created_at_from)::timestamp
+    AND p.photo_created_at <= sqlc.arg (photo_created_at_to)::timestamp
 ORDER BY
     photo_created_at DESC;
 
@@ -62,18 +59,38 @@ SELECT
             photo_created_at
     ) AS month
 FROM
-    photos
+    photos AS p
+    INNER JOIN albums AS a ON p.album_id = a.id
+    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
 WHERE
-    group_id = sqlc.arg (group_id)::int
-    AND (
-        CASE
-            WHEN sqlc.narg (clan_group_id)::int IS NOT NULL THEN clan_group_id IS NULL
-            OR clan_group_id = sqlc.narg (clan_group_id)::int
-        END
-    )
+    acgp.clan_group_id = sqlc.arg (clan_group_id)::int
+    AND acgp.permission = 'R'
 GROUP BY
     year,
     month
 ORDER BY
     year DESC,
     month DESC;
+
+-- name: GetIdentityRandomPhoto :one
+SELECT
+    p.*,
+    fd.location_top,
+    fd.location_right,
+    fd.location_bottom,
+    fd.location_left
+FROM
+    (
+        SELECT photo_id, location_top, location_right, location_bottom, location_left
+        FROM face_detections 
+        WHERE identity_id = sqlc.arg(identity_id)::int
+        ORDER BY RANDOM()
+        LIMIT 1
+    ) AS fd
+    INNER JOIN photos AS p ON fd.photo_id = p.id
+    INNER JOIN albums AS a ON p.album_id = a.id
+    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+WHERE
+    acgp.clan_group_id = sqlc.arg (clan_group_id)::int
+    AND acgp.permission = 'R';
+    

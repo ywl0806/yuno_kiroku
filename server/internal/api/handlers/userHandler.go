@@ -1,4 +1,4 @@
-package user
+package handlers
 
 import (
 	"database/sql"
@@ -6,13 +6,15 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+
+	"github.com/ywl0806/yuno_kiroku/internal/api/services"
 )
 
 type UserHandler struct {
-	userService *UserService
+	userService *services.UserService
 }
 
-func NewUserHandler(userService *UserService) *UserHandler {
+func NewUserHandler(userService *services.UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
 
@@ -59,6 +61,7 @@ func (CreateUserRequest) bind(c echo.Context, params *db.CreateUserParams) error
 	return nil
 }
 
+// @Tags User
 // @Description create user
 // @Router /user [post]
 // @Param user body CreateUserRequest true "Create User Request"
@@ -74,11 +77,11 @@ func (con *UserHandler) CreateUser(c echo.Context) error {
 
 	err = con.userService.ValidateCreateUserParams(ctx, params)
 	if err != nil {
-		return err
+		return HandleServiceError(err)
 	}
 	user, err := con.userService.CreateUser(ctx, params)
 	if err != nil {
-		return err
+		return HandleServiceError(err)
 	}
 
 	return c.JSON(200, user)

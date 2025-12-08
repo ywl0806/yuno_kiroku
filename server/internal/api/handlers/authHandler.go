@@ -1,4 +1,4 @@
-package auth
+package handlers
 
 import (
 	"log"
@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services/user"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils/jwt"
 
@@ -14,10 +14,10 @@ import (
 )
 
 type AuthHandler struct {
-	userService *user.UserService
+	userService *services.UserService
 }
 
-func NewAuthHandler(userService *user.UserService) *AuthHandler {
+func NewAuthHandler(userService *services.UserService) *AuthHandler {
 	return &AuthHandler{userService: userService}
 }
 

@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.LoginRequest"
+                            "$ref": "#/definitions/handlers.LoginRequest"
                         }
                     }
                 ],
@@ -52,11 +52,186 @@ const docTemplate = `{
                 }
             }
         },
+        "/identities": {
+            "get": {
+                "description": "identity 목록을 조회",
+                "tags": [
+                    "Identity"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity": {
+            "put": {
+                "description": "identity를 수정",
+                "tags": [
+                    "Identity"
+                ],
+                "parameters": [
+                    {
+                        "description": "Update Identity Request",
+                        "name": "updateIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateIdentityByIdAndGroupIdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/{id}": {
+            "get": {
+                "description": "identity를 조회",
+                "tags": [
+                    "Identity"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Identity ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/photo": {
+            "get": {
+                "description": "사진 목록 조회",
+                "tags": [
+                    "Photo"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2025-01-01",
+                        "description": "From",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2025-01-01",
+                        "description": "To",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/photo/identity/{identity_id}/random": {
+            "get": {
+                "description": "신원 ID를 기반으로 랜덤 사진 조회",
+                "tags": [
+                    "Photo"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Identity ID",
+                        "name": "identity_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityRandomPhotoResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/photo/range": {
+            "get": {
+                "description": "사진이 있는 년도와 월 목록 조회",
+                "tags": [
+                    "Photo"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.GetPhotoRangeRow"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/photo/upload": {
             "post": {
                 "description": "사진 업로드",
                 "consumes": [
                     "multipart/form-data"
+                ],
+                "tags": [
+                    "Photo"
                 ],
                 "parameters": [
                     {
@@ -68,9 +243,54 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Clan Group ID",
-                        "name": "clan_group_id",
-                        "in": "query"
+                        "description": "Album ID",
+                        "name": "album_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/photo/upload-live/{album_id}": {
+            "post": {
+                "description": "upload live photo",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "Photo"
+                ],
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "photo",
+                        "name": "photo",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "live",
+                        "name": "live",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Album ID",
+                        "name": "album_id",
+                        "in": "path",
+                        "required": true
                     },
                     {
                         "type": "string",
@@ -88,6 +308,9 @@ const docTemplate = `{
         "/user": {
             "post": {
                 "description": "create user",
+                "tags": [
+                    "User"
+                ],
                 "parameters": [
                     {
                         "description": "Create User Request",
@@ -95,7 +318,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.CreateUserRequest"
+                            "$ref": "#/definitions/handlers.CreateUserRequest"
                         }
                     }
                 ],
@@ -112,24 +335,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "auth.LoginRequest": {
+        "db.GetPhotoRangeRow": {
             "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
             "properties": {
-                "password": {
-                    "type": "string",
-                    "example": "password"
+                "month": {
+                    "type": "string"
                 },
-                "username": {
-                    "type": "string",
-                    "example": "admin"
+                "year": {
+                    "type": "string"
                 }
             }
         },
-        "user.CreateUserRequest": {
+        "handlers.CreateUserRequest": {
             "type": "object",
             "required": [
                 "clan_group_id",
@@ -153,6 +370,103 @@ const docTemplate = `{
                     "minLength": 6
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "password"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "models.IdentityListResponse": {
+            "type": "object",
+            "properties": {
+                "identities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.IdentityResponse"
+                    }
+                }
+            }
+        },
+        "models.IdentityRandomPhotoResponse": {
+            "type": "object",
+            "properties": {
+                "album_id": {
+                    "type": "integer"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "location_bottom": {
+                    "type": "integer"
+                },
+                "location_left": {
+                    "type": "integer"
+                },
+                "location_right": {
+                    "type": "integer"
+                },
+                "location_top": {
+                    "type": "integer"
+                },
+                "orientation": {
+                    "type": "integer"
+                },
+                "photo_created_at": {
+                    "type": "string"
+                },
+                "thumbnail_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.IdentityResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateIdentityByIdAndGroupIdRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }

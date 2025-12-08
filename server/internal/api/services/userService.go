@@ -1,9 +1,9 @@
-package user
+package services
 
 import (
 	"context"
-	"errors"
 
+	apiErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
@@ -31,7 +31,7 @@ func (s *UserService) FindUserByUsername(ctx context.Context, username string) (
 		return db.User{}, err
 	}
 	if user.ID == 0 {
-		return db.User{}, errors.New("user not found")
+		return db.User{}, apiErrors.ErrUserNotFound
 	}
 	return user, nil
 }
@@ -62,7 +62,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 		return err
 	}
 	if group.ID == 0 {
-		return errors.New("group not found")
+		return apiErrors.ErrGroupNotFound
 	}
 	return nil
 }
@@ -74,7 +74,7 @@ func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID i
 		return err
 	}
 	if clanGroup.ID == 0 {
-		return errors.New("clan group not found")
+		return apiErrors.ErrClanGroupNotFound
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func (s *UserService) validateDuplicateUsername(ctx context.Context, username st
 		return err
 	}
 	if user.ID != 0 {
-		return errors.New("username already exists")
+		return apiErrors.ErrUsernameAlreadyExists
 	}
 	return nil
 }

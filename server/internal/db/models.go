@@ -9,9 +9,25 @@ import (
 	"time"
 )
 
+type Album struct {
+	ID        int32
+	GroupID   int32
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type AlbumClanGroupsPermission struct {
+	AlbumID     int32
+	ClanGroupID int32
+	Permission  string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type AverageFaceEmbedding struct {
-	PersonID  int32
-	Embedding interface{}
+	IdentityID int32
+	Embedding  interface{}
 }
 
 type ClanGroup struct {
@@ -26,7 +42,7 @@ type ClanGroup struct {
 type FaceDetection struct {
 	ID             int32
 	PhotoID        int32
-	PersonID       int32
+	IdentityID     int32
 	LocationTop    int32
 	LocationRight  int32
 	LocationBottom int32
@@ -43,7 +59,7 @@ type Group struct {
 	UpdatedAt time.Time
 }
 
-type Person struct {
+type Identity struct {
 	ID        int32
 	Name      sql.NullString
 	GroupID   int32
@@ -54,7 +70,7 @@ type Person struct {
 type Photo struct {
 	ID              int32
 	GroupID         int32
-	ClanGroupID     sql.NullInt32
+	AlbumID         int32
 	ThumbnailUrl    string
 	OriginalUrl     sql.NullString
 	LiveUrl         sql.NullString

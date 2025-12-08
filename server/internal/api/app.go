@@ -10,9 +10,9 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services/auth"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services/photo"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services/user"
+	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/api/routers"
+	"github.com/ywl0806/yuno_kiroku/internal/api/services"
 	"github.com/ywl0806/yuno_kiroku/internal/api/validator"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
@@ -36,13 +36,15 @@ func Init(e *echo.Echo) {
 	sStorage := storage.NewLocalStorageService("standard")
 	lStorage := storage.NewLocalStorageService("longterm")
 
-	userService := user.NewUserService(queries)
-	photoService := photo.NewPhotoService(queries, sStorage, lStorage)
-	faceService := photo.NewFaceService(queries)
+	userService := services.NewUserService(queries)
+	photoService := services.NewPhotoService(queries, sStorage, lStorage)
+	faceService := services.NewFaceService(queries)
+	identityService := services.NewIdentityService(queries)
 
-	userHandler := user.NewUserHandler(userService)
-	photoHandler := photo.NewPhotoHandler(photoService, faceService)
-	authHandler := auth.NewAuthHandler(userService)
+	userHandler := handlers.NewUserHandler(userService)
+	photoHandler := handlers.NewPhotoHandler(photoService, faceService)
+	authHandler := handlers.NewAuthHandler(userService)
+	identityHandler := handlers.NewIdentityHandler(identityService)
 
 	// root router
 	root := e.Group("/api")
@@ -51,10 +53,17 @@ func Init(e *echo.Echo) {
 	root.GET("/health", func(c echo.Context) error {
 		return c.String(200, "OK")
 	})
+
+	userRouter := routers.NewUserRouter(*userHandler)
+	photoRouter := routers.NewPhotoRouter(*photoHandler)
+	authRouter := routers.NewAuthRouter(*authHandler)
+	identityRouter := routers.NewIdentityRouter(*identityHandler)
+
 	// init routers
-	user.Register(root, *userHandler)
-	photo.Register(root, *photoHandler)
-	auth.Register(root, *authHandler)
+	userRouter.Register(root)
+	photoRouter.Register(root)
+	authRouter.Register(root)
+	identityRouter.Register(root)
 
 	e.Validator = validator.NewCustomValidator()
 	// 로거 & 에러 복구

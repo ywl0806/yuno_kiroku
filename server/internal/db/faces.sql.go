@@ -14,7 +14,7 @@ const createFaceDetection = `-- name: CreateFaceDetection :one
 INSERT INTO
     face_detections (
         photo_id,
-        person_id,
+        identity_id,
         location_top,
         location_right,
         location_bottom,
@@ -24,12 +24,12 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
-    id, photo_id, person_id, location_top, location_right, location_bottom, location_left, embedding, created_at, updated_at
+    id, photo_id, identity_id, location_top, location_right, location_bottom, location_left, embedding, created_at, updated_at
 `
 
 type CreateFaceDetectionParams struct {
 	PhotoID        int32
-	PersonID       int32
+	IdentityID     int32
 	LocationTop    int32
 	LocationRight  int32
 	LocationBottom int32
@@ -40,7 +40,7 @@ type CreateFaceDetectionParams struct {
 func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetectionParams) (FaceDetection, error) {
 	row := q.db.QueryRowContext(ctx, createFaceDetection,
 		arg.PhotoID,
-		arg.PersonID,
+		arg.IdentityID,
 		arg.LocationTop,
 		arg.LocationRight,
 		arg.LocationBottom,
@@ -51,7 +51,7 @@ func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetecti
 	err := row.Scan(
 		&i.ID,
 		&i.PhotoID,
-		&i.PersonID,
+		&i.IdentityID,
 		&i.LocationTop,
 		&i.LocationRight,
 		&i.LocationBottom,
@@ -65,13 +65,13 @@ func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetecti
 
 const findMostSimilarFace = `-- name: FindMostSimilarFace :one
 SELECT
-    ave.person_id,
+    ave.identity_id,
     p.name,
     p.group_id,
     ave.embedding <=> $1::vector AS distance
 FROM
     average_face_embeddings AS ave
-    INNER JOIN people AS p ON ave.person_id = p.id
+    INNER JOIN identities AS p ON ave.identity_id = p.id
 WHERE
     p.group_id = $2::int
     AND ave.embedding <=> $1::vector < $3::float
@@ -88,17 +88,17 @@ type FindMostSimilarFaceParams struct {
 }
 
 type FindMostSimilarFaceRow struct {
-	PersonID int32
-	Name     sql.NullString
-	GroupID  int32
-	Distance interface{}
+	IdentityID int32
+	Name       sql.NullString
+	GroupID    int32
+	Distance   interface{}
 }
 
 func (q *Queries) FindMostSimilarFace(ctx context.Context, arg FindMostSimilarFaceParams) (FindMostSimilarFaceRow, error) {
 	row := q.db.QueryRowContext(ctx, findMostSimilarFace, arg.Embedding, arg.GroupID, arg.SimilarityThreshold)
 	var i FindMostSimilarFaceRow
 	err := row.Scan(
-		&i.PersonID,
+		&i.IdentityID,
 		&i.Name,
 		&i.GroupID,
 		&i.Distance,
@@ -110,7 +110,7 @@ const getFaceDetectionsByPhotoId = `-- name: GetFaceDetectionsByPhotoId :many
 SELECT
     fd.id,
     fd.photo_id,
-    fd.person_id,
+    fd.identity_id,
     p.name,
     fd.location_top,
     fd.location_right,
@@ -119,7 +119,7 @@ SELECT
     fd.embedding
 FROM
     face_detections AS fd
-    JOIN people AS p ON fd.person_id = p.id
+    JOIN identities AS p ON fd.identity_id = p.id
 WHERE
     fd.photo_id = $1
 `
@@ -127,7 +127,7 @@ WHERE
 type GetFaceDetectionsByPhotoIdRow struct {
 	ID             int32
 	PhotoID        int32
-	PersonID       int32
+	IdentityID     int32
 	Name           sql.NullString
 	LocationTop    int32
 	LocationRight  int32
@@ -148,7 +148,7 @@ func (q *Queries) GetFaceDetectionsByPhotoId(ctx context.Context, photoID int32)
 		if err := rows.Scan(
 			&i.ID,
 			&i.PhotoID,
-			&i.PersonID,
+			&i.IdentityID,
 			&i.Name,
 			&i.LocationTop,
 			&i.LocationRight,

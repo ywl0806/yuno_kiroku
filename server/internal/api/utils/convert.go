@@ -7,6 +7,10 @@ import (
 
 func ConvertStruct(dst any, src any) error {
 	err := copier.Copy(dst, src)
+	copier.CopyWithOption(dst, src, copier.Option{
+		IgnoreEmpty: true,
+		DeepCopy:    true,
+	})
 	if err != nil {
 		return err
 	}
