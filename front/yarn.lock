@@ -2578,6 +2578,14 @@
   dependencies:
     "@types/react" "*"
 
+"@types/react-lazy-load-image-component@^1.6.5":
+  version "1.6.5"
+  resolved "https://registry.yarnpkg.com/@types/react-lazy-load-image-component/-/react-lazy-load-image-component-1.6.5.tgz#d5fcebe97fbb507afc75077b903420eec6595e6e"
+  integrity sha512-Pyhy/H3oFqHqiCfH/97y4YAc4du04qs54g+9oC08nbRSr2dq3wIqVOY/3VyKxWU1/f42BgjRgMAJ8TyB2mK92A==
+  dependencies:
+    "@types/react" "*"
+    csstype "^3.2.2"
+
 "@types/react-transition-group@^4.4.7":
   version "4.4.8"
   resolved "https://registry.npmjs.org/@types/react-transition-group/-/react-transition-group-4.4.8.tgz"
@@ -3099,6 +3107,11 @@ csstype@^3.0.2, csstype@^3.1.2:
   version "3.1.2"
   resolved "https://registry.npmjs.org/csstype/-/csstype-3.1.2.tgz"
   integrity sha512-I7K1Uu0MBPzaFKg4nI5Q7Vs2t+3gWWW648spaF+Rg7pI9ds18Ugn+lvg4SHczUdKlHI5LWBXyqfS8+DufyBsgQ==
+
+csstype@^3.2.2:
+  version "3.2.3"
+  resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.2.3.tgz#ec48c0f3e993e50648c86da559e2610995cf989a"
+  integrity sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==
 
 debug@^4.1.0, debug@^4.1.1, debug@^4.3.2:
   version "4.3.4"
@@ -4266,6 +4279,11 @@ lodash.sortby@^4.7.0:
   resolved "https://registry.npmjs.org/lodash.sortby/-/lodash.sortby-4.7.0.tgz"
   integrity sha512-HDWXG8isMntAyRF5vZ7xKuEvOhT4AhlRt/3czTSjvGUxjYCBVRQY48ViDHyfYz9VIoBkW4TMGQNapx+l3RUwdA==
 
+lodash.throttle@^4.1.1:
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/lodash.throttle/-/lodash.throttle-4.1.1.tgz#c23e91b710242ac70c37f1e1cda9274cc39bf2f4"
+  integrity sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==
+
 lodash@^4.17.20, lodash@^4.17.21:
   version "4.17.21"
   resolved "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
@@ -4658,6 +4676,14 @@ react-is@^18.2.0:
   version "18.2.0"
   resolved "https://registry.npmjs.org/react-is/-/react-is-18.2.0.tgz"
   integrity sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==
+
+react-lazy-load-image-component@^1.6.3:
+  version "1.6.3"
+  resolved "https://registry.yarnpkg.com/react-lazy-load-image-component/-/react-lazy-load-image-component-1.6.3.tgz#4fc54ddb668dc0557a9e75b5797c236d52742379"
+  integrity sha512-kdQYUDbuISF3T9El0sBLNoWrmPohqlytcG4ognLtHYjY8bZAsJ0/Ez+VaV+0QlVyUY3K6dDXkuQAz3GpvdjBkw==
+  dependencies:
+    lodash.debounce "^4.0.8"
+    lodash.throttle "^4.1.1"
 
 react-photo-album@^2.3.1:
   version "2.3.1"

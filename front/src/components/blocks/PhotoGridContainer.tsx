@@ -9,20 +9,20 @@ type Props = {
 }
 
 export const PhotoGridContainer: FC<Props> = ({ year, month }) => {
-  const { photosGroups } = useGetPhotos({ year, month })
+  const { photos } = useGetPhotos({ year, month })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
   return (
     <>
       <PhotoGrid
-        photos={photosGroups ? photosGroups[0].photos : []}
+        photos={photos ?? []}
         onClick={(index) => {
           setDetailViewIndex(index)
           setOpenDetailView(true)
         }}
       />
       <PhotoDetailSwipeDialog
-        photos={photosGroups ? photosGroups[0].photos : []}
+        photos={photos ?? []}
         index={detailViewIndex}
         setIndex={setDetailViewIndex}
         open={openDetailView}

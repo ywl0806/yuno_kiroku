@@ -1,5 +1,7 @@
 export interface Photo {
-  _id: string
+  id: string
+  group_id: string
+  album_id: string
   thumbnail_url: string
   original_url: string
   live_url: string

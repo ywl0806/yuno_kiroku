@@ -20,7 +20,7 @@ export const useUploadPhotos = () => {
             process.push(uploadLivePhoto(photo, liveUrl));
             continue;
           }
-          process.push(uploadPhoto(photo));
+          process.push(uploadPhoto(photo, '1'));
         }
 
         const results = await Promise.all(process);

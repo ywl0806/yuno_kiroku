@@ -17,7 +17,7 @@ export const PhotoGridScreen = ({
     params: Props;
   };
 }) => {
-  const {photosGroups, refetch} = useGetPhotos({
+  const {photos, refetch} = useGetPhotos({
     year: route?.params?.year ?? new Date().getFullYear(),
     month: route?.params?.month ?? new Date().getMonth() + 1,
   });
@@ -36,7 +36,5 @@ export const PhotoGridScreen = ({
     }
   });
 
-  return (
-    <PhotoGrid photos={photosGroups?.[0].photos ?? []} refetch={refetch} />
-  );
+  return <PhotoGrid photos={photos ?? []} refetch={refetch} />;
 };

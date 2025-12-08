@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(8),
 })
 
@@ -19,7 +19,7 @@ export const LoginPage = () => {
   const nav = useNavigate()
   const form = useForm<LoginForm>({
     defaultValues: {
-      email: '',
+      username: '',
       password: '',
     },
     resolver: zodResolver(loginSchema),
@@ -49,11 +49,11 @@ export const LoginPage = () => {
           <h1 className="text-2xl font-bold">Login</h1>
           <FormField
             control={form.control}
-            name="email"
+            name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
-                <Input type="email" {...field} />
+                <FormLabel>Username</FormLabel>
+                <Input type="text" {...field} />
               </FormItem>
             )}
           />

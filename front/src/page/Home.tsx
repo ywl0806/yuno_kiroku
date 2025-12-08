@@ -20,6 +20,7 @@ type SelectedDate = {
 
 export const HomePage = () => {
   const { date } = useParams<{ date: string }>()
+
   const [swiper, setSwiper] = useState<SwiperClass | null>(null)
 
   const nav = useNavigate()

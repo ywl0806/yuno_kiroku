@@ -7,12 +7,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY . .
+# 먼저 requirements만 복사하여 캐시 활용
+COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# insightface 모델 사전 다운로드
-RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_s', providers=['CPUExecutionProvider']); app.prepare(ctx_id=0, det_size=(640, 640))"
+# 모델 디렉토리 복사 (로컬에 미리 다운로드된 모델)
+COPY models/ /root/.insightface/models/
+
+# 나머지 소스 코드 복사
+COPY . .
 
 EXPOSE 8000
 

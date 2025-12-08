@@ -1,6 +1,8 @@
 import {PhotoIdentifier} from '@react-native-camera-roll/camera-roll';
 
-export const uploadPhoto = async (photo: PhotoIdentifier) => {
+import {MyAxios} from '../lib/myAxios';
+
+export const uploadPhoto = async (photo: PhotoIdentifier, albumId: string) => {
   const formData = new FormData();
 
   formData.append('file', {
@@ -9,9 +11,8 @@ export const uploadPhoto = async (photo: PhotoIdentifier) => {
     name: photo.node.image.filename,
   });
 
-  const response = await fetch('http://localhost:1323/api/photo/upload', {
-    method: 'POST',
-    body: formData,
-  });
-  return response.json();
+  const url = `http://localhost:1323/api/photo/upload?album_id=${albumId}`;
+
+  const response = await MyAxios.post(url, formData);
+  return response.data;
 };

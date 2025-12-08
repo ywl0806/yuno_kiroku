@@ -1,4 +1,4 @@
-import { getPhotosGroup } from '@/service/getPhotosGroup'
+import { getPhotos } from '@/service/getPhotos'
 import { useQuery } from '@tanstack/react-query'
 
 export type UseGetPhotosProps = {
@@ -11,11 +11,10 @@ export const useGetPhotos = ({ year, month }: UseGetPhotosProps) => {
     queryFn: () => {
       const from = new Date(year, month - 1, 1)
       const to = new Date(year, month)
-      return getPhotosGroup({ from, to })
+      return getPhotos({ from, to })
     },
-    staleTime: 1000 * 30,
     // enabled: false,
   })
 
-  return { photosGroups: data, refetch, isFetched }
+  return { photos: data, refetch, isFetched }
 }
