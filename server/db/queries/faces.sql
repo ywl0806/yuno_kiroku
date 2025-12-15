@@ -47,3 +47,14 @@ FROM
     JOIN identities AS p ON fd.identity_id = p.id
 WHERE
     fd.photo_id = $1;
+
+-- name: GetFaceDetectionsByEmbeddings :one
+SELECT
+    fd.embedding
+FROM
+    face_detections AS fd
+    JOIN photos AS p ON fd.photo_id = p.id
+WHERE
+    p.group_id = sqlc.arg(group_id)::int
+    AND p.album_id = sqlc.arg(album_id)::int
+    AND fd.embedding = ANY(sqlc.arg(embeddings)::vector[]);

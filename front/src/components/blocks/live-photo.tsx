@@ -1,5 +1,5 @@
-import { LivePhotoBadge } from '../LivePhotoBadge'
-import { Photo } from '@/types/photo'
+import { LivePhotoBadge } from '@/components/blocks/live-photo-badge'
+import { Photo } from '@/types'
 import { Fade, IconButton } from '@mui/material'
 import { FC, useEffect, useRef, useState } from 'react'
 
@@ -14,9 +14,7 @@ export const LivePhoto: FC<Props> = ({ photo }) => {
   const playVideo = () => {
     setLivePhotoPlay(true)
     if (videoRef.current) {
-      videoRef.current.play().then(() => {
-        console.log('hoge')
-      })
+      videoRef.current.play()
     }
   }
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	apiErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
@@ -21,17 +22,20 @@ type PhotoService struct {
 	queries         *db.Queries
 	standardStorage storage.StorageService
 	longTermStorage storage.StorageService
+	faceService     *FaceService
 }
 
 func NewPhotoService(
 	queries *db.Queries,
 	standardStorage storage.StorageService,
 	longTermStorage storage.StorageService,
+	faceService *FaceService,
 ) *PhotoService {
 	return &PhotoService{
 		queries:         queries,
 		standardStorage: standardStorage,
 		longTermStorage: longTermStorage,
+		faceService:     faceService,
 	}
 }
 
@@ -66,12 +70,12 @@ type UploadPhotoReturn struct {
 /*
 *
 
-Photo 업로드
-1. 파일을 업로드하고 썸네일 이미지를 생성합니다.
-2. 파일 확장자를 확인하고 이미지 파일인 경우 썸네일 이미지를 생성합니다.
-3. 썸네일 이미지를 생성하고 원본 이미지를 저장합니다.
-4. 썸네일 이미지와 원본 이미지의 URL을 반환합니다.
-5. 얼굴 인식 결과를 반환합니다.
+	Photo 업로드
+	1. 파일을 업로드하고 썸네일 이미지를 생성합니다.
+	2. 파일 확장자를 확인하고 이미지 파일인 경우 썸네일 이미지를 생성합니다.
+	3. 썸네일 이미지를 생성하고 원본 이미지를 저장합니다.
+	4. 썸네일 이미지와 원본 이미지의 URL을 반환합니다.
+	5. 얼굴 인식 결과를 반환합니다.
 */
 func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string) (*UploadPhotoReturn, error) {
 
@@ -86,40 +90,33 @@ func (s *PhotoService) UploadPhoto(file *multipart.FileHeader, uploadPath string
 	// file resize
 	// convert to jpeg
 	// get exif
-	resizedFile := new(bytes.Buffer)
-	imgHandler := imageHelper.NewImageHandler(originalFile, resizedFile, ext)
-	err = imgHandler.ResizeImage(1500)
-	if err != nil {
-		log.Println("resize error: ", err)
-		return nil, err
-	}
-	// resizedFile의 데이터를 새로운 Reader로 만들어서 전달 (버퍼가 이미 읽혔을 수 있으므로)
-	faceDetections, err := GetFaceDetection(bytes.NewReader(resizedFile.Bytes()))
-	if err != nil {
-		log.Println("resize error: ", err)
-		return nil, err
-	}
 
+	imgHandler := imageHelper.NewImageHandler(originalFile, ext)
+
+	// resizedFile의 데이터를 새로운 Reader로 만들어서 전달 (버퍼가 이미 읽혔을 수 있으므로)
+	faceDetections, err := GetFaceDetection(bytes.NewReader(imgHandler.ResizedFile.Bytes()))
+	if err != nil {
+		log.Println("resize error: ", err)
+		return nil, err
+	}
 	photoCreatedAt, _ := imgHandler.Exif.DateTime()
 
 	if photoCreatedAt.IsZero() {
 		photoCreatedAt = time.Now()
 	}
 
-	originalFilename := strings.Split(file.Filename, ".")[0]
-
 	var folderName string
 
 	now := time.Now()
 	folderName = uploadPath + "/" + now.Format("2006-01-02")
-
-	thumbnailUrl, err := s.standardStorage.SaveFile(resizedFile, folderName, originalFilename+".jpeg")
+	filename := uuid.New().String()
+	thumbnailUrl, err := s.standardStorage.SaveFile(imgHandler.ResizedFile, folderName, filename+".jpeg")
 	if err != nil {
 		log.Println("Standard Storage Error: ", err)
 		return nil, err
 	}
 
-	originalUrl, err := s.longTermStorage.SaveFile(imgHandler.OriginalFile, folderName, file.Filename)
+	originalUrl, err := s.longTermStorage.SaveFile(imgHandler.OriginalFile, folderName, filename+"."+ext)
 	if err != nil {
 		log.Println("Longterm Storage Error: ", err)
 		return nil, err
@@ -244,9 +241,8 @@ func (s *PhotoService) GetPhotoRange(ctx context.Context, clanGroupId int32) ([]
 /*
 *
 
-신원 ID를 기반으로 랜덤 사진을 가져옵니다.
-1. 신원 ID를 기반으로 랜덤 사진을 가져옵니다.
-2. 사진을 반환합니다.
+ 1. Identity ID를 기반으로 랜덤 사진을 가져옵니다.
+ 2. 사진 정보와 얼굴 위치정보를 반환합니다.
 */
 func (s *PhotoService) GetIdentityRandomPhoto(ctx context.Context, clanGroupId int32, identityId int32) (*db.GetIdentityRandomPhotoRow, error) {
 	photo, err := s.queries.GetIdentityRandomPhoto(ctx, db.GetIdentityRandomPhotoParams{
@@ -254,10 +250,77 @@ func (s *PhotoService) GetIdentityRandomPhoto(ctx context.Context, clanGroupId i
 		IdentityID:  identityId,
 	})
 	if err == sql.ErrNoRows {
-		return nil, apiErrors.ErrPhotoNotFound
+		return nil, apiErrors.NewNotFoundError("photo")
 	}
 	if err != nil {
 		return nil, err
 	}
 	return &photo, nil
+}
+
+type UploadAndSavePhotoResult struct {
+	Photo          *db.Photo
+	FaceDetections []db.GetFaceDetectionsByPhotoIdRow
+}
+
+/*
+*
+
+	사진 업로드 및 저장
+	1. 파일을 업로드하고 썸네일 이미지를 생성합니다.
+	2. 사진을 데이터베이스에 저장합니다.
+	3. 얼굴 인식 결과를 저장합니다.
+	4. 저장된 사진과 얼굴 인식 결과를 반환합니다.
+*/
+func (s *PhotoService) UploadAndSavePhoto(ctx context.Context, file *multipart.FileHeader, groupId int32, albumId int32) (*UploadAndSavePhotoResult, error) {
+	// 업로드 경로 생성
+	uploadPath := s.CreateUploadPath(groupId, albumId)
+
+	// 사진 업로드
+	uploadResult, err := s.UploadPhoto(file, uploadPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// 사진 저장 파라미터 생성
+	params := db.CreatePhotoParams{
+		FileName:       uploadResult.FileName,
+		PhotoCreatedAt: uploadResult.PhotoCreatedAt,
+		ThumbnailUrl:   uploadResult.ThumbnailUrl,
+		Width:          uploadResult.Width,
+		Height:         uploadResult.Height,
+		Orientation:    uploadResult.Orientation,
+		GroupID:        groupId,
+		AlbumID:        albumId,
+	}
+
+	if uploadResult.OriginalUrl != "" {
+		params.OriginalUrl = sql.NullString{String: uploadResult.OriginalUrl, Valid: true}
+	}
+
+	// 사진 저장
+	photo, err := s.CreatePhoto(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	// 얼굴 인식 결과 저장
+	_, err = s.faceService.SearchAndSaveFaceDetections(ctx, groupId, photo.ID, uploadResult.FaceDetections)
+	if err != nil {
+		log.Println("얼굴 인식 결과 저장 실패: ", err)
+		// 얼굴 인식 실패해도 사진은 저장되었으므로 계속 진행
+	}
+
+	// 얼굴 인식 결과 조회
+	faceDetections, err := s.faceService.GetFaceDetections(ctx, photo.ID)
+	if err != nil {
+		log.Println("얼굴 인식 결과 조회 실패: ", err)
+		// 조회 실패해도 빈 배열로 반환
+		faceDetections = []db.GetFaceDetectionsByPhotoIdRow{}
+	}
+
+	return &UploadAndSavePhotoResult{
+		Photo:          photo,
+		FaceDetections: faceDetections,
+	}, nil
 }

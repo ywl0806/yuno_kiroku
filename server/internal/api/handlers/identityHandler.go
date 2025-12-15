@@ -33,11 +33,11 @@ func (h *IdentityHandler) UpdateIdentity(c echo.Context) error {
 
 	err := h.identityService.ValidateUpdateIdentityByIdAndGroupId(c.Request().Context(), updateIdentityRequest.ID, groupId, updateIdentityRequest.Name)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 	identity, err := h.identityService.UpdateIdentityByIdAndGroupId(c.Request().Context(), updateIdentityRequest.ID, groupId, updateIdentityRequest.Name)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 
 	return c.JSON(200, models.NewIdentityResponse(&identity))
@@ -59,7 +59,7 @@ func (h *IdentityHandler) FindIdentityByIdAndGroupId(c echo.Context) error {
 	groupId := middlewares.GetAuthUser(c).GroupId
 	identity, err := h.identityService.FindIdentityByIdAndGroupId(c.Request().Context(), findIdentityByIdAndGroupIdRequest.ID, groupId)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 	return c.JSON(200, models.NewIdentityResponse(&identity))
 }
@@ -72,7 +72,7 @@ func (h *IdentityHandler) FindIdentities(c echo.Context) error {
 	groupId := middlewares.GetAuthUser(c).GroupId
 	identities, err := h.identityService.FindIdentitiesByGroupId(c.Request().Context(), groupId)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 	return c.JSON(200, models.NewIdentityListResponse(identities))
 }

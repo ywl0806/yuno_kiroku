@@ -33,7 +33,7 @@ func (s *IdentityService) FindIdentityByIdAndGroupId(ctx context.Context, id int
 		GroupID: groupId,
 	})
 	if err == sql.ErrNoRows {
-		return db.Identity{}, apiErrors.ErrIdentityNotFound
+		return db.Identity{}, apiErrors.NewNotFoundError("identity")
 	}
 	if err != nil {
 		return db.Identity{}, err
@@ -68,9 +68,6 @@ func (s *IdentityService) UpdateIdentityByIdAndGroupId(ctx context.Context, id i
 
 func (s *IdentityService) ValidateUpdateIdentityByIdAndGroupId(ctx context.Context, id int32, groupId int32, name string) error {
 	_, err := s.FindIdentityByIdAndGroupId(ctx, id, groupId)
-	if err == apiErrors.ErrIdentityNotFound {
-		return apiErrors.ErrIdentityNotFound
-	}
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"github.com/lib/pq"
 )
 
 const createFaceDetection = `-- name: CreateFaceDetection :one
@@ -104,6 +106,31 @@ func (q *Queries) FindMostSimilarFace(ctx context.Context, arg FindMostSimilarFa
 		&i.Distance,
 	)
 	return i, err
+}
+
+const getFaceDetectionsByEmbeddings = `-- name: GetFaceDetectionsByEmbeddings :one
+SELECT
+    fd.embedding
+FROM
+    face_detections AS fd
+    JOIN photos AS p ON fd.photo_id = p.id
+WHERE
+    p.group_id = $1::int
+    AND p.album_id = $2::int
+    AND fd.embedding = ANY($3::vector[])
+`
+
+type GetFaceDetectionsByEmbeddingsParams struct {
+	GroupID    int32
+	AlbumID    int32
+	Embeddings []interface{}
+}
+
+func (q *Queries) GetFaceDetectionsByEmbeddings(ctx context.Context, arg GetFaceDetectionsByEmbeddingsParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getFaceDetectionsByEmbeddings, arg.GroupID, arg.AlbumID, pq.Array(arg.Embeddings))
+	var embedding interface{}
+	err := row.Scan(&embedding)
+	return embedding, err
 }
 
 const getFaceDetectionsByPhotoId = `-- name: GetFaceDetectionsByPhotoId :many

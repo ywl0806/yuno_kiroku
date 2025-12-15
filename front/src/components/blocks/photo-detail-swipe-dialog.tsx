@@ -1,6 +1,6 @@
-import { HeaderContainer } from '../layouts/HeaderContainer'
-import { LivePhoto } from './LivePhoto'
-import { Photo } from '@/types/photo'
+import { LivePhoto } from '@/components/blocks/live-photo'
+import { HeaderContainer } from '@/components/layouts/header-container'
+import { Photo } from '@/types'
 import CloseIcon from '@mui/icons-material/Close'
 import { Dialog, IconButton, Slide } from '@mui/material'
 import { TransitionProps } from '@mui/material/transitions'
@@ -42,7 +42,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           </IconButton>
         </HeaderContainer>
 
-        <div className="my-[2rem] h-[90vh] overflow-y-auto">
+        <div className="my-[2rem] h-[90vh] overflow-y-hidden">
           <Swiper
             slidesPerView={1}
             onSlideChange={(swiper) => {
@@ -52,7 +52,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
             onSwiper={(swiper) => setSwiper(swiper)}
           >
             {photos.map((photo) => (
-              <SwiperSlide key={photo._id} className="flex items-center justify-center px-1">
+              <SwiperSlide key={photo.id} className="flex items-center justify-center px-1">
                 {photo.live_url ? <LivePhoto photo={photo} /> : <img src={photo.thumbnail_url} alt={photo.file_name} />}
               </SwiperSlide>
             ))}

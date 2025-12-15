@@ -36,7 +36,7 @@ func NewFaceService(queries *db.Queries) *FaceService {
 	얼굴 인식 결과를 검색 후 저장
 	1. 얼굴 임베딩을 데이터베이스에서 검색
 	2. 얼굴 임베딩이 있으면 FaceDetection을 생성
-		3. 얼굴 임베딩이 없으면 Identity를 생성 후 FaceDetection을 생성
+	3. 얼굴 임베딩이 없으면 Identity를 생성 후 FaceDetection을 생성
 */
 func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId int32, photoId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
 
@@ -66,6 +66,11 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 
 		// 유사 얼굴 검색 결과가 있으면 해당 사람 ID 설정
 		if similarFace != nil {
+			if similarFace.Distance == 0 {
+				log.Println("Distance is 0")
+				continue
+			}
+
 			faceDetectionParams.IdentityID = similarFace.IdentityID
 		} else {
 			// 유사 얼굴 검색 결과가 없으면 새로운 사람 생성

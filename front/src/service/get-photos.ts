@@ -1,5 +1,6 @@
-import { MyAxiosWithAuth } from '@/lib/myAxios'
-import { Photo } from '@/types/photo'
+import { API_ROUTES } from '@/constants/api-route'
+import { MyAxiosWithAuth } from '@/lib/my-axios'
+import { Photo } from '@/types'
 
 export type GetPhotosParams = {
   from: Date
@@ -9,7 +10,7 @@ export type GetPhotosParams = {
 export type Photos = Photo[]
 
 export const getPhotos = async (options: GetPhotosParams): Promise<Photos> => {
-  const response = await MyAxiosWithAuth.get('/photo', {
+  const response = await MyAxiosWithAuth.get(API_ROUTES.PHOTO.LIST, {
     params: {
       from: options.from.toISOString(),
       to: options.to.toISOString(),

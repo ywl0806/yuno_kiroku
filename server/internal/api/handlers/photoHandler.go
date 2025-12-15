@@ -7,6 +7,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
+	customErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services"
@@ -40,66 +42,25 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 	// 파일 가져오기
 	file, err := c.FormFile("file")
 	if err != nil {
-		log.Println("파일 가져오기 실패: ", err)
-		return echo.NewHTTPError(400, "file is required")
+		return customErrors.NewRequiredError(consts.Photo)
 	}
 
 	// album 쿼리 파라미터 가져오기
 	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
 	if err != nil {
-		return echo.NewHTTPError(400, "album_id is required")
+		return customErrors.NewRequiredError(consts.Album)
 	}
 
 	authUser := middlewares.GetAuthUser(c)
 	groupId := authUser.GroupId
 
-	// 업로드 경로 생성
-	uploadPath := con.photoService.CreateUploadPath(groupId, albumId)
-	// 사진 업로드
-	uploadResult, err := con.photoService.UploadPhoto(file, uploadPath)
-
-	if err != nil {
-		log.Println("사진 업로드 실패: ", err)
-		return echo.NewHTTPError(400, err.Error())
-	}
-
-	// 사진 저장 파라미터
-	var params = db.CreatePhotoParams{}
-
-	params.FileName = uploadResult.FileName
-	params.PhotoCreatedAt = uploadResult.PhotoCreatedAt
-	params.ThumbnailUrl = uploadResult.ThumbnailUrl
-	params.Width = uploadResult.Width
-	params.Height = uploadResult.Height
-	params.Orientation = uploadResult.Orientation
-	params.GroupID = groupId
-	params.AlbumID = albumId
-
-	if uploadResult.OriginalUrl != "" {
-		params.OriginalUrl = sql.NullString{String: uploadResult.OriginalUrl, Valid: true}
-	}
-
-	// 사진 저장
-	photo, err := con.photoService.CreatePhoto(c.Request().Context(), params)
-
-	if err != nil {
-		log.Println("사진 저장 실패: ", err)
-		return err
-	}
-
-	// 얼굴 인식 결과를 저장
-	_, err = con.faceService.SearchAndSaveFaceDetections(c.Request().Context(), groupId, photo.ID, uploadResult.FaceDetections)
-	if err != nil {
-		log.Println("얼굴 인식 결과 저장 실패: ", err)
-		return err
-	}
-
-	faceDetectionRows, err := con.faceService.GetFaceDetections(c.Request().Context(), photo.ID)
+	// 사진 업로드 및 저장 (얼굴 인식 포함)
+	result, err := con.photoService.UploadAndSavePhoto(c.Request().Context(), file, groupId, albumId)
 	if err != nil {
 		return err
 	}
 
-	uploadPhotoResponse := models.NewUploadPhotoResponse(photo, faceDetectionRows)
+	uploadPhotoResponse := models.NewUploadPhotoResponse(result.Photo, result.FaceDetections)
 	return c.JSON(200, uploadPhotoResponse)
 }
 
@@ -176,19 +137,19 @@ func (con *PhotoHandler) UploadLivePhoto(c echo.Context) error {
 	photoFile, err := c.FormFile("photo")
 	if err != nil {
 		log.Println("no photo formfile error: ", err)
-		return c.JSON(400, err)
+		return customErrors.NewRequiredError(consts.Photo)
 	}
 
 	liveMovie, err := c.FormFile("live")
 	if err != nil {
 		log.Println("no live movie formfile error: ", err)
-		return c.JSON(400, err)
+		return customErrors.NewRequiredError(consts.LiveMovie)
 	}
 	groupId := middlewares.GetAuthUser(c).GroupId
 
 	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
 	if err != nil {
-		return echo.NewHTTPError(400, "album_id is required")
+		return customErrors.NewRequiredError(consts.Album)
 	}
 	uploadPath := con.photoService.CreateUploadPath(groupId, albumId)
 
@@ -237,12 +198,12 @@ func (con *PhotoHandler) UploadLivePhoto(c echo.Context) error {
 func (con *PhotoHandler) GetIdentityRandomPhoto(c echo.Context) error {
 	identityId, err := utils.ConvertToInt32(c.Param("identity_id"))
 	if err != nil {
-		return echo.NewHTTPError(400, "identity_id is required")
+		return customErrors.NewRequiredError(consts.Identity)
 	}
 	authUser := middlewares.GetAuthUser(c)
 	photo, err := con.photoService.GetIdentityRandomPhoto(c.Request().Context(), authUser.ClanGroupId, identityId)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 	return c.JSON(200, models.NewIdentityRandomPhotoResponse(photo))
 }

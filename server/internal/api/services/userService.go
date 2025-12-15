@@ -31,7 +31,7 @@ func (s *UserService) FindUserByUsername(ctx context.Context, username string) (
 		return db.User{}, err
 	}
 	if user.ID == 0 {
-		return db.User{}, apiErrors.ErrUserNotFound
+		return db.User{}, apiErrors.NewNotFoundError("user")
 	}
 	return user, nil
 }
@@ -62,7 +62,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 		return err
 	}
 	if group.ID == 0 {
-		return apiErrors.ErrGroupNotFound
+		return apiErrors.NewNotFoundError("group")
 	}
 	return nil
 }
@@ -74,7 +74,7 @@ func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID i
 		return err
 	}
 	if clanGroup.ID == 0 {
-		return apiErrors.ErrClanGroupNotFound
+		return apiErrors.NewNotFoundError("clan group")
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func (s *UserService) validateDuplicateUsername(ctx context.Context, username st
 		return err
 	}
 	if user.ID != 0 {
-		return apiErrors.ErrUsernameAlreadyExists
+		return apiErrors.NewAlreadyExistsError("username")
 	}
 	return nil
 }

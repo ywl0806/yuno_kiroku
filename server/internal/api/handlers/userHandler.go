@@ -77,11 +77,11 @@ func (con *UserHandler) CreateUser(c echo.Context) error {
 
 	err = con.userService.ValidateCreateUserParams(ctx, params)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 	user, err := con.userService.CreateUser(ctx, params)
 	if err != nil {
-		return HandleServiceError(err)
+		return err
 	}
 
 	return c.JSON(200, user)

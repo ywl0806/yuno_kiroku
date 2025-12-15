@@ -1,7 +1,8 @@
-import { MyAxios, MyAxiosWithAuth } from '../lib/myAxios'
+import { MyAxios, MyAxiosWithAuth } from '../lib/my-axios'
 import { Button } from '@/components/ui/button'
 import { Form, FormField, FormItem, FormLabel } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { API_ROUTES } from '@/constants/api-route'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -26,7 +27,7 @@ export const LoginPage = () => {
   })
 
   const { mutate: login } = useMutation({
-    mutationFn: (data: LoginForm) => MyAxios.post('/auth/login', data),
+    mutationFn: (data: LoginForm) => MyAxios.post(API_ROUTES.AUTH.LOGIN, data),
     onSuccess: (data) => {
       MyAxiosWithAuth.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${data.data.token}`

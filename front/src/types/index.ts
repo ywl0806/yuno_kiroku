@@ -16,3 +16,15 @@ export interface Photo {
   created_by: string
   updated_by: string
 }
+
+export type PhotoRange = {
+  year: number
+  month: number
+}
+
+export interface Album {
+  id: number
+  name: string
+  created_at: string
+  updated_at: string
+}
