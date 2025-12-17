@@ -69,6 +69,19 @@ func (e *InternalError) Is(target error) bool {
 	return ok
 }
 
+type DuplicateError struct {
+	Field string
+}
+
+func (e *DuplicateError) Error() string {
+	return utils.GetMessage(consts.ErrDuplicate, map[string]string{"field": e.Field})
+}
+
+func (e *DuplicateError) Is(target error) bool {
+	_, ok := target.(*DuplicateError)
+	return ok
+}
+
 // Helper functions
 func NewNotFoundError(field string) error {
 	return &NotFoundError{Field: field}
@@ -88,4 +101,8 @@ func NewRequiredError(field string) error {
 
 func NewInternalError() error {
 	return &InternalError{}
+}
+
+func NewDuplicateError(field string) error {
+	return &DuplicateError{Field: field}
 }

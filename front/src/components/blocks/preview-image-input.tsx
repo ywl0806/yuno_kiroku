@@ -1,8 +1,8 @@
 import { PhotoGrid } from './photo-grid'
 import { Button } from '@/components/ui/button'
-import { UPLOAD_STATUS, UploadPhoto, UploadPhotoStatus } from '@/feature/home/types'
+import { UPLOAD_STATUS, UploadPhoto } from '@/types'
 import { Check, Loader2, Plus, X } from 'lucide-react'
-import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction } from 'react'
+import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction, RefObject } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
 
 interface ImageDimensions {
@@ -34,15 +34,15 @@ const getImageDimensions = (file: File): Promise<ImageDimensions> => {
 }
 
 type Props = {
+  inputRef?: RefObject<HTMLInputElement>
   images: UploadPhoto[]
   setImages: Dispatch<SetStateAction<UploadPhoto[]>>
-  uploadPhotoStatus: UploadPhotoStatus
 }
 
-export const PreviewImageInput: FC<Props> = ({ images, setImages, uploadPhotoStatus }) => {
+export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages }) => {
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions[]>([])
 
-  const imgInputRef = useRef<HTMLInputElement>(null)
+  const imgInputRef = inputRef ?? useRef<HTMLInputElement>(null)
 
   // 이미지 크기를 비동기로 로드
   useEffect(() => {
@@ -61,7 +61,10 @@ export const PreviewImageInput: FC<Props> = ({ images, setImages, uploadPhotoSta
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
-      setImages((prev) => [...prev, ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file) }))])
+      setImages((prev) => [
+        ...prev,
+        ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.IDLE })),
+      ])
     }
   }
 
@@ -106,16 +109,18 @@ export const PreviewImageInput: FC<Props> = ({ images, setImages, uploadPhotoSta
                     size="icon"
                     className="rounded-full"
                     onClick={() => handleRemove(props.layout.index)}
+                    disabled={
+                      images[props.layout.index].status === UPLOAD_STATUS.PENDING ||
+                      images[props.layout.index].status === UPLOAD_STATUS.SUCCESS
+                    }
                   >
                     <X />
                   </Button>
                 </div>
                 <div className="bg-gray-500/40 absolute inset-0 flex items-center justify-center">
-                  {uploadPhotoStatus[props.layout.index] === UPLOAD_STATUS.PENDING && (
-                    <Loader2 className="animate-spin" />
-                  )}
-                  {uploadPhotoStatus[props.layout.index] === UPLOAD_STATUS.SUCCESS && <Check className="text-white" />}
-                  {uploadPhotoStatus[props.layout.index] === UPLOAD_STATUS.ERROR && <X className="text-red-500" />}
+                  {images[props.layout.index].status === UPLOAD_STATUS.PENDING && <Loader2 className="animate-spin" />}
+                  {images[props.layout.index].status === UPLOAD_STATUS.SUCCESS && <Check className="text-white" />}
+                  {images[props.layout.index].status === UPLOAD_STATUS.ERROR && <X className="text-red-500" />}
                 </div>
                 {props.renderDefaultPhoto()}
               </div>

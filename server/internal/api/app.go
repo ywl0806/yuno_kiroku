@@ -39,7 +39,7 @@ func Init(e *echo.Echo) {
 
 	userService := services.NewUserService(queries)
 	faceService := services.NewFaceService(queries)
-	photoService := services.NewPhotoService(queries, sStorage, lStorage, faceService)
+	photoService := services.NewPhotoService(queries, sStorage, lStorage)
 	identityService := services.NewIdentityService(queries)
 	albumService := services.NewAlbumService(queries)
 	userHandler := handlers.NewUserHandler(userService)

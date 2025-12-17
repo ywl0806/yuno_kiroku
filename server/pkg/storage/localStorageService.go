@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -17,7 +16,7 @@ func NewLocalStorageService(rootDir string) *LocalStorageService {
 	}
 }
 
-func (s *LocalStorageService) SaveFile(file io.Reader, filePath string, fileName string) (string, error) {
+func (s *LocalStorageService) SaveFile(file []byte, filePath string, fileName string) (string, error) {
 
 	dirPath := filepath.Join("uploads", s.rootDir, filePath)
 
@@ -35,7 +34,7 @@ func (s *LocalStorageService) SaveFile(file io.Reader, filePath string, fileName
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, file); err != nil {
+	if _, err := dst.Write(file); err != nil {
 		return "", err
 	}
 

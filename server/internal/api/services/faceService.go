@@ -143,7 +143,7 @@ func (s *FaceService) GetFaceDetections(ctx context.Context, photoId int32) ([]d
 		*[]FaceDetection: 얼굴 인식 결과
 		error: 얼굴 인식 실패시 에러
 */
-func GetFaceDetection(image io.Reader) (*[]models.FaceDetection, error) {
+func (s *FaceService) GetFaceDetection(image []byte) (*[]models.FaceDetection, error) {
 
 	// API URL 없으면 에러
 	aiApiUrl := os.Getenv("AI_API_URL")
@@ -160,7 +160,7 @@ func GetFaceDetection(image io.Reader) (*[]models.FaceDetection, error) {
 		return nil, err
 	}
 	// 파일 내용 복사
-	copiedBytes, err := io.Copy(part, image)
+	copiedBytes, err := part.Write(image)
 	if err != nil {
 		return nil, err
 	}

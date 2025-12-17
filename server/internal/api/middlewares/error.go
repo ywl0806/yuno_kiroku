@@ -14,6 +14,7 @@ type ErrorHandler struct {
 	invalidErr       *customErrors.InvalidError
 	requiredErr      *customErrors.RequiredError
 	internalErr      *customErrors.InternalError
+	duplicateErr     *customErrors.DuplicateError
 }
 
 func NewErrorHandler() *ErrorHandler {
@@ -49,6 +50,8 @@ func (e *ErrorHandler) HandleServiceError(err error) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case errors.As(err, &e.internalErr):
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	case errors.As(err, &e.duplicateErr):
+		return echo.NewHTTPError(http.StatusConflict, err.Error())
 	default:
 		// 알 수 없는 에러는 500으로 처리
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")

@@ -1,9 +1,9 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -31,7 +31,7 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 	return &S3StorageService{bucketName: bucketName, client: client}
 }
 
-func (s *S3StorageService) SaveFile(file io.Reader, filePath string, fileName string) (string, error) {
+func (s *S3StorageService) SaveFile(file []byte, filePath string, fileName string) (string, error) {
 	ctx := context.Background()
 
 	fileKey := fmt.Sprintf("%s/%s", filePath, fileName)
@@ -39,7 +39,7 @@ func (s *S3StorageService) SaveFile(file io.Reader, filePath string, fileName st
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fileKey),
-		Body:   file,
+		Body:   bytes.NewReader(file),
 	})
 
 	if err != nil {

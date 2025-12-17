@@ -7,14 +7,15 @@ INSERT INTO
         original_url,
         live_url,
         original_live_url,
-        width,
-        height,
-        orientation,
+        original_width,
+        original_height,
+        thumbnail_width,
+        thumbnail_height,
         photo_created_at,
         file_name
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING
     id,
     group_id,
@@ -23,9 +24,10 @@ RETURNING
     original_url,
     live_url,
     original_live_url,
-    width,
-    height,
-    orientation,
+    original_width,
+    original_height,
+    thumbnail_width,
+    thumbnail_height,
     photo_created_at,
     file_name,
     created_at,
@@ -93,4 +95,16 @@ FROM
 WHERE
     acgp.clan_group_id = sqlc.arg (clan_group_id)::int
     AND acgp.permission = 'R';
-    
+
+-- name: GetPhotoByFaceDetection :one
+SELECT
+    p.*
+FROM
+    photos AS p
+    INNER JOIN face_detections AS fd ON p.id = fd.photo_id
+WHERE
+    p.group_id = sqlc.arg(group_id)::int
+    AND fd.embedding = ANY(sqlc.arg(embeddings)::vector[])
+GROUP BY
+    p.id
+LIMIT 1;

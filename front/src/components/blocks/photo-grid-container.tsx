@@ -1,7 +1,6 @@
-import { PhotoDetailSwipeDialog } from './photo-detail-swipe-dialog'
-import { PhotoGrid } from './photo-grid'
+import { PhotoDetailSwipeDialog } from '@/components/blocks/photo-detail-swipe-dialog'
+import { PhotoGrid } from '@/components/blocks/photo-grid'
 import { useGetPhotos } from '@/feature/home/hooks/use-get-photos'
-import { resizeImageView } from '@/utils/calculateImageSize'
 import { FC, useMemo, useState } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
 
@@ -18,13 +17,11 @@ export const PhotoGridContainer: FC<Props> = ({ year, month }) => {
   const photoAlbum: AlbumPhoto[] = useMemo(() => {
     if (!photos) return []
     return photos.map((photo) => {
-      const { width, height } = resizeImageView(photo.width, photo.height, 1500, 1500, photo.orientation)
-
       return {
         key: photo.id,
         src: photo.thumbnail_url,
-        width: width,
-        height: height,
+        width: photo.thumbnail_width,
+        height: photo.thumbnail_height,
         alt: photo.file_name,
       }
     })

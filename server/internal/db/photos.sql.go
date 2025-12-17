@@ -9,6 +9,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 const createPhoto = `-- name: CreatePhoto :one
@@ -20,14 +22,15 @@ INSERT INTO
         original_url,
         live_url,
         original_live_url,
-        width,
-        height,
-        orientation,
+        original_width,
+        original_height,
+        thumbnail_width,
+        thumbnail_height,
         photo_created_at,
         file_name
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING
     id,
     group_id,
@@ -36,9 +39,10 @@ RETURNING
     original_url,
     live_url,
     original_live_url,
-    width,
-    height,
-    orientation,
+    original_width,
+    original_height,
+    thumbnail_width,
+    thumbnail_height,
     photo_created_at,
     file_name,
     created_at,
@@ -52,9 +56,10 @@ type CreatePhotoParams struct {
 	OriginalUrl     sql.NullString
 	LiveUrl         sql.NullString
 	OriginalLiveUrl sql.NullString
-	Width           int32
-	Height          int32
-	Orientation     int32
+	OriginalWidth   sql.NullInt32
+	OriginalHeight  sql.NullInt32
+	ThumbnailWidth  int32
+	ThumbnailHeight int32
 	PhotoCreatedAt  time.Time
 	FileName        string
 }
@@ -67,9 +72,10 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo
 		arg.OriginalUrl,
 		arg.LiveUrl,
 		arg.OriginalLiveUrl,
-		arg.Width,
-		arg.Height,
-		arg.Orientation,
+		arg.OriginalWidth,
+		arg.OriginalHeight,
+		arg.ThumbnailWidth,
+		arg.ThumbnailHeight,
 		arg.PhotoCreatedAt,
 		arg.FileName,
 	)
@@ -82,9 +88,10 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo
 		&i.OriginalUrl,
 		&i.LiveUrl,
 		&i.OriginalLiveUrl,
-		&i.Width,
-		&i.Height,
-		&i.Orientation,
+		&i.OriginalWidth,
+		&i.OriginalHeight,
+		&i.ThumbnailWidth,
+		&i.ThumbnailHeight,
 		&i.PhotoCreatedAt,
 		&i.FileName,
 		&i.CreatedAt,
@@ -95,7 +102,7 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (Photo
 
 const findPhotosByPhotoCreatedAt = `-- name: FindPhotosByPhotoCreatedAt :many
 SELECT
-    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.width, p.height, p.orientation, p.photo_created_at, p.file_name, p.created_at, p.updated_at
+    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.original_width, p.original_height, p.thumbnail_width, p.thumbnail_height, p.photo_created_at, p.file_name, p.created_at, p.updated_at
 FROM
     photos AS p
     INNER JOIN albums AS a ON p.album_id = a.id
@@ -132,9 +139,10 @@ func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotos
 			&i.OriginalUrl,
 			&i.LiveUrl,
 			&i.OriginalLiveUrl,
-			&i.Width,
-			&i.Height,
-			&i.Orientation,
+			&i.OriginalWidth,
+			&i.OriginalHeight,
+			&i.ThumbnailWidth,
+			&i.ThumbnailHeight,
 			&i.PhotoCreatedAt,
 			&i.FileName,
 			&i.CreatedAt,
@@ -155,7 +163,7 @@ func (q *Queries) FindPhotosByPhotoCreatedAt(ctx context.Context, arg FindPhotos
 
 const getIdentityRandomPhoto = `-- name: GetIdentityRandomPhoto :one
 SELECT
-    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.width, p.height, p.orientation, p.photo_created_at, p.file_name, p.created_at, p.updated_at,
+    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.original_width, p.original_height, p.thumbnail_width, p.thumbnail_height, p.photo_created_at, p.file_name, p.created_at, p.updated_at,
     fd.location_top,
     fd.location_right,
     fd.location_bottom,
@@ -189,9 +197,10 @@ type GetIdentityRandomPhotoRow struct {
 	OriginalUrl     sql.NullString
 	LiveUrl         sql.NullString
 	OriginalLiveUrl sql.NullString
-	Width           int32
-	Height          int32
-	Orientation     int32
+	OriginalWidth   sql.NullInt32
+	OriginalHeight  sql.NullInt32
+	ThumbnailWidth  int32
+	ThumbnailHeight int32
 	PhotoCreatedAt  time.Time
 	FileName        string
 	CreatedAt       time.Time
@@ -213,9 +222,10 @@ func (q *Queries) GetIdentityRandomPhoto(ctx context.Context, arg GetIdentityRan
 		&i.OriginalUrl,
 		&i.LiveUrl,
 		&i.OriginalLiveUrl,
-		&i.Width,
-		&i.Height,
-		&i.Orientation,
+		&i.OriginalWidth,
+		&i.OriginalHeight,
+		&i.ThumbnailWidth,
+		&i.ThumbnailHeight,
 		&i.PhotoCreatedAt,
 		&i.FileName,
 		&i.CreatedAt,
@@ -224,6 +234,48 @@ func (q *Queries) GetIdentityRandomPhoto(ctx context.Context, arg GetIdentityRan
 		&i.LocationRight,
 		&i.LocationBottom,
 		&i.LocationLeft,
+	)
+	return i, err
+}
+
+const getPhotoByFaceDetection = `-- name: GetPhotoByFaceDetection :one
+SELECT
+    p.id, p.group_id, p.album_id, p.thumbnail_url, p.original_url, p.live_url, p.original_live_url, p.original_width, p.original_height, p.thumbnail_width, p.thumbnail_height, p.photo_created_at, p.file_name, p.created_at, p.updated_at
+FROM
+    photos AS p
+    INNER JOIN face_detections AS fd ON p.id = fd.photo_id
+WHERE
+    p.group_id = $1::int
+    AND fd.embedding = ANY($2::vector[])
+GROUP BY
+    p.id
+LIMIT 1
+`
+
+type GetPhotoByFaceDetectionParams struct {
+	GroupID    int32
+	Embeddings []interface{}
+}
+
+func (q *Queries) GetPhotoByFaceDetection(ctx context.Context, arg GetPhotoByFaceDetectionParams) (Photo, error) {
+	row := q.db.QueryRowContext(ctx, getPhotoByFaceDetection, arg.GroupID, pq.Array(arg.Embeddings))
+	var i Photo
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.AlbumID,
+		&i.ThumbnailUrl,
+		&i.OriginalUrl,
+		&i.LiveUrl,
+		&i.OriginalLiveUrl,
+		&i.OriginalWidth,
+		&i.OriginalHeight,
+		&i.ThumbnailWidth,
+		&i.ThumbnailHeight,
+		&i.PhotoCreatedAt,
+		&i.FileName,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

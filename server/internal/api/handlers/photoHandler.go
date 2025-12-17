@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"log"
 	"time"
 
@@ -51,16 +50,71 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 		return customErrors.NewRequiredError(consts.Album)
 	}
 
+	// 그룹 ID 가져오기
 	authUser := middlewares.GetAuthUser(c)
 	groupId := authUser.GroupId
 
-	// 사진 업로드 및 저장 (얼굴 인식 포함)
-	result, err := con.photoService.UploadAndSavePhoto(c.Request().Context(), file, groupId, albumId)
+	// 컨텍스트 가져오기
+	ctx := c.Request().Context()
+
+	// 이미지 핸들러 생성(이미지 리사이즈)
+	imgHandler, err := con.photoService.HandleImage(file)
+	if err != nil {
+		return err
+	}
+	// 얼굴 인식 결과 가져오기(이미지 리사이즈 된 이미지 이용)
+	faceDetections, err := con.faceService.GetFaceDetection(imgHandler.ResizedFile)
 	if err != nil {
 		return err
 	}
 
-	uploadPhotoResponse := models.NewUploadPhotoResponse(result.Photo, result.FaceDetections)
+	// 사진 중복체크
+	err = con.photoService.CheckPhotoDuplicateByFaceDetection(ctx, groupId, albumId, *faceDetections)
+	if err != nil {
+		return err
+	}
+
+	// 업로드 경로 생성
+	uploadPath := con.photoService.CreateUploadPath(groupId, albumId)
+
+	// 썸네일 이미지와 원본 이미지 업로드
+	thumbnailUrl, originalUrl, err := con.photoService.UploadPhoto(imgHandler, uploadPath)
+	if err != nil {
+		return err
+	}
+
+	// 사진 저장 파라미터 생성
+	createPhotoParams := services.CreatePhotoParams{
+		ThumbnailUrl:     thumbnailUrl,
+		OriginalUrl:      originalUrl,
+		ImageHandler:     imgHandler,
+		GroupId:          groupId,
+		AlbumId:          albumId,
+		OriginalFilename: file.Filename,
+	}
+
+	// 사진 저장
+	photo, err := con.photoService.CreatePhoto(ctx, &createPhotoParams)
+	if err != nil {
+		return err
+	}
+	// 얼굴 인식 결과 저장
+	_, err = con.faceService.SearchAndSaveFaceDetections(ctx, groupId, photo.ID, *faceDetections)
+	if err != nil {
+		log.Println("얼굴 인식 결과 저장 실패: ", err)
+		// 얼굴 인식 실패해도 사진은 저장되었으므로 계속 진행
+	}
+
+	// 얼굴 인식 결과 조회
+	faceDetectionRows, err := con.faceService.GetFaceDetections(ctx, photo.ID)
+	if err != nil {
+		log.Println("얼굴 인식 결과 조회 실패: ", err)
+		// 조회 실패해도 빈 배열로 반환
+		faceDetectionRows = []db.GetFaceDetectionsByPhotoIdRow{}
+	}
+
+	// 사진 응답 생성
+	uploadPhotoResponse := models.NewUploadPhotoResponse(photo, faceDetectionRows)
 	return c.JSON(200, uploadPhotoResponse)
 }
 
@@ -151,38 +205,59 @@ func (con *PhotoHandler) UploadLivePhoto(c echo.Context) error {
 	if err != nil {
 		return customErrors.NewRequiredError(consts.Album)
 	}
+	// 컨텍스트 가져오기
+	ctx := c.Request().Context()
+
+	// 이미지 핸들러 생성(이미지 리사이즈)
+	imgHandler, err := con.photoService.HandleImage(photoFile)
+	if err != nil {
+		return err
+	}
+	// 얼굴 인식 결과 가져오기(이미지 리사이즈 된 이미지 이용)
+	faceDetections, err := con.faceService.GetFaceDetection(imgHandler.ResizedFile)
+	if err != nil {
+		return err
+	}
+
+	// 업로드 경로 생성
 	uploadPath := con.photoService.CreateUploadPath(groupId, albumId)
 
-	uploadPhotoResult, err := con.photoService.UploadPhoto(photoFile, uploadPath)
+	// 썸네일 이미지와 원본 이미지 업로드
+	thumbnailUrl, originalUrl, err := con.photoService.UploadPhoto(imgHandler, uploadPath)
 	if err != nil {
-		log.Println("upload photo error: ", err)
-		return err
-	}
-	uploadLiveMovieResult, err := con.photoService.UploadLiveMovie(liveMovie)
-
-	if err != nil {
-		log.Println("upload live photo error: ", err)
 		return err
 	}
 
-	params := db.CreatePhotoParams{
-		GroupID:         groupId,
-		AlbumID:         albumId,
-		ThumbnailUrl:    uploadPhotoResult.ThumbnailUrl,
-		OriginalUrl:     sql.NullString{String: uploadPhotoResult.OriginalUrl, Valid: true},
-		LiveUrl:         sql.NullString{String: uploadLiveMovieResult.LiveUrl, Valid: true},
-		OriginalLiveUrl: sql.NullString{String: uploadLiveMovieResult.OriginalLiveUrl, Valid: true},
-		FileName:        photoFile.Filename,
-		PhotoCreatedAt:  uploadPhotoResult.PhotoCreatedAt,
-		Width:           uploadPhotoResult.Width,
-		Height:          uploadPhotoResult.Height,
-		Orientation:     uploadPhotoResult.Orientation,
+	// 라이브 무비 업로드
+	liveUrl, originalLiveUrl, err := con.photoService.UploadLiveMovie(liveMovie)
+	if err != nil {
+		log.Println("upload live movie error: ", err)
+		return err
 	}
 
-	photo, err := con.photoService.CreatePhoto(c.Request().Context(), params)
+	// 사진 저장 파라미터 생성
+	createPhotoParams := services.CreatePhotoParams{
+		ThumbnailUrl:     thumbnailUrl,
+		OriginalUrl:      originalUrl,
+		LiveUrl:          liveUrl,
+		OriginalLiveUrl:  originalLiveUrl,
+		ImageHandler:     imgHandler,
+		GroupId:          groupId,
+		AlbumId:          albumId,
+		OriginalFilename: photoFile.Filename,
+	}
+
+	// 사진 저장
+	photo, err := con.photoService.CreatePhoto(ctx, &createPhotoParams)
 	if err != nil {
-		log.Println("upload photo error: ", err)
 		return err
+	}
+
+	// 얼굴 인식 결과 저장
+	_, err = con.faceService.SearchAndSaveFaceDetections(ctx, groupId, photo.ID, *faceDetections)
+	if err != nil {
+		log.Println("얼굴 인식 결과 저장 실패: ", err)
+		// 얼굴 인식 실패해도 사진은 저장되었으므로 계속 진행
 	}
 
 	return c.JSON(200, models.NewPhotoResponse(photo))

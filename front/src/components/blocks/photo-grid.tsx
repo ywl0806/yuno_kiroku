@@ -38,17 +38,11 @@ export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto }) => {
       targetRowHeight={300}
       renderPhoto={(props) => {
         const { photo, wrapperStyle, ...rest } = props
+
         return renderPhoto ? (
           renderPhoto(props)
         ) : (
-          <LazyLoadImage
-            src={photo.src}
-            alt={photo.alt}
-            style={wrapperStyle}
-            effect="blur"
-            onClick={rest.imageProps.onClick}
-            {...rest}
-          />
+          <LazyLoadImage src={photo.src} alt={photo.alt} effect="blur" onClick={rest.imageProps.onClick} {...rest} />
         )
       }}
     />

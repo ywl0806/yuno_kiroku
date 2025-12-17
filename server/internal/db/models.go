@@ -67,6 +67,15 @@ type Identity struct {
 	UpdatedAt time.Time
 }
 
+type IdentityFaceImg struct {
+	ID         int32
+	IdentityID int32
+	PhotoID    int32
+	ImgUrl     string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type Photo struct {
 	ID              int32
 	GroupID         int32
@@ -75,9 +84,10 @@ type Photo struct {
 	OriginalUrl     sql.NullString
 	LiveUrl         sql.NullString
 	OriginalLiveUrl sql.NullString
-	Width           int32
-	Height          int32
-	Orientation     int32
+	OriginalWidth   sql.NullInt32
+	OriginalHeight  sql.NullInt32
+	ThumbnailWidth  int32
+	ThumbnailHeight int32
 	PhotoCreatedAt  time.Time
 	FileName        string
 	CreatedAt       time.Time

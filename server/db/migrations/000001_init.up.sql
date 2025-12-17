@@ -67,9 +67,10 @@ CREATE TABLE IF NOT EXISTS photos (
     original_url VARCHAR(255),
     live_url VARCHAR(255),
     original_live_url VARCHAR(255),
-    width INTEGER NOT NULL,
-    height INTEGER NOT NULL,
-    orientation INTEGER NOT NULL,
+    original_width INTEGER,
+    original_height INTEGER,
+    thumbnail_width INTEGER NOT NULL,
+    thumbnail_height INTEGER NOT NULL,
     photo_created_at TIMESTAMP NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -81,6 +82,16 @@ CREATE TABLE IF NOT EXISTS identities (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     group_id INTEGER NOT NULL REFERENCES groups (id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 신원 얼굴 이미지 테이블
+CREATE TABLE IF NOT EXISTS identity_face_imgs (
+    id SERIAL PRIMARY KEY,
+    identity_id INTEGER NOT NULL REFERENCES identities (id),
+    photo_id INTEGER NOT NULL REFERENCES photos (id),
+    img_url VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -180,6 +191,14 @@ CREATE INDEX IF NOT EXISTS idx_identities_group_id ON identities (group_id);
 
 CREATE INDEX IF NOT EXISTS idx_photos_group_id ON photos (group_id);
 
+CREATE INDEX IF NOT EXISTS idx_photos_group_album_id ON photos (group_id, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_photos_group_created_at ON photos (group_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_photos_album_id ON photos (album_id);
+
+CREATE INDEX IF NOT EXISTS idx_photos_photo_created_at ON photos (photo_created_at);
+
 CREATE INDEX IF NOT EXISTS idx_albums_group_id ON albums (group_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_clan_groups_permissions_album_id ON album_clan_groups_permissions (album_id);
@@ -191,3 +210,7 @@ CREATE INDEX IF NOT EXISTS idx_average_face_embeddings_embedding ON average_face
 CREATE INDEX IF NOT EXISTS idx_photos_group_album_id_created_at ON photos (group_id, album_id, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_photos_group_created_at ON photos (group_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_photo_id ON identity_face_imgs (photo_id);
+
+CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_identity_id ON identity_face_imgs (identity_id);

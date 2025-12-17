@@ -6,6 +6,7 @@ const (
 	ErrInvalid       = "{{.field}} is invalid"
 	ErrRequired      = "{{.field}} is required"
 	ErrInternal      = "internal server error"
+	ErrDuplicate     = "{{.field}} is duplicate"
 )
 
 const (
