@@ -21,20 +21,20 @@ import (
 )
 
 type PhotoService struct {
-	queries         *db.Queries
-	standardStorage storage.StorageService
-	longTermStorage storage.StorageService
+	queries          *db.Queries
+	thumbnailStorage storage.StorageService
+	originalStorage  storage.StorageService
 }
 
 func NewPhotoService(
 	queries *db.Queries,
-	standardStorage storage.StorageService,
-	longTermStorage storage.StorageService,
+	thumbnailStorage storage.StorageService,
+	originalStorage storage.StorageService,
 ) *PhotoService {
 	return &PhotoService{
-		queries:         queries,
-		standardStorage: standardStorage,
-		longTermStorage: longTermStorage,
+		queries:          queries,
+		thumbnailStorage: thumbnailStorage,
+		originalStorage:  originalStorage,
 	}
 }
 
@@ -138,15 +138,15 @@ func (s *PhotoService) UploadPhoto(imageHandler *imageHelper.ImageHelper, upload
 	folderName := uploadPath + "/" + photoCreatedAt.Format("2006-01-02")
 	filename := uuid.New().String()
 
-	thumbnailUrl, err := s.standardStorage.SaveFile(imageHandler.ResizedFile, folderName, filename+".jpeg")
+	thumbnailUrl, err := s.thumbnailStorage.SaveFile(imageHandler.ResizedFile, folderName, filename+".jpeg")
 	if err != nil {
-		log.Println("Standard Storage Error: ", err)
+		log.Println("Thumbnail Storage Error: ", err)
 		return "", "", err
 	}
 
-	originalUrl, err := s.longTermStorage.SaveFile(imageHandler.OriginalFile, folderName, filename+"."+imageHandler.Ext)
+	originalUrl, err := s.originalStorage.SaveFile(imageHandler.OriginalFile, folderName, filename+"."+imageHandler.Ext)
 	if err != nil {
-		log.Println("Longterm Storage Error: ", err)
+		log.Println("Original Storage Error: ", err)
 		return "", "", err
 	}
 
@@ -198,9 +198,9 @@ func (s *PhotoService) UploadLiveMovie(liveMovie *multipart.FileHeader) (string,
 	}
 	// todo: resize live movie
 
-	url, err := s.standardStorage.SaveFile(liveBytes, "live", liveMovie.Filename)
+	url, err := s.thumbnailStorage.SaveFile(liveBytes, "live", liveMovie.Filename)
 	if err != nil {
-		log.Println("Standard Storage Error : ", err)
+		log.Println("Thumbnail Storage Error : ", err)
 		return "", "", err
 	}
 

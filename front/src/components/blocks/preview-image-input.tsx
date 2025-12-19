@@ -1,7 +1,8 @@
 import { PhotoGrid } from './photo-grid'
 import { Button } from '@/components/ui/button'
-import { UPLOAD_STATUS, UploadPhoto } from '@/types'
-import { Check, Loader2, Plus, X } from 'lucide-react'
+import { useUploadPhoto } from '@/providers/upload-photo-provider'
+import { UPLOAD_PHOTO_ERROR_CODE, UPLOAD_STATUS, UploadPhoto } from '@/types'
+import { BrushCleaning, Check, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction, RefObject } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
 
@@ -37,11 +38,12 @@ type Props = {
   inputRef?: RefObject<HTMLInputElement>
   images: UploadPhoto[]
   setImages: Dispatch<SetStateAction<UploadPhoto[]>>
+  albumId: number
 }
 
-export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages }) => {
+export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albumId }) => {
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions[]>([])
-
+  const { reUploadPhoto, isUploaded, isUploading, progress, clearPhotos, photos } = useUploadPhoto()
   const imgInputRef = inputRef ?? useRef<HTMLInputElement>(null)
 
   // 이미지 크기를 비동기로 로드
@@ -59,6 +61,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages }) =>
   }, [images])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isUploaded) return
     const files = e.target.files
     if (files) {
       setImages((prev) => [
@@ -90,10 +93,26 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages }) =>
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="sticky top-2 z-50 flex items-center justify-center gap-2">
-        <Button variant="outline" className="rounded-full" onClick={() => imgInputRef.current?.click()}>
-          <Plus />
-          <span>이미지를 추가하세요</span>
-        </Button>
+        <div className="flex-1" />
+        <div className="flex flex-1 items-center justify-center">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => imgInputRef.current?.click()}
+            disabled={isUploaded}
+          >
+            <Plus />
+            <span>이미지를 추가하세요</span>
+          </Button>
+        </div>
+        <div className="flex flex-1 items-center justify-end">
+          {(!isUploading || progress === 100) && photos.length > 0 && (
+            <Button variant="outline" className="rounded-full" onClick={clearPhotos}>
+              <BrushCleaning className="size-4" />
+              <span>クリア</span>
+            </Button>
+          )}
+        </div>
         <input ref={imgInputRef} hidden type="file" accept="image/*" name="images" multiple onChange={handleChange} />
       </div>
 
@@ -103,25 +122,58 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages }) =>
             photos={photoAlbum}
             renderPhoto={(props) => (
               <div className="relative" key={props.photo.key}>
-                <div className="absolute right-2 top-2 z-10">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => handleRemove(props.layout.index)}
-                    disabled={
-                      images[props.layout.index].status === UPLOAD_STATUS.PENDING ||
-                      images[props.layout.index].status === UPLOAD_STATUS.SUCCESS
-                    }
-                  >
-                    <X />
-                  </Button>
-                </div>
-                <div className="bg-gray-500/40 absolute inset-0 flex items-center justify-center">
-                  {images[props.layout.index].status === UPLOAD_STATUS.PENDING && <Loader2 className="animate-spin" />}
-                  {images[props.layout.index].status === UPLOAD_STATUS.SUCCESS && <Check className="text-white" />}
-                  {images[props.layout.index].status === UPLOAD_STATUS.ERROR && <X className="text-red-500" />}
-                </div>
+                {!isUploaded && (
+                  <div className="absolute right-2 top-2 z-10">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-7 rounded-full"
+                      onClick={() => handleRemove(props.layout.index)}
+                      disabled={isUploaded}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                )}
+                {isUploaded && (
+                  <div className="bg-gray-500/40 absolute inset-0 flex items-center justify-center">
+                    {images[props.layout.index].status === UPLOAD_STATUS.PENDING && (
+                      <Loader2 className="animate-spin text-white" />
+                    )}
+                    {images[props.layout.index].status === UPLOAD_STATUS.SUCCESS && <Check className="text-white" />}
+                    {images[props.layout.index].status === UPLOAD_STATUS.ERROR ? (
+                      images[props.layout.index].error?.code === UPLOAD_PHOTO_ERROR_CODE.DUPLICATE ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="rounded-md bg-white p-2 text-sm text-slate-500">すでに上げてるかも</p>
+                          <Button
+                            variant="default"
+                            className="rounded-full"
+                            onClick={() => reUploadPhoto(props.layout.index, albumId)}
+                          >
+                            <RefreshCcw />
+                            <span>けれどアップロードする</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <X className="text-red-500" />
+                          <p className="rounded-full bg-white p-2 text-sm text-red-500">アップロード失敗</p>
+                          <p className="rounded-md bg-white/90 p-2 text-sm">
+                            {images[props.layout.index].error?.message}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            className="rounded-full bg-white"
+                            onClick={() => reUploadPhoto(props.layout.index, albumId)}
+                          >
+                            <RefreshCcw />
+                            <span>再アップロードする</span>
+                          </Button>
+                        </div>
+                      )
+                    ) : null}
+                  </div>
+                )}
                 {props.renderDefaultPhoto()}
               </div>
             )}

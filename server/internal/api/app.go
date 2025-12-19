@@ -34,14 +34,17 @@ func Init(e *echo.Echo) {
 	queries := db.New(dbTx)
 
 	// Storage service
-	sStorage := storage.NewLocalStorageService("standard")
-	lStorage := storage.NewLocalStorageService("longterm")
+	thumbnailStorage := storage.NewLocalStorageService("thumbnail")
+	originalStorage := storage.NewLocalStorageService("original")
 
+	// service
 	userService := services.NewUserService(queries)
 	faceService := services.NewFaceService(queries)
-	photoService := services.NewPhotoService(queries, sStorage, lStorage)
+	photoService := services.NewPhotoService(queries, thumbnailStorage, originalStorage)
 	identityService := services.NewIdentityService(queries)
 	albumService := services.NewAlbumService(queries)
+
+	// handler
 	userHandler := handlers.NewUserHandler(userService)
 	photoHandler := handlers.NewPhotoHandler(photoService, faceService)
 	authHandler := handlers.NewAuthHandler(userService)

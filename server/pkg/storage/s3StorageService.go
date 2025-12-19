@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/spf13/viper"
 )
 
 // s3 storage service
@@ -26,8 +27,19 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 		log.Fatalf("failed to load config: %v", err)
 		panic(err)
 	}
+	cfg.Region = viper.GetString("AWS_REGION")
 
-	client := s3.NewFromConfig(cfg)
+	storageType := viper.GetString("STORAGE_TYPE")
+	var client *s3.Client
+
+	if storageType == "minio" {
+		client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(viper.GetString("S3_ENDPOINT"))
+			o.UsePathStyle = true
+		})
+	} else {
+		client = s3.NewFromConfig(cfg)
+	}
 	return &S3StorageService{bucketName: bucketName, client: client}
 }
 

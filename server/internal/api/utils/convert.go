@@ -20,3 +20,7 @@ func ConvertStruct(dst any, src any) error {
 func ConvertToInt32(src any) (int32, error) {
 	return cast.ToInt32E(src)
 }
+
+func ConvertToBool(src any) (bool, error) {
+	return cast.ToBoolE(src)
+}

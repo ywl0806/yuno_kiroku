@@ -43,7 +43,7 @@ export const HomeHeader: FC<Props> = ({ date, range, rangeFetched }) => {
   }, [date])
 
   return (
-    <div>
+    <div className="pt-5">
       {/* <ScrollHideWrapper> */}
       <div className="flex justify-center pt-2">
         <DropdownYear

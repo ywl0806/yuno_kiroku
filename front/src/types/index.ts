@@ -43,8 +43,19 @@ export type UploadPhotoStatus = {
   [key: string]: UploadStatus
 }
 
+export const UPLOAD_PHOTO_ERROR_CODE = {
+  DUPLICATE: 'duplicate',
+  INTERNAL_SERVER_ERROR: 'internal_server_error',
+} as const
+
+export type UploadPhotoError = {
+  code: string
+  message: string
+}
+
 export type UploadPhoto = {
   file: File
   src: string
   status: UploadStatus
+  error?: UploadPhotoError
 }

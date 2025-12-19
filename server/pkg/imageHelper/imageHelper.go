@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	MaxWidth = 1500
+	MaxLength = 2048
 )
 
 type ImageHelper struct {
@@ -55,9 +55,12 @@ func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
 
 // 이미지 리사이즈
 func (ih *ImageHelper) resizeImage() (err error) {
+
 	// 이미지를 적절한 크기로 리사이즈
-	// max width 1500px, max height 1500px
-	resizedImage := imaging.Resize(ih.OriginalImage, MaxWidth, 0, imaging.Lanczos)
+	newWidth, newHeight := ih.calculateResizedImageSize(ih.GetOriginalImageSize())
+
+	// max length 2048px
+	resizedImage := imaging.Resize(ih.OriginalImage, newWidth, newHeight, imaging.Lanczos)
 
 	ih.ResizedImage = resizedImage
 
@@ -165,4 +168,23 @@ func (ih *ImageHelper) GetPhotoCreatedAt() time.Time {
 		return time.Now()
 	}
 	return photoCreatedAt
+}
+
+// 긴변을 MaxLength로 고정하고 짧은변을 계산
+func (ih *ImageHelper) calculateResizedImageSize(originalWidth int, originalHeight int) (int, int) {
+
+	if MaxLength > originalWidth && MaxLength > originalHeight {
+		return originalWidth, originalHeight
+	}
+
+	newWidth := MaxLength
+	newHeight := MaxLength
+
+	if originalWidth > originalHeight {
+		newHeight = int(float64(originalHeight) * float64(MaxLength) / float64(originalWidth))
+	} else {
+		newWidth = int(float64(originalWidth) * float64(MaxLength) / float64(originalHeight))
+	}
+
+	return newWidth, newHeight
 }

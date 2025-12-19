@@ -1,11 +1,10 @@
 import { PreviewImageInput } from '@/components/blocks/preview-image-input'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { useGetAlbums } from '@/feature/upload/hooks/use-get-albums'
-import { getSessionStorage, SESSION_STORAGE_KEY, setSessionStorage } from '@/lib/session-storage'
+import { getSessionStorage, removeSessionStorage, SESSION_STORAGE_KEY, setSessionStorage } from '@/lib/session-storage'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
-import { Album, Check, Upload } from 'lucide-react'
-import { FC, useEffect, useMemo, useRef, useState } from 'react'
+import { Album, ArrowLeft, BrushCleaning, Check, Upload } from 'lucide-react'
+import { FC, useMemo, useRef, useState } from 'react'
 
 export const UploadContainer: FC = () => {
   const { data: albums } = useGetAlbums()
@@ -21,7 +20,7 @@ export const UploadContainer: FC = () => {
     return albums?.find((album) => album.id === albumId)
   }, [albums, albumId])
 
-  const { photos, setPhotos, handleUploadPhotos, progress, isUploading, clearPhotos } = useUploadPhoto()
+  const { photos, setPhotos, handleUploadPhotos, progress, clearPhotos, isUploaded, isUploading } = useUploadPhoto()
   const imgInputRef = useRef<HTMLInputElement>(null)
 
   // useEffect(() => {
@@ -34,15 +33,21 @@ export const UploadContainer: FC = () => {
     setAlbumId(albumId)
     setSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID, albumId.toString())
   }
+
+  const handleClearPhotos = () => {
+    clearPhotos()
+    setAlbumId(null)
+    removeSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
+  }
   return (
-    <div className="h-full pt-4">
+    <div className="h-full w-full px-5 pt-5">
       {albumId === null && (
-        <div className="flex h-full select-none flex-col justify-center gap-2">
+        <div className="mx-auto flex h-full max-w-[20rem] select-none flex-col justify-center gap-5">
           {albums?.map((album) => (
             <Button
               key={album.id}
               variant="outline"
-              className=" justify-start"
+              className=" h-12 justify-start text-[1rem]"
               onClick={() => handleChangeAlbum(album.id)}
             >
               <Album />
@@ -52,28 +57,30 @@ export const UploadContainer: FC = () => {
         </div>
       )}
       {selectedAlbum && (
-        <div className="h-full overflow-y-auto">
-          <div className="flex items-center justify-center gap-2">
-            <Album />
-            {selectedAlbum.name}
-          </div>
-          <PreviewImageInput inputRef={imgInputRef} images={photos} setImages={setPhotos} />
-          <div className="absolute bottom-20 left-0 right-0 flex w-full justify-center p-4">
-            {progress === 100 ? (
-              <Button onClick={clearPhotos}>
-                <Check />
-                Clear
+        <div className="h-full w-full overflow-y-auto">
+          <div className="flex w-full items-center justify-between ">
+            <div className="flex-1">
+              <Button variant="outline" onClick={handleClearPhotos}>
+                <ArrowLeft />
+                <span>戻る</span>
               </Button>
-            ) : (
-              !isUploading &&
-              progress === 0 &&
-              photos.length > 0 && (
+            </div>
+            <div className="flex flex-1 items-center justify-center gap-2">
+              <Album />
+              {selectedAlbum.name}
+            </div>
+            <div className="flex-1" />
+          </div>
+          <PreviewImageInput inputRef={imgInputRef} images={photos} setImages={setPhotos} albumId={selectedAlbum.id} />
+          <div className="absolute bottom-20 left-0 right-0 flex w-full justify-center gap-5 p-4">
+            <div className="flex items-center justify-center">
+              {!isUploaded && photos.length > 0 && (
                 <Button variant="outline" onClick={() => handleUploadPhotos(selectedAlbum.id)}>
                   <Upload />
-                  Upload
+                  <span>アップロード</span>
                 </Button>
-              )
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

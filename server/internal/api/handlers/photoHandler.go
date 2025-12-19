@@ -35,6 +35,7 @@ func NewPhotoHandler(
 // @Accept  multipart/form-data
 // @Param file formData file true "file"
 // @Param album_id query string true "Album ID"
+// @Param retry query string false "Retry" example(1)
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /photo/upload [post]
 func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
@@ -49,6 +50,8 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 	if err != nil {
 		return customErrors.NewRequiredError(consts.Album)
 	}
+
+	retry, _ := utils.ConvertToBool(c.QueryParam("retry"))
 
 	// 그룹 ID 가져오기
 	authUser := middlewares.GetAuthUser(c)
@@ -68,10 +71,12 @@ func (con *PhotoHandler) UploadPhoto(c echo.Context) error {
 		return err
 	}
 
-	// 사진 중복체크
-	err = con.photoService.CheckPhotoDuplicateByFaceDetection(ctx, groupId, albumId, *faceDetections)
-	if err != nil {
-		return err
+	// 사진 중복체크(재업로드가 아닌 경우만 체크)
+	if !retry {
+		err = con.photoService.CheckPhotoDuplicateByFaceDetection(ctx, groupId, albumId, *faceDetections)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 업로드 경로 생성
@@ -205,6 +210,7 @@ func (con *PhotoHandler) UploadLivePhoto(c echo.Context) error {
 	if err != nil {
 		return customErrors.NewRequiredError(consts.Album)
 	}
+
 	// 컨텍스트 가져오기
 	ctx := c.Request().Context()
 
