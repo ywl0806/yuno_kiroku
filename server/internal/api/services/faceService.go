@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
+	apiErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
@@ -38,7 +40,7 @@ func NewFaceService(queries *db.Queries) *FaceService {
 	2. 얼굴 임베딩이 있으면 FaceDetection을 생성
 	3. 얼굴 임베딩이 없으면 Identity를 생성 후 FaceDetection을 생성
 */
-func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId int32, photoId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
+func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId int32, mediaItemId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
 
 	// 얼굴인식 결과를 저장할 파라미터 리스트
 	var createFaceDetectionParams []db.CreateFaceDetectionParams
@@ -48,7 +50,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 	for _, faceDetection := range faceDetections {
 		// 얼굴인식 결과를 저장할 파라미터 생성
 		faceDetectionParams := db.CreateFaceDetectionParams{
-			PhotoID:        photoId,
+			MediaItemID:    mediaItemId,
 			LocationTop:    int32(faceDetection.FaceLocation.Top),
 			LocationRight:  int32(faceDetection.FaceLocation.Right),
 			LocationBottom: int32(faceDetection.FaceLocation.Bottom),
@@ -120,14 +122,6 @@ func (s *FaceService) FindMostSimilarFace(ctx context.Context, groupId int32, em
 		return nil, err
 	}
 	return &faceDetection, nil
-}
-
-func (s *FaceService) GetFaceDetections(ctx context.Context, photoId int32) ([]db.GetFaceDetectionsByPhotoIdRow, error) {
-	faceDetections, err := s.queries.GetFaceDetectionsByPhotoId(ctx, photoId)
-	if err != nil {
-		return nil, err
-	}
-	return faceDetections, nil
 }
 
 /*
@@ -205,4 +199,30 @@ func (s *FaceService) GetFaceDetection(image []byte) (*[]models.FaceDetection, e
 	}
 
 	return &faceDetectionResponse.Faces, nil
+}
+
+//	얼굴 인식 결과로 사진이 중복되는지 확인합니다.
+//	1. 얼굴 인식 결과를 벡터로 변환합니다.
+//	2. 데이터베이스에서 얼굴 인식 결과와 일치하는 사진을 조회합니다.
+//	3. 조회된 사진이 있으면 중복된 사진이 있다는 에러를 반환합니다.
+//
+// */
+func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, groupId int32, albumId int32, faceDetections []models.FaceDetection) error {
+
+	embeddings := make([]interface{}, len(faceDetections))
+	for i, faceDetection := range faceDetections {
+		embeddings[i] = utils.Float64SliceToVectorString(faceDetection.Embedding)
+	}
+	mediaItem, err := s.queries.GetMediaItemByFaceDetection(ctx, db.GetMediaItemByFaceDetectionParams{
+		GroupID:    groupId,
+		Embeddings: embeddings,
+	})
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if mediaItem.ID != 0 {
+		return apiErrors.NewDuplicateError(consts.Photo)
+	}
+
+	return nil
 }

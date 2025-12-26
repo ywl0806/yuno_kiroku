@@ -1,4 +1,4 @@
-export interface Photo {
+export interface MediaItem {
   id: string
   group_id: string
   album_id: string
@@ -11,14 +11,14 @@ export interface Photo {
   thumbnail_width: number
   thumbnail_height: number
   file_name: string
-  photo_created_at: string
+  taken_at: string
   created_at: string
   updated_at: string
   created_by: string
   updated_by: string
 }
 
-export type PhotoRange = {
+export type MediaItemRange = {
   year: number
   month: number
 }
@@ -43,19 +43,19 @@ export type UploadPhotoStatus = {
   [key: string]: UploadStatus
 }
 
-export const UPLOAD_PHOTO_ERROR_CODE = {
+export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {
   DUPLICATE: 'duplicate',
   INTERNAL_SERVER_ERROR: 'internal_server_error',
 } as const
 
-export type UploadPhotoError = {
+export type UploadMediaItemError = {
   code: string
   message: string
 }
 
-export type UploadPhoto = {
+export type UploadMediaItem = {
   file: File
   src: string
   status: UploadStatus
-  error?: UploadPhotoError
+  error?: UploadMediaItemError
 }

@@ -1,7 +1,17 @@
 FROM golang:1.24-alpine
 
-# libde265-dev 설치 (HEIF 관련 라이브러리)
-RUN apk update && apk add --no-cache libde265-dev pkgconfig gcc musl-dev g++
+# libvips 및 빌드 도구 설치
+# community 저장소 활성화 (libvips는 community 저장소에 있음)
+RUN apk add --no-cache \
+    --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community \
+    vips-dev \
+    vips \
+    pkgconfig \
+    gcc \
+    musl-dev \
+    g++ \
+    glib-dev \
+    expat-dev
 
 ENV CGO_ENABLED=1
 

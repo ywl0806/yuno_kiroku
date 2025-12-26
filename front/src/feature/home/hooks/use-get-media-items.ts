@@ -1,18 +1,18 @@
 import { API_ROUTES } from '@/constants/api-route'
 import { MyAxiosWithAuth } from '@/lib/my-axios'
-import { Photos } from '@/service/get-photos'
+import { MediaItem } from '@/types'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
-export type UseGetPhotosProps = {
+export type UseGetMediaItemsProps = {
   year: number
   month: number
 }
-export const useGetPhotos = ({ year, month }: UseGetPhotosProps) => {
+export const useGetMediaItems = ({ year, month }: UseGetMediaItemsProps) => {
   const fetchFunc = useCallback(async () => {
     const from = new Date(year, month - 1, 1)
     const to = new Date(year, month)
-    const response = await MyAxiosWithAuth.get<Photos>(API_ROUTES.PHOTO.LIST, {
+    const response = await MyAxiosWithAuth.get<MediaItem[]>(API_ROUTES.MEDIA_ITEM.LIST, {
       params: {
         from: from.toISOString(),
         to: to.toISOString(),
@@ -22,7 +22,7 @@ export const useGetPhotos = ({ year, month }: UseGetPhotosProps) => {
   }, [year, month])
 
   return useQuery({
-    queryKey: ['photos', year, month],
+    queryKey: ['mediaItems', year, month],
     queryFn: fetchFunc,
   })
 }

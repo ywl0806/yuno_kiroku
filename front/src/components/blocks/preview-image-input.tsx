@@ -1,7 +1,7 @@
 import { PhotoGrid } from './photo-grid'
 import { Button } from '@/components/ui/button'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
-import { UPLOAD_PHOTO_ERROR_CODE, UPLOAD_STATUS, UploadPhoto } from '@/types'
+import { UPLOAD_MEDIA_ITEM_ERROR_CODE, UPLOAD_STATUS, UploadMediaItem } from '@/types'
 import { BrushCleaning, Check, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction, RefObject } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
@@ -36,14 +36,14 @@ const getImageDimensions = (file: File): Promise<ImageDimensions> => {
 
 type Props = {
   inputRef?: RefObject<HTMLInputElement>
-  images: UploadPhoto[]
-  setImages: Dispatch<SetStateAction<UploadPhoto[]>>
+  images: UploadMediaItem[]
+  setImages: Dispatch<SetStateAction<UploadMediaItem[]>>
   albumId: number
 }
 
 export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albumId }) => {
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions[]>([])
-  const { reUploadPhoto, isUploaded, isUploading, progress, clearPhotos, photos } = useUploadPhoto()
+  const { reUploadPhoto, isUploaded, isUploading, progress, clearPhotos, mediaItems } = useUploadPhoto()
   const imgInputRef = inputRef ?? useRef<HTMLInputElement>(null)
 
   // 이미지 크기를 비동기로 로드
@@ -106,7 +106,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
           </Button>
         </div>
         <div className="flex flex-1 items-center justify-end">
-          {(!isUploading || progress === 100) && photos.length > 0 && (
+          {(!isUploading || progress === 100) && mediaItems.length > 0 && (
             <Button variant="outline" className="rounded-full" onClick={clearPhotos}>
               <BrushCleaning className="size-4" />
               <span>クリア</span>
@@ -142,7 +142,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                     )}
                     {images[props.layout.index].status === UPLOAD_STATUS.SUCCESS && <Check className="text-white" />}
                     {images[props.layout.index].status === UPLOAD_STATUS.ERROR ? (
-                      images[props.layout.index].error?.code === UPLOAD_PHOTO_ERROR_CODE.DUPLICATE ? (
+                      images[props.layout.index].error?.code === UPLOAD_MEDIA_ITEM_ERROR_CODE.DUPLICATE ? (
                         <div className="flex flex-col items-center gap-2">
                           <p className="rounded-md bg-white p-2 text-sm text-slate-500">すでに上げてるかも</p>
                           <Button

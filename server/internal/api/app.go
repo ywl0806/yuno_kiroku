@@ -5,13 +5,13 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
-	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 
 	_ "github.com/lib/pq"
 
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/api/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/api/routers"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services"
 	"github.com/ywl0806/yuno_kiroku/internal/api/validator"
@@ -33,20 +33,21 @@ func Init(e *echo.Echo) {
 
 	queries := db.New(dbTx)
 
+	storageProvider := providers.NewStorageProvider()
 	// Storage service
-	thumbnailStorage := storage.NewLocalStorageService("thumbnail")
-	originalStorage := storage.NewLocalStorageService("original")
+	thumbnailStorage := storageProvider.ThumbnailStorage()
+	originalStorage := storageProvider.OriginalStorage()
 
 	// service
 	userService := services.NewUserService(queries)
 	faceService := services.NewFaceService(queries)
-	photoService := services.NewPhotoService(queries, thumbnailStorage, originalStorage)
+	mediaItemService := services.NewMediaItemService(queries, thumbnailStorage, originalStorage)
 	identityService := services.NewIdentityService(queries)
 	albumService := services.NewAlbumService(queries)
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
-	photoHandler := handlers.NewPhotoHandler(photoService, faceService)
+	mediaItemHandler := handlers.NewMediaItemHandler(mediaItemService, faceService)
 	authHandler := handlers.NewAuthHandler(userService)
 	identityHandler := handlers.NewIdentityHandler(identityService)
 	albumHandler := handlers.NewAlbumHandler(albumService)
@@ -60,7 +61,7 @@ func Init(e *echo.Echo) {
 	})
 
 	userRouter := routers.NewUserRouter(*userHandler)
-	photoRouter := routers.NewPhotoRouter(*photoHandler)
+	mediaItemRouter := routers.NewMediaItemRouter(*mediaItemHandler)
 	authRouter := routers.NewAuthRouter(*authHandler)
 	identityRouter := routers.NewIdentityRouter(*identityHandler)
 	albumRouter := routers.NewAlbumRouter(*albumHandler)
@@ -80,7 +81,7 @@ func Init(e *echo.Echo) {
 
 	// init routers
 	userRouter.Register(root)
-	photoRouter.Register(root)
+	mediaItemRouter.Register(root)
 	authRouter.Register(root)
 	identityRouter.Register(root)
 	albumRouter.Register(root)

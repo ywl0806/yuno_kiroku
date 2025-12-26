@@ -1,7 +1,7 @@
 import colors from '@/colors'
 import { DropdownYear } from '@/components/blocks/dropdown-year'
 // import { ScrollHideWrapper } from '@/components/layouts/scroll-hide-wrapper'
-import { PhotoRange } from '@/service/get-photos-range'
+import { PhotoRange } from '@/service/get-media-item-range'
 import { Tab, Tabs } from '@mui/material'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'

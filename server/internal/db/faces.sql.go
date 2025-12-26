@@ -15,7 +15,7 @@ import (
 const createFaceDetection = `-- name: CreateFaceDetection :one
 INSERT INTO
     face_detections (
-        photo_id,
+        media_item_id,
         identity_id,
         location_top,
         location_right,
@@ -26,11 +26,11 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
-    id, photo_id, identity_id, location_top, location_right, location_bottom, location_left, embedding, created_at, updated_at
+    id, media_item_id, identity_id, location_top, location_right, location_bottom, location_left, embedding, created_at, updated_at
 `
 
 type CreateFaceDetectionParams struct {
-	PhotoID        int32
+	MediaItemID    int32
 	IdentityID     int32
 	LocationTop    int32
 	LocationRight  int32
@@ -41,7 +41,7 @@ type CreateFaceDetectionParams struct {
 
 func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetectionParams) (FaceDetection, error) {
 	row := q.db.QueryRowContext(ctx, createFaceDetection,
-		arg.PhotoID,
+		arg.MediaItemID,
 		arg.IdentityID,
 		arg.LocationTop,
 		arg.LocationRight,
@@ -52,7 +52,7 @@ func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetecti
 	var i FaceDetection
 	err := row.Scan(
 		&i.ID,
-		&i.PhotoID,
+		&i.MediaItemID,
 		&i.IdentityID,
 		&i.LocationTop,
 		&i.LocationRight,
@@ -67,18 +67,18 @@ func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetecti
 
 const findMostSimilarFace = `-- name: FindMostSimilarFace :one
 SELECT
-    ave.identity_id,
-    p.name,
-    p.group_id,
-    ave.embedding <=> $1::vector AS distance
+    fd.identity_id,
+    i.name,
+    i.group_id,
+    fd.embedding <=> $1::vector AS distance
 FROM
-    average_face_embeddings AS ave
-    INNER JOIN identities AS p ON ave.identity_id = p.id
+    face_detections AS fd
+    INNER JOIN identities AS i ON fd.identity_id = i.id
 WHERE
-    p.group_id = $2::int
-    AND ave.embedding <=> $1::vector < $3::float
+    i.group_id = $2::int
+    AND fd.embedding <=> $1::vector < $3::float
 ORDER BY
-    ave.embedding <=> $1::vector ASC
+    fd.embedding <=> $1::vector ASC
 LIMIT
     1
 `
@@ -113,10 +113,10 @@ SELECT
     fd.embedding
 FROM
     face_detections AS fd
-    JOIN photos AS p ON fd.photo_id = p.id
+    JOIN media_items AS mi ON fd.media_item_id = mi.id
 WHERE
-    p.group_id = $1::int
-    AND p.album_id = $2::int
+    mi.group_id = $1::int
+    AND mi.album_id = $2::int
     AND fd.embedding = ANY($3::vector[])
 `
 
@@ -131,67 +131,4 @@ func (q *Queries) GetFaceDetectionsByEmbeddings(ctx context.Context, arg GetFace
 	var embedding interface{}
 	err := row.Scan(&embedding)
 	return embedding, err
-}
-
-const getFaceDetectionsByPhotoId = `-- name: GetFaceDetectionsByPhotoId :many
-SELECT
-    fd.id,
-    fd.photo_id,
-    fd.identity_id,
-    p.name,
-    fd.location_top,
-    fd.location_right,
-    fd.location_bottom,
-    fd.location_left,
-    fd.embedding
-FROM
-    face_detections AS fd
-    JOIN identities AS p ON fd.identity_id = p.id
-WHERE
-    fd.photo_id = $1
-`
-
-type GetFaceDetectionsByPhotoIdRow struct {
-	ID             int32
-	PhotoID        int32
-	IdentityID     int32
-	Name           sql.NullString
-	LocationTop    int32
-	LocationRight  int32
-	LocationBottom int32
-	LocationLeft   int32
-	Embedding      interface{}
-}
-
-func (q *Queries) GetFaceDetectionsByPhotoId(ctx context.Context, photoID int32) ([]GetFaceDetectionsByPhotoIdRow, error) {
-	rows, err := q.db.QueryContext(ctx, getFaceDetectionsByPhotoId, photoID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetFaceDetectionsByPhotoIdRow
-	for rows.Next() {
-		var i GetFaceDetectionsByPhotoIdRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.PhotoID,
-			&i.IdentityID,
-			&i.Name,
-			&i.LocationTop,
-			&i.LocationRight,
-			&i.LocationBottom,
-			&i.LocationLeft,
-			&i.Embedding,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

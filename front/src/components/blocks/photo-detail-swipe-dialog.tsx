@@ -1,6 +1,6 @@
 import { LivePhoto } from '@/components/blocks/live-photo'
 import { HeaderContainer } from '@/components/layouts/header-container'
-import { Photo } from '@/types'
+import { MediaItem } from '@/types'
 import CloseIcon from '@mui/icons-material/Close'
 import { Dialog, IconButton, Slide } from '@mui/material'
 import { TransitionProps } from '@mui/material/transitions'
@@ -8,7 +8,7 @@ import { FC, forwardRef, useEffect, useState } from 'react'
 import { Swiper, SwiperClass, SwiperSlide } from 'swiper/react'
 
 type Props = {
-  photos: Photo[]
+  photos: MediaItem[]
   index: number
   setIndex: (index: number) => void
   open: boolean

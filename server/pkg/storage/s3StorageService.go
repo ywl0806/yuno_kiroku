@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/spf13/viper"
 )
@@ -21,25 +22,41 @@ type S3StorageService struct {
 
 func NewS3StorageService(bucketName string) *S3StorageService {
 
-	cfg, err := config.LoadDefaultConfig(context.Background())
-
-	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
-		panic(err)
-	}
-	cfg.Region = viper.GetString("AWS_REGION")
-
 	storageType := viper.GetString("STORAGE_TYPE")
 	var client *s3.Client
 
 	if storageType == "minio" {
+		// MinIO를 위한 커스텀 설정
+		creds := credentials.NewStaticCredentialsProvider(viper.GetString("MINIO_ROOT_USER"), viper.GetString("MINIO_ROOT_PASSWORD"), "")
+
+		// MinIO를 위한 기본 config 로드
+		cfg, err := config.LoadDefaultConfig(context.Background(),
+			config.WithRegion("us-east-1"),
+			config.WithCredentialsProvider(creds),
+		)
+		if err != nil {
+			log.Fatalf("failed to load config: %v", err)
+			panic(err)
+		}
+
 		client = s3.NewFromConfig(cfg, func(o *s3.Options) {
 			o.BaseEndpoint = aws.String(viper.GetString("S3_ENDPOINT"))
 			o.UsePathStyle = true
 		})
+
 	} else {
+		// AWS S3를 위한 기본 설정
+		cfg, err := config.LoadDefaultConfig(context.Background())
+		if err != nil {
+			log.Fatalf("failed to load config: %v", err)
+			panic(err)
+		}
+		if region := viper.GetString("AWS_REGION"); region != "" {
+			cfg.Region = region
+		}
 		client = s3.NewFromConfig(cfg)
 	}
+
 	return &S3StorageService{bucketName: bucketName, client: client}
 }
 

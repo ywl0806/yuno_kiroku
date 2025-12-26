@@ -1,7 +1,7 @@
 -- name: CreateFaceDetection :one
 INSERT INTO
     face_detections (
-        photo_id,
+        media_item_id,
         identity_id,
         location_top,
         location_right,
@@ -16,45 +16,28 @@ RETURNING
 
 -- name: FindMostSimilarFace :one
 SELECT
-    ave.identity_id,
-    p.name,
-    p.group_id,
-    ave.embedding <=> sqlc.arg (embedding)::vector AS distance
-FROM
-    average_face_embeddings AS ave
-    INNER JOIN identities AS p ON ave.identity_id = p.id
-WHERE
-    p.group_id = sqlc.arg (group_id)::int
-    AND ave.embedding <=> sqlc.arg (embedding)::vector < sqlc.arg (similarity_threshold)::float
-ORDER BY
-    ave.embedding <=> sqlc.arg (embedding)::vector ASC
-LIMIT
-    1;
-
--- name: GetFaceDetectionsByPhotoId :many
-SELECT
-    fd.id,
-    fd.photo_id,
     fd.identity_id,
-    p.name,
-    fd.location_top,
-    fd.location_right,
-    fd.location_bottom,
-    fd.location_left,
-    fd.embedding
+    i.name,
+    i.group_id,
+    fd.embedding <=> sqlc.arg (embedding)::vector AS distance
 FROM
     face_detections AS fd
-    JOIN identities AS p ON fd.identity_id = p.id
+    INNER JOIN identities AS i ON fd.identity_id = i.id
 WHERE
-    fd.photo_id = $1;
+    i.group_id = sqlc.arg (group_id)::int
+    AND fd.embedding <=> sqlc.arg (embedding)::vector < sqlc.arg (similarity_threshold)::float
+ORDER BY
+    fd.embedding <=> sqlc.arg (embedding)::vector ASC
+LIMIT
+    1;
 
 -- name: GetFaceDetectionsByEmbeddings :one
 SELECT
     fd.embedding
 FROM
     face_detections AS fd
-    JOIN photos AS p ON fd.photo_id = p.id
+    JOIN media_items AS mi ON fd.media_item_id = mi.id
 WHERE
-    p.group_id = sqlc.arg(group_id)::int
-    AND p.album_id = sqlc.arg(album_id)::int
+    mi.group_id = sqlc.arg(group_id)::int
+    AND mi.album_id = sqlc.arg(album_id)::int
     AND fd.embedding = ANY(sqlc.arg(embeddings)::vector[]);

@@ -29,4 +29,11 @@ export const API_ROUTES = {
   ALBUM: {
     LIST_FOR_WRITE: '/album/write',
   },
+
+  // MediaItem
+  MEDIA_ITEM: {
+    LIST: '/media-item',
+    UPLOAD: '/media-item/upload',
+    RANGE: '/media-item/range',
+  },
 }

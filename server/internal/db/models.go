@@ -25,11 +25,6 @@ type AlbumClanGroupsPermission struct {
 	UpdatedAt   time.Time
 }
 
-type AverageFaceEmbedding struct {
-	IdentityID int32
-	Embedding  interface{}
-}
-
 type ClanGroup struct {
 	ID        int32
 	GroupID   int32
@@ -41,7 +36,7 @@ type ClanGroup struct {
 
 type FaceDetection struct {
 	ID             int32
-	PhotoID        int32
+	MediaItemID    int32
 	IdentityID     int32
 	LocationTop    int32
 	LocationRight  int32
@@ -68,30 +63,35 @@ type Identity struct {
 }
 
 type IdentityFaceImg struct {
-	ID         int32
-	IdentityID int32
-	PhotoID    int32
-	ImgUrl     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID          int32
+	IdentityID  int32
+	MediaItemID int32
+	ImgUrl      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
-type Photo struct {
-	ID              int32
-	GroupID         int32
-	AlbumID         int32
-	ThumbnailUrl    string
-	OriginalUrl     sql.NullString
-	LiveUrl         sql.NullString
-	OriginalLiveUrl sql.NullString
-	OriginalWidth   sql.NullInt32
-	OriginalHeight  sql.NullInt32
-	ThumbnailWidth  int32
-	ThumbnailHeight int32
-	PhotoCreatedAt  time.Time
-	FileName        string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+type MediaFile struct {
+	ID          int32
+	MediaItemID int32
+	Role        string
+	StorageKey  string
+	MimeType    sql.NullString
+	Width       sql.NullInt32
+	Height      sql.NullInt32
+	FileSize    sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type MediaItem struct {
+	ID        int32
+	GroupID   int32
+	AlbumID   int32
+	TakenAt   time.Time
+	FileName  sql.NullString
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type RefreshToken struct {

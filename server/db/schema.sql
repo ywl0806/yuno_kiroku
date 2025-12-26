@@ -58,24 +58,36 @@ CREATE TABLE IF NOT EXISTS album_clan_groups_permissions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 사진 테이블
-CREATE TABLE IF NOT EXISTS photos (
+
+-- 미디어 아이템 테이블
+CREATE TABLE IF NOT EXISTS media_items (
     id SERIAL PRIMARY KEY,
     group_id INTEGER NOT NULL REFERENCES groups (id),
     album_id INTEGER NOT NULL REFERENCES albums (id),
-    thumbnail_url VARCHAR(255) NOT NULL,
-    original_url VARCHAR(255),
-    live_url VARCHAR(255),
-    original_live_url VARCHAR(255),
-    original_width INTEGER,
-    original_height INTEGER,
-    thumbnail_width INTEGER NOT NULL,
-    thumbnail_height INTEGER NOT NULL,
-    photo_created_at TIMESTAMP NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
+
+    taken_at TIMESTAMP NOT NULL,
+    file_name VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 미디어 파일 테이블
+CREATE TABLE IF NOT EXISTS media_files (
+    id SERIAL PRIMARY KEY,
+    media_item_id INTEGER NOT NULL REFERENCES media_items (id) ON DELETE CASCADE,
+
+    role VARCHAR(20) NOT NULL, -- original | thumbnail | preview | live | stream
+    storage_key VARCHAR(512) NOT NULL,
+    mime_type VARCHAR(50), -- image/jpeg, image/png, video/mp4, video/quicktime, video/mov, video/avi, video/wmv, video/flv, video/webm, video/mkv
+
+    width INTEGER,
+    height INTEGER,
+    file_size BIGINT,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 
 -- 신원 테이블
 CREATE TABLE IF NOT EXISTS identities (
@@ -90,7 +102,7 @@ CREATE TABLE IF NOT EXISTS identities (
 CREATE TABLE IF NOT EXISTS identity_face_imgs (
     id SERIAL PRIMARY KEY,
     identity_id INTEGER NOT NULL REFERENCES identities (id),
-    photo_id INTEGER NOT NULL REFERENCES photos (id),
+    media_item_id INTEGER NOT NULL REFERENCES media_items (id),
     img_url VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -99,7 +111,7 @@ CREATE TABLE IF NOT EXISTS identity_face_imgs (
 -- 얼굴 감지 테이블
 CREATE TABLE IF NOT EXISTS face_detections (
     id SERIAL PRIMARY KEY,
-    photo_id INTEGER NOT NULL REFERENCES photos (id),
+    media_item_id INTEGER NOT NULL REFERENCES media_items (id),
     identity_id INTEGER NOT NULL REFERENCES identities (id),
     location_top INTEGER NOT NULL,
     location_right INTEGER NOT NULL,
@@ -110,70 +122,39 @@ CREATE TABLE IF NOT EXISTS face_detections (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 얼굴 임베딩 뷰
-CREATE MATERIALIZED VIEW IF NOT EXISTS average_face_embeddings AS
-SELECT
-    identity_id,
-    AVG(embedding)::vector (512) AS embedding
-FROM
-    face_detections
-GROUP BY
-    identity_id;
-
--- MATERIALIZED VIEW 자동 갱신을 위한 트리거 함수
--- 참고: CONCURRENTLY는 트랜잭션 내에서 실행할 수 없으므로 일반 REFRESH 사용
-CREATE OR REPLACE FUNCTION refresh_average_face_embeddings () RETURNS TRIGGER AS $$
-BEGIN
-    -- 비동기적으로 갱신 (트랜잭션 완료 후 실행)
-    -- CONCURRENTLY는 트랜잭션 외부에서만 실행 가능하므로 일반 REFRESH 사용
-    REFRESH MATERIALIZED VIEW average_face_embeddings;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
--- face_detections 테이블 변경 시 자동 갱신 트리거
--- FOR EACH STATEMENT: 각 문장마다 실행 (성능 최적화)
-CREATE TRIGGER trigger_refresh_average_face_embeddings
-AFTER INSERT
-OR
-UPDATE
-OR DELETE ON face_detections FOR EACH STATEMENT
-EXECUTE FUNCTION refresh_average_face_embeddings ();
-
 CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING ivfflat (embedding vector_cosine_ops);
 
-CREATE INDEX IF NOT EXISTS idx_face_detections_photo_id ON face_detections (photo_id);
+CREATE INDEX IF NOT EXISTS idx_face_detections_media_item_id ON face_detections (media_item_id);
 
 CREATE INDEX IF NOT EXISTS idx_face_detections_identity_id ON face_detections (identity_id);
 
--- photos 테이블 성능 최적화 인덱스
--- 함수 기반 인덱스: EXTRACT(YEAR/MONTH)를 인덱싱하여 GROUP BY 성능 향상
-CREATE INDEX IF NOT EXISTS idx_photos_group_album_id_year_month ON photos (
+CREATE INDEX IF NOT EXISTS idx_media_items_group_album_id_year_month ON media_items (
     group_id,
     album_id,
     EXTRACT(
         YEAR
         FROM
-            photo_created_at
+            taken_at
     ),
     EXTRACT(
         MONTH
         FROM
-            photo_created_at
+            taken_at
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_photos_group_year_month ON photos (
+
+CREATE INDEX IF NOT EXISTS idx_media_items_group_year_month ON media_items (
     group_id,
     EXTRACT(
         YEAR
         FROM
-            photo_created_at
+            taken_at
     ),
     EXTRACT(
         MONTH
         FROM
-            photo_created_at
+            taken_at
     )
 );
 
@@ -189,15 +170,15 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens (user_id
 
 CREATE INDEX IF NOT EXISTS idx_identities_group_id ON identities (group_id);
 
-CREATE INDEX IF NOT EXISTS idx_photos_group_id ON photos (group_id);
+CREATE INDEX IF NOT EXISTS idx_media_items_group_id ON media_items (group_id);
 
-CREATE INDEX IF NOT EXISTS idx_photos_group_album_id ON photos (group_id, album_id);
+CREATE INDEX IF NOT EXISTS idx_media_items_group_album_id ON media_items (group_id, album_id);
 
-CREATE INDEX IF NOT EXISTS idx_photos_group_created_at ON photos (group_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_media_items_group_created_at ON media_items (group_id, created_at);
 
-CREATE INDEX IF NOT EXISTS idx_photos_album_id ON photos (album_id);
+CREATE INDEX IF NOT EXISTS idx_media_items_album_id ON media_items (album_id);
 
-CREATE INDEX IF NOT EXISTS idx_photos_photo_created_at ON photos (photo_created_at);
+CREATE INDEX IF NOT EXISTS idx_media_items_taken_at ON media_items (taken_at);
 
 CREATE INDEX IF NOT EXISTS idx_albums_group_id ON albums (group_id);
 
@@ -205,12 +186,10 @@ CREATE INDEX IF NOT EXISTS idx_album_clan_groups_permissions_album_id ON album_c
 
 CREATE INDEX IF NOT EXISTS idx_album_clan_groups_permissions_clan_group_id ON album_clan_groups_permissions (clan_group_id);
 
-CREATE INDEX IF NOT EXISTS idx_average_face_embeddings_embedding ON average_face_embeddings USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_media_items_group_album_id_created_at ON media_items (group_id, album_id, created_at);
 
-CREATE INDEX IF NOT EXISTS idx_photos_group_album_id_created_at ON photos (group_id, album_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_media_items_group_created_at ON media_items (group_id, created_at);
 
-CREATE INDEX IF NOT EXISTS idx_photos_group_created_at ON photos (group_id, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_photo_id ON identity_face_imgs (photo_id);
+CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_media_item_id ON identity_face_imgs (media_item_id);
 
 CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_identity_id ON identity_face_imgs (identity_id);

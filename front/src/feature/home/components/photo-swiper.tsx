@@ -1,5 +1,5 @@
 import { PhotoGridContainer } from '@/components/blocks/photo-grid-container'
-import { PhotoRange } from '@/service/get-photos-range'
+import { MediaItemRange } from '@/types'
 import { FC, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Swiper as SwiperCore } from 'swiper'
@@ -11,7 +11,7 @@ SwiperCore.use([Controller])
 
 type Props = {
   date: string
-  range: PhotoRange[]
+  range: MediaItemRange[]
 }
 export const PhotoSwiper: FC<Props> = ({ date, range }) => {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null)

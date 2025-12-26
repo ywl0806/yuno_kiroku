@@ -18,4 +18,5 @@ const (
 	Album         = "album"
 	FaceDetection = "face detection"
 	LiveMovie     = "live movie"
+	File          = "file"
 )

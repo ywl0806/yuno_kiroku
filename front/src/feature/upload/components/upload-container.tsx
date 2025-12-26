@@ -20,7 +20,8 @@ export const UploadContainer: FC = () => {
     return albums?.find((album) => album.id === albumId)
   }, [albums, albumId])
 
-  const { photos, setPhotos, handleUploadPhotos, progress, clearPhotos, isUploaded, isUploading } = useUploadPhoto()
+  const { mediaItems, setMediaItems, handleUploadPhotos, progress, clearPhotos, isUploaded, isUploading } =
+    useUploadPhoto()
   const imgInputRef = useRef<HTMLInputElement>(null)
 
   // useEffect(() => {
@@ -71,10 +72,15 @@ export const UploadContainer: FC = () => {
             </div>
             <div className="flex-1" />
           </div>
-          <PreviewImageInput inputRef={imgInputRef} images={photos} setImages={setPhotos} albumId={selectedAlbum.id} />
+          <PreviewImageInput
+            inputRef={imgInputRef}
+            images={mediaItems}
+            setImages={setMediaItems}
+            albumId={selectedAlbum.id}
+          />
           <div className="absolute bottom-20 left-0 right-0 flex w-full justify-center gap-5 p-4">
             <div className="flex items-center justify-center">
-              {!isUploaded && photos.length > 0 && (
+              {!isUploaded && mediaItems.length > 0 && (
                 <Button variant="outline" onClick={() => handleUploadPhotos(selectedAlbum.id)}>
                   <Upload />
                   <span>アップロード</span>

@@ -27,7 +27,8 @@ func NewStorageProvider() *StorageProvider {
 			thumbnailStorage: storage.NewLocalStorageService(thumbnailRootDir),
 			originalStorage:  storage.NewLocalStorageService(originalRootDir),
 		}
-	case "s3":
+	case "s3",
+		"minio":
 		thumbnailBucket := viper.GetString("THUMBNAIL_BUCKET")
 		originalBucket := viper.GetString("ORIGINAL_BUCKET")
 
@@ -42,4 +43,12 @@ func NewStorageProvider() *StorageProvider {
 	default:
 		panic("invalid storage type")
 	}
+}
+
+func (s *StorageProvider) ThumbnailStorage() storage.StorageService {
+	return s.thumbnailStorage
+}
+
+func (s *StorageProvider) OriginalStorage() storage.StorageService {
+	return s.originalStorage
 }
