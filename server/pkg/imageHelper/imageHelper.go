@@ -21,17 +21,19 @@ const (
 	MaxLength = 2048
 )
 
+type ResizedFile struct {
+	File   []byte
+	Width  int
+	Height int
+	// 리사이즈된 이미지 확장자 (ex: .jpeg, .png, .webp ...)
+	Ext string
+}
 type ImageHelper struct {
 	OriginalFile   []byte
-	ResizedFile    []byte
 	OriginalWidth  int
 	OriginalHeight int
-	ResizedWidth   int
-	ResizedHeight  int
 
-	ResizedOrientation int
-	// 리사이즈된 이미지 확장자 (ex: .jpeg, .png, .webp ...)
-	ResizedExt string
+	resizedFiles map[int]ResizedFile
 
 	Ext  string
 	Exif map[string]string
@@ -56,88 +58,88 @@ func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
 	handler.OriginalFile = originalFileBytes
 
 	// 원본 이미지 크기 가져오기
-	err = handler.getOriginalImageSize()
+	originalWidth, originalHeight, err := handler.getOriginalImageSize()
 	if err != nil {
 		return nil, err
 	}
-
-	// 이미지 리사이즈
-	err = handler.resizeImage()
-	if err != nil {
-		return nil, err
-	}
+	handler.OriginalWidth = originalWidth
+	handler.OriginalHeight = originalHeight
 
 	return handler, nil
 }
 
-// 이미지 리사이즈
-func (ih *ImageHelper) resizeImage() (err error) {
-	// 이미지를 적절한 크기로 리사이즈
-	newWidth, newHeight := ih.calculateResizedImageSize(ih.OriginalWidth, ih.OriginalHeight)
+func (ih *ImageHelper) resize(maxLength int, ext string) (ResizedFile, error) {
 
-	// 원본 크기와 같으면 리사이즈 불필요
+	newWidth, newHeight := ih.calculateResizedImageSize(ih.OriginalWidth, ih.OriginalHeight, maxLength)
+
 	if newWidth == ih.OriginalWidth && newHeight == ih.OriginalHeight {
-		ih.ResizedFile = ih.OriginalFile
-		ih.ResizedWidth = ih.OriginalWidth
-		ih.ResizedHeight = ih.OriginalHeight
-		return nil
+		return ResizedFile{
+			File:   ih.OriginalFile,
+			Width:  ih.OriginalWidth,
+			Height: ih.OriginalHeight,
+			Ext:    ih.Ext,
+		}, nil
 	}
 
-	// libvips로 이미지 로드
 	img, err := vips.NewImageFromBuffer(ih.OriginalFile)
+
 	if err != nil {
-		log.Println("vips load image error: ", err)
-		return err
+		return ResizedFile{}, err
 	}
 	defer img.Close()
 
 	// EXIF orientation 정보에 따라 자동 회전
 	err = img.AutoRotate()
 	if err != nil {
-		log.Println("vips auto rotate error: ", err)
-		// 회전 실패해도 계속 진행
+		return ResizedFile{}, err
 	}
 
-	ih.Exif = img.GetExif()
-
-	// 회전 후 실제 이미지 크기 가져오기
 	actualWidth := img.Width()
 
 	// 리사이즈 (비율 계산) - 회전 후 실제 크기 기준
 	scale := float64(newWidth) / float64(actualWidth)
 	err = img.Resize(scale, vips.KernelLanczos3)
 	if err != nil {
-		log.Println("vips resize error: ", err)
-		return err
+		return ResizedFile{}, err
 	}
 
-	// WEBP로 내보내기 (EXIF 포함)
 	exportParams := vips.NewWebpExportParams()
 	exportParams.Quality = 90
 	exportParams.StripMetadata = true
 
+	// WEBP로 내보내기 (EXIF 포함)
 	resizedBytes, metadata, err := img.ExportWebp(exportParams)
 	if err != nil {
-		log.Println("vips export error: ", err)
-		return err
+		return ResizedFile{}, err
 	}
 
-	ih.ResizedFile = resizedBytes
-	ih.ResizedExt = metadata.Format.FileExt()
-
-	// 리사이즈 후 실제 크기 저장 (Width와 Height가 올바르게 설정됨)
-	ih.ResizedWidth = metadata.Width
-	ih.ResizedHeight = metadata.Height
-
-	return nil
+	return ResizedFile{
+		File:   resizedBytes,
+		Width:  metadata.Width,
+		Height: metadata.Height,
+		Ext:    metadata.Format.FileExt(),
+	}, nil
 }
 
-func (ih *ImageHelper) getOriginalImageSize() error {
+// 리사이즈된 이미지 가져오기(없으면 리사이즈 후 저장)
+func (ih *ImageHelper) GetResizedFile(maxLength int) (*ResizedFile, error) {
+	if resizedFile, ok := ih.resizedFiles[maxLength]; ok {
+		return &resizedFile, nil
+	}
+	resizedFile, err := ih.resize(maxLength, ih.Ext)
+	if err != nil {
+		return nil, err
+	}
+	ih.resizedFiles[maxLength] = resizedFile
+	return &resizedFile, nil
+}
+
+func (ih *ImageHelper) getOriginalImageSize() (int, int, error) {
 	// libvips로 이미지 크기 가져오기
 	img, err := vips.NewImageFromBuffer(ih.OriginalFile)
 	if err != nil {
 		log.Println("vips load image for size error: ", err)
-		return err
+		return 0, 0, err
 	}
 	defer img.Close()
 
@@ -149,17 +151,13 @@ func (ih *ImageHelper) getOriginalImageSize() error {
 	}
 
 	// 회전 후 실제 이미지 크기 저장
-	ih.OriginalWidth = img.Width()
-	ih.OriginalHeight = img.Height()
-	return nil
+	originalWidth := img.Width()
+	originalHeight := img.Height()
+	return originalWidth, originalHeight, nil
 }
 
 func (ih *ImageHelper) GetOriginalImageSize() (int, int) {
 	return ih.OriginalWidth, ih.OriginalHeight
-}
-
-func (ih *ImageHelper) GetResizedImageSize() (int, int) {
-	return ih.ResizedWidth, ih.ResizedHeight
 }
 
 func (ih *ImageHelper) GetTakenAt() time.Time {
@@ -175,19 +173,19 @@ func (ih *ImageHelper) GetTakenAt() time.Time {
 }
 
 // 긴변을 MaxLength로 고정하고 짧은변을 계산
-func (ih *ImageHelper) calculateResizedImageSize(originalWidth int, originalHeight int) (int, int) {
+func (ih *ImageHelper) calculateResizedImageSize(originalWidth int, originalHeight int, maxLength int) (int, int) {
 
-	if MaxLength > originalWidth && MaxLength > originalHeight {
+	if maxLength > originalWidth && maxLength > originalHeight {
 		return originalWidth, originalHeight
 	}
 
-	newWidth := MaxLength
-	newHeight := MaxLength
+	newWidth := maxLength
+	newHeight := maxLength
 
 	if originalWidth > originalHeight {
-		newHeight = int(float64(originalHeight) * float64(MaxLength) / float64(originalWidth))
+		newHeight = int(float64(originalHeight) * float64(maxLength) / float64(originalWidth))
 	} else {
-		newWidth = int(float64(originalWidth) * float64(MaxLength) / float64(originalHeight))
+		newWidth = int(float64(originalWidth) * float64(maxLength) / float64(originalHeight))
 	}
 
 	return newWidth, newHeight

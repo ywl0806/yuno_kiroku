@@ -65,8 +65,15 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// 뷰 이미지 파일
+	viewImageFile, err := imgHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
+	if err != nil {
+		return err
+	}
+
 	// 얼굴 인식 결과 가져오기(이미지 리사이즈 된 이미지 이용)
-	faceDetections, err := con.faceService.GetFaceDetection(imgHandler.ResizedFile)
+	faceDetections, err := con.faceService.GetFaceDetection(viewImageFile.File)
 	if err != nil {
 		return err
 	}
@@ -83,7 +90,7 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	uploadPath := con.mediaItemService.CreateUploadPath(groupId, albumId)
 
 	// 썸네일 이미지와 원본 이미지 업로드
-	thumbnailStorageKey, originalStorageKey, err := con.mediaItemService.UploadImage(imgHandler, uploadPath)
+	thumbnailStorageKey, viewStorageKey, originalStorageKey, err := con.mediaItemService.UploadImage(imgHandler, uploadPath)
 	if err != nil {
 		return err
 	}
@@ -92,6 +99,7 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	createMediaItemParams := services.CreateMediaItemParams{
 		ThumbnailStorageKey: thumbnailStorageKey,
 		OriginalStorageKey:  originalStorageKey,
+		ViewStorageKey:      viewStorageKey,
 		ImageHandler:        imgHandler,
 		GroupId:             groupId,
 		AlbumId:             albumId,

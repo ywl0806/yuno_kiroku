@@ -3,7 +3,6 @@ module github.com/ywl0806/yuno_kiroku
 go 1.24.0
 
 require (
-	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/aws/aws-lambda-go v1.49.0
 	github.com/aws/aws-sdk-go-v2 v1.39.4
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.19
@@ -15,7 +14,6 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/lib/pq v1.10.9
-	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.2
 )

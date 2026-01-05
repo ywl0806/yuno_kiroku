@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/api/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/imageHelper"
@@ -36,6 +37,7 @@ func NewMediaItemService(
 type CreateMediaItemParams struct {
 	ThumbnailStorageKey string
 	OriginalStorageKey  string
+	ViewStorageKey      string
 	ImageHandler        *imageHelper.ImageHelper
 	GroupId             int32
 	AlbumId             int32
@@ -44,8 +46,8 @@ type CreateMediaItemParams struct {
 
 func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
 
-	thumbnailWidth, thumbnailHeight := params.ImageHandler.GetResizedImageSize()
-	originalWidth, originalHeight := params.ImageHandler.GetOriginalImageSize()
+	thumbnailFile, _ := params.ImageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
+	viewFile, _ := params.ImageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
 
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
@@ -65,8 +67,8 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 		Role:        string(enums.MediaItemRoleOriginal),
 		StorageKey:  params.OriginalStorageKey,
 		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
-		Width:    sql.NullInt32{Int32: int32(originalWidth), Valid: true},
-		Height:   sql.NullInt32{Int32: int32(originalHeight), Valid: true},
+		Width:    sql.NullInt32{Int32: int32(params.ImageHandler.OriginalWidth), Valid: true},
+		Height:   sql.NullInt32{Int32: int32(params.ImageHandler.OriginalHeight), Valid: true},
 		FileSize: sql.NullInt64{Int64: int64(len(params.ImageHandler.OriginalFile)), Valid: true},
 	}
 
@@ -80,12 +82,27 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 		Role:        string(enums.MediaItemRoleThumbnail),
 		StorageKey:  params.ThumbnailStorageKey,
 		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
-		Width:    sql.NullInt32{Int32: int32(thumbnailWidth), Valid: true},
-		Height:   sql.NullInt32{Int32: int32(thumbnailHeight), Valid: true},
-		FileSize: sql.NullInt64{Int64: int64(len(params.ImageHandler.ResizedFile)), Valid: true},
+		Width:    sql.NullInt32{Int32: int32(thumbnailFile.Width), Valid: true},
+		Height:   sql.NullInt32{Int32: int32(thumbnailFile.Height), Valid: true},
+		FileSize: sql.NullInt64{Int64: int64(len(thumbnailFile.File)), Valid: true},
 	}
 
 	_, err = s.queries.CreateMediaFile(ctx, createThumbnailMediaFileParams)
+	if err != nil {
+		return nil, err
+	}
+
+	createViewMediaFileParams := db.CreateMediaFileParams{
+		MediaItemID: mediaItem.ID,
+		Role:        string(enums.MediaItemRoleViewer),
+		StorageKey:  params.ViewStorageKey,
+		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
+		Width:    sql.NullInt32{Int32: int32(viewFile.Width), Valid: true},
+		Height:   sql.NullInt32{Int32: int32(viewFile.Height), Valid: true},
+		FileSize: sql.NullInt64{Int64: int64(len(viewFile.File)), Valid: true},
+	}
+
+	_, err = s.queries.CreateMediaFile(ctx, createViewMediaFileParams)
 	if err != nil {
 		return nil, err
 	}
@@ -111,25 +128,41 @@ func (s *MediaItemService) HandleImage(file *multipart.FileHeader) (*imageHelper
 	return imgHandler, nil
 }
 
-func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, error) {
+func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, string, error) {
 	takenAt := imageHandler.GetTakenAt()
 
 	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
 	filename := uuid.New().String()
-
-	thumbnailStorageKey, err := s.thumbnailStorage.SaveFile(imageHandler.ResizedFile, folderName, filename+imageHandler.ResizedExt)
+	thumbnailFile, err := imageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
+	if err != nil {
+		log.Println("Thumbnail File Error: ", err)
+		return "", "", "", err
+	}
+	thumbnailStorageKey, err := s.thumbnailStorage.SaveFile(thumbnailFile.File, folderName, filename+thumbnailFile.Ext)
 	if err != nil {
 		log.Println("Thumbnail Storage Error: ", err)
-		return "", "", err
+		return "", "", "", err
+	}
+
+	viewFile, err := imageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
+	if err != nil {
+		log.Println("View File Error: ", err)
+		return "", "", "", err
+	}
+
+	viewStorageKey, err := s.thumbnailStorage.SaveFile(viewFile.File, folderName, filename+viewFile.Ext)
+	if err != nil {
+		log.Println("View Storage Error: ", err)
+		return "", "", "", err
 	}
 
 	originalStorageKey, err := s.originalStorage.SaveFile(imageHandler.OriginalFile, folderName, filename+"."+imageHandler.Ext)
 	if err != nil {
 		log.Println("Original Storage Error: ", err)
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return thumbnailStorageKey, originalStorageKey, nil
+	return thumbnailStorageKey, viewStorageKey, originalStorageKey, nil
 }
 
 // func (s *PhotoService) UploadLiveMovie(liveMovie *multipart.FileHeader) (string, string, error) {
