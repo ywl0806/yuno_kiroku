@@ -48,7 +48,8 @@ func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
 	smallExt := strings.ToLower(ext)
 
 	handler := &ImageHelper{
-		Ext: smallExt,
+		Ext:          smallExt,
+		resizedFiles: make(map[int]ResizedFile),
 	}
 
 	originalFileBytes, err := io.ReadAll(originalFile)

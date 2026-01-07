@@ -35,13 +35,12 @@ func Init(e *echo.Echo) {
 
 	storageProvider := providers.NewStorageProvider()
 	// Storage service
-	thumbnailStorage := storageProvider.ThumbnailStorage()
-	originalStorage := storageProvider.OriginalStorage()
+	storageService := storageProvider.StorageService()
 
 	// service
 	userService := services.NewUserService(queries)
 	faceService := services.NewFaceService(queries)
-	mediaItemService := services.NewMediaItemService(queries, thumbnailStorage, originalStorage)
+	mediaItemService := services.NewMediaItemService(queries, storageService)
 	identityService := services.NewIdentityService(queries)
 	albumService := services.NewAlbumService(queries)
 

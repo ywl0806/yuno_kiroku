@@ -53,7 +53,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           >
             {photos.map((photo) => (
               <SwiperSlide key={photo.id} className="flex items-center justify-center px-1">
-                {photo.live_url ? <LivePhoto photo={photo} /> : <img src={photo.thumbnail_url} alt={photo.file_name} />}
+                {photo.live_url ? <LivePhoto photo={photo} /> : <img src={photo.view_url} alt={photo.file_name} />}
               </SwiperSlide>
             ))}
           </Swiper>

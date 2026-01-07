@@ -3,4 +3,8 @@ package consts
 const (
 	VIEW_MAX_LENGTH      = 2048
 	THUMBNAIL_MAX_LENGTH = 512
+
+	VIEW_STORAGE_PREFIX      = "view"
+	THUMBNAIL_STORAGE_PREFIX = "thumbnail"
+	ORIGINAL_STORAGE_PREFIX  = "original"
 )

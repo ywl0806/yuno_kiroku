@@ -179,12 +179,15 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]G
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
     mi.id, mi.group_id, mi.album_id, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
-    original_media_file.storage_key AS original_storage_key,
-    thumbnail_media_file.storage_key AS thumbnail_storage_key,
-    original_media_file.width AS original_width,
-    original_media_file.height AS original_height,
-    thumbnail_media_file.width AS thumbnail_width,
-    thumbnail_media_file.height AS thumbnail_height
+    COALESCE(original_media_file.storage_key, '') AS original_storage_key,
+    COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(view_media_file.storage_key, '') AS view_storage_key,
+    COALESCE(original_media_file.width, 0) AS original_width,
+    COALESCE(original_media_file.height, 0) AS original_height,
+    COALESCE(thumbnail_media_file.width, 0) AS thumbnail_width,
+    COALESCE(thumbnail_media_file.height, 0) AS thumbnail_height,
+    COALESCE(view_media_file.width, 0) AS view_width,
+    COALESCE(view_media_file.height, 0) AS view_height
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
@@ -201,6 +204,12 @@ FROM
         WHERE media_item_id = mi.id AND role = 'thumbnail' 
         LIMIT 1
     ) AS thumbnail_media_file ON true
+    LEFT JOIN LATERAL (
+        SELECT storage_key, width, height 
+        FROM media_files 
+        WHERE media_item_id = mi.id AND role = 'view' 
+        LIMIT 1
+    ) AS view_media_file ON true
 WHERE
     acgp.clan_group_id = $1::int
     AND acgp.permission = 'R'
@@ -226,10 +235,13 @@ type GetMediaItemsByTakenAtRow struct {
 	UpdatedAt           time.Time
 	OriginalStorageKey  string
 	ThumbnailStorageKey string
-	OriginalWidth       sql.NullInt32
-	OriginalHeight      sql.NullInt32
-	ThumbnailWidth      sql.NullInt32
-	ThumbnailHeight     sql.NullInt32
+	ViewStorageKey      string
+	OriginalWidth       int32
+	OriginalHeight      int32
+	ThumbnailWidth      int32
+	ThumbnailHeight     int32
+	ViewWidth           int32
+	ViewHeight          int32
 }
 
 func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsByTakenAtParams) ([]GetMediaItemsByTakenAtRow, error) {
@@ -251,10 +263,13 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.UpdatedAt,
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
+			&i.ViewStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,
 			&i.ThumbnailHeight,
+			&i.ViewWidth,
+			&i.ViewHeight,
 		); err != nil {
 			return nil, err
 		}

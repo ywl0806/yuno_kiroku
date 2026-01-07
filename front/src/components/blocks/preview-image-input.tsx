@@ -120,6 +120,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
         <div className="overflow-y-visible rounded-md border-2 p-2">
           <PhotoGrid
             photos={photoAlbum}
+            columnCount={1}
             renderPhoto={(props) => (
               <div className="relative" key={props.photo.key}>
                 {!isUploaded && (

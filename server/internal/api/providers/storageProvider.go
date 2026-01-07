@@ -6,8 +6,7 @@ import (
 )
 
 type StorageProvider struct {
-	thumbnailStorage storage.StorageService
-	originalStorage  storage.StorageService
+	storageService storage.StorageService
 }
 
 func NewStorageProvider() *StorageProvider {
@@ -16,39 +15,31 @@ func NewStorageProvider() *StorageProvider {
 
 	switch storageType {
 	case "local":
-		thumbnailRootDir := viper.GetString("THUMBNAIL_ROOT_DIR")
-		originalRootDir := viper.GetString("ORIGINAL_ROOT_DIR")
+		rootDir := viper.GetString("STORAGE_ROOT_DIR")
 
-		if thumbnailRootDir == "" || originalRootDir == "" {
-			panic("thumbnail root dir or original root dir is not set")
+		if rootDir == "" {
+			panic("storage root dir is not set")
 		}
 
 		return &StorageProvider{
-			thumbnailStorage: storage.NewLocalStorageService(thumbnailRootDir),
-			originalStorage:  storage.NewLocalStorageService(originalRootDir),
+			storageService: storage.NewLocalStorageService(rootDir),
 		}
 	case "s3",
 		"minio":
-		thumbnailBucket := viper.GetString("THUMBNAIL_BUCKET")
-		originalBucket := viper.GetString("ORIGINAL_BUCKET")
+		bucket := viper.GetString("STORAGE_BUCKET")
 
-		if thumbnailBucket == "" || originalBucket == "" {
-			panic("thumbnail bucket or original bucket is not set")
+		if bucket == "" {
+			panic("storage bucket is not set")
 		}
 
 		return &StorageProvider{
-			thumbnailStorage: storage.NewS3StorageService(thumbnailBucket),
-			originalStorage:  storage.NewS3StorageService(originalBucket),
+			storageService: storage.NewS3StorageService(bucket),
 		}
 	default:
 		panic("invalid storage type")
 	}
 }
 
-func (s *StorageProvider) ThumbnailStorage() storage.StorageService {
-	return s.thumbnailStorage
-}
-
-func (s *StorageProvider) OriginalStorage() storage.StorageService {
-	return s.originalStorage
+func (s *StorageProvider) StorageService() storage.StorageService {
+	return s.storageService
 }

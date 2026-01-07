@@ -5,8 +5,6 @@ type MediaItemRole string
 const (
 	MediaItemRoleOriginal  MediaItemRole = "original"
 	MediaItemRoleThumbnail MediaItemRole = "thumbnail"
-	MediaItemRoleViewer    MediaItemRole = "viewer"
-	MediaItemRolePreview   MediaItemRole = "preview"
+	MediaItemRoleView      MediaItemRole = "view"
 	MediaItemRoleLive      MediaItemRole = "live"
-	MediaItemRoleStream    MediaItemRole = "stream"
 )

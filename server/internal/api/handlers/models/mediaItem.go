@@ -32,11 +32,14 @@ type MediaItemResponse struct {
 	ThumbnailUrl    string    `json:"thumbnail_url"`
 	ThumbnailWidth  int32     `json:"thumbnail_width"`
 	ThumbnailHeight int32     `json:"thumbnail_height"`
+	ViewUrl         string    `json:"view_url"`
+	ViewWidth       int32     `json:"view_width"`
+	ViewHeight      int32     `json:"view_height"`
 }
 
 func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemResponse {
-	originalStorageUrl := viper.GetString("ORIGINAL_STORAGE_URL")
-	thumbnailStorageUrl := viper.GetString("THUMBNAIL_STORAGE_URL")
+	storageUrl := viper.GetString("STORAGE_URL")
+
 	return &MediaItemResponse{
 		ID:              mediaItem.ID,
 		GroupID:         mediaItem.GroupID,
@@ -45,12 +48,15 @@ func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemRes
 		FileName:        mediaItem.FileName.String,
 		CreatedAt:       mediaItem.CreatedAt,
 		UpdatedAt:       mediaItem.UpdatedAt,
-		OriginalUrl:     utils.ParsePath(originalStorageUrl, mediaItem.OriginalStorageKey),
-		OriginalWidth:   mediaItem.OriginalWidth.Int32,
-		OriginalHeight:  mediaItem.OriginalHeight.Int32,
-		ThumbnailUrl:    utils.ParsePath(thumbnailStorageUrl, mediaItem.ThumbnailStorageKey),
-		ThumbnailWidth:  mediaItem.ThumbnailWidth.Int32,
-		ThumbnailHeight: mediaItem.ThumbnailHeight.Int32,
+		OriginalUrl:     utils.ParsePath(storageUrl, mediaItem.OriginalStorageKey),
+		OriginalWidth:   mediaItem.OriginalWidth,
+		OriginalHeight:  mediaItem.OriginalHeight,
+		ThumbnailUrl:    utils.ParsePath(storageUrl, mediaItem.ThumbnailStorageKey),
+		ThumbnailWidth:  mediaItem.ThumbnailWidth,
+		ThumbnailHeight: mediaItem.ThumbnailHeight,
+		ViewUrl:         utils.ParsePath(storageUrl, mediaItem.ViewStorageKey),
+		ViewWidth:       mediaItem.ViewWidth,
+		ViewHeight:      mediaItem.ViewHeight,
 	}
 }
 

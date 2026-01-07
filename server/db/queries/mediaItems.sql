@@ -20,12 +20,15 @@ RETURNING
 -- name: GetMediaItemsByTakenAt :many
 SELECT
     mi.*,
-    original_media_file.storage_key AS original_storage_key,
-    thumbnail_media_file.storage_key AS thumbnail_storage_key,
-    original_media_file.width AS original_width,
-    original_media_file.height AS original_height,
-    thumbnail_media_file.width AS thumbnail_width,
-    thumbnail_media_file.height AS thumbnail_height
+    COALESCE(original_media_file.storage_key, '') AS original_storage_key,
+    COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(view_media_file.storage_key, '') AS view_storage_key,
+    COALESCE(original_media_file.width, 0) AS original_width,
+    COALESCE(original_media_file.height, 0) AS original_height,
+    COALESCE(thumbnail_media_file.width, 0) AS thumbnail_width,
+    COALESCE(thumbnail_media_file.height, 0) AS thumbnail_height,
+    COALESCE(view_media_file.width, 0) AS view_width,
+    COALESCE(view_media_file.height, 0) AS view_height
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
@@ -42,6 +45,12 @@ FROM
         WHERE media_item_id = mi.id AND role = 'thumbnail' 
         LIMIT 1
     ) AS thumbnail_media_file ON true
+    LEFT JOIN LATERAL (
+        SELECT storage_key, width, height 
+        FROM media_files 
+        WHERE media_item_id = mi.id AND role = 'view' 
+        LIMIT 1
+    ) AS view_media_file ON true
 WHERE
     acgp.clan_group_id = sqlc.arg (clan_group_id)::int
     AND acgp.permission = 'R'

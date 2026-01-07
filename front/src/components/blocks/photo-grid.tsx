@@ -7,6 +7,7 @@ type Props = {
   photos: AlbumPhoto[]
   onClick?: (index: number) => void
   renderPhoto?: RenderPhoto<AlbumPhoto>
+  columnCount?: number
 }
 const getColumnCount = (width: number) => {
   if (width < 1024) {
@@ -15,7 +16,7 @@ const getColumnCount = (width: number) => {
   return 3
 }
 
-export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto }) => {
+export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto, columnCount: _columnCount }) => {
   const [columnCount, setColumnCount] = useState(getColumnCount(window.innerWidth))
 
   useEffect(() => {
@@ -31,10 +32,9 @@ export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto }) => {
         onClick && onClick(props.index)
       }}
       photos={photos}
-      columns={columnCount}
+      columns={_columnCount ?? columnCount}
       layout="masonry"
-      spacing={2}
-      padding={2}
+      spacing={0}
       targetRowHeight={300}
       renderPhoto={(props) => {
         const { photo, wrapperStyle, ...rest } = props
@@ -42,7 +42,14 @@ export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto }) => {
         return renderPhoto ? (
           renderPhoto(props)
         ) : (
-          <LazyLoadImage src={photo.src} alt={photo.alt} effect="blur" onClick={rest.imageProps.onClick} {...rest} />
+          <LazyLoadImage
+            className="p-[2px]"
+            src={photo.src}
+            alt={photo.alt}
+            effect="blur"
+            onClick={rest.imageProps.onClick}
+            {...rest}
+          />
         )
       }}
     />

@@ -17,20 +17,17 @@ import (
 )
 
 type MediaItemService struct {
-	queries          *db.Queries
-	thumbnailStorage storage.StorageService
-	originalStorage  storage.StorageService
+	queries        *db.Queries
+	storageService storage.StorageService
 }
 
 func NewMediaItemService(
 	queries *db.Queries,
-	thumbnailStorage storage.StorageService,
-	originalStorage storage.StorageService,
+	storageService storage.StorageService,
 ) *MediaItemService {
 	return &MediaItemService{
-		queries:          queries,
-		thumbnailStorage: thumbnailStorage,
-		originalStorage:  originalStorage,
+		queries:        queries,
+		storageService: storageService,
 	}
 }
 
@@ -94,7 +91,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 
 	createViewMediaFileParams := db.CreateMediaFileParams{
 		MediaItemID: mediaItem.ID,
-		Role:        string(enums.MediaItemRoleViewer),
+		Role:        string(enums.MediaItemRoleView),
 		StorageKey:  params.ViewStorageKey,
 		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
 		Width:    sql.NullInt32{Int32: int32(viewFile.Width), Valid: true},
@@ -138,7 +135,7 @@ func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, up
 		log.Println("Thumbnail File Error: ", err)
 		return "", "", "", err
 	}
-	thumbnailStorageKey, err := s.thumbnailStorage.SaveFile(thumbnailFile.File, folderName, filename+thumbnailFile.Ext)
+	thumbnailStorageKey, err := s.storageService.SaveFile(thumbnailFile.File, folderName, consts.THUMBNAIL_STORAGE_PREFIX+"/"+filename+thumbnailFile.Ext)
 	if err != nil {
 		log.Println("Thumbnail Storage Error: ", err)
 		return "", "", "", err
@@ -150,13 +147,13 @@ func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, up
 		return "", "", "", err
 	}
 
-	viewStorageKey, err := s.thumbnailStorage.SaveFile(viewFile.File, folderName, filename+viewFile.Ext)
+	viewStorageKey, err := s.storageService.SaveFile(viewFile.File, folderName, consts.VIEW_STORAGE_PREFIX+"/"+filename+viewFile.Ext)
 	if err != nil {
 		log.Println("View Storage Error: ", err)
 		return "", "", "", err
 	}
 
-	originalStorageKey, err := s.originalStorage.SaveFile(imageHandler.OriginalFile, folderName, filename+"."+imageHandler.Ext)
+	originalStorageKey, err := s.storageService.SaveFile(imageHandler.OriginalFile, folderName, consts.ORIGINAL_STORAGE_PREFIX+"/"+filename+"."+imageHandler.Ext)
 	if err != nil {
 		log.Println("Original Storage Error: ", err)
 		return "", "", "", err

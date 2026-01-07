@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { useGetAlbums } from '@/feature/upload/hooks/use-get-albums'
 import { getSessionStorage, removeSessionStorage, SESSION_STORAGE_KEY, setSessionStorage } from '@/lib/session-storage'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
-import { Album, ArrowLeft, BrushCleaning, Check, Upload } from 'lucide-react'
+import { Album, ArrowLeft, Upload } from 'lucide-react'
 import { FC, useMemo, useRef, useState } from 'react'
 
 export const UploadContainer: FC = () => {
@@ -20,15 +20,8 @@ export const UploadContainer: FC = () => {
     return albums?.find((album) => album.id === albumId)
   }, [albums, albumId])
 
-  const { mediaItems, setMediaItems, handleUploadPhotos, progress, clearPhotos, isUploaded, isUploading } =
-    useUploadPhoto()
+  const { mediaItems, setMediaItems, handleUploadPhotos, clearPhotos, isUploaded } = useUploadPhoto()
   const imgInputRef = useRef<HTMLInputElement>(null)
-
-  // useEffect(() => {
-  //   if (progress !== 100) {
-  //     imgInputRef.current?.click()
-  //   }
-  // }, [])
 
   const handleChangeAlbum = (albumId: number) => {
     setAlbumId(albumId)
@@ -48,7 +41,7 @@ export const UploadContainer: FC = () => {
             <Button
               key={album.id}
               variant="outline"
-              className=" h-12 justify-start text-[1rem]"
+              className="h-12 justify-start text-[1rem]"
               onClick={() => handleChangeAlbum(album.id)}
             >
               <Album />
@@ -61,13 +54,13 @@ export const UploadContainer: FC = () => {
         <div className="h-full w-full overflow-y-auto">
           <div className="flex w-full items-center justify-between ">
             <div className="flex-1">
-              <Button variant="outline" onClick={handleClearPhotos}>
+              <Button variant="outline" size="sm" onClick={handleClearPhotos}>
                 <ArrowLeft />
                 <span>戻る</span>
               </Button>
             </div>
-            <div className="flex flex-1 items-center justify-center gap-2">
-              <Album />
+            <div className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap text-sm">
+              <Album className="size-4" />
               {selectedAlbum.name}
             </div>
             <div className="flex-1" />

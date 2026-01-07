@@ -4,12 +4,15 @@ export interface MediaItem {
   album_id: string
   thumbnail_url: string
   original_url: string
+  view_url: string
   live_url: string
   original_live_url: string
   original_width: number
   original_height: number
   thumbnail_width: number
   thumbnail_height: number
+  view_width: number
+  view_height: number
   file_name: string
   taken_at: string
   created_at: string
