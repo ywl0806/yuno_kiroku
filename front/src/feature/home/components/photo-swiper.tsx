@@ -42,7 +42,7 @@ export const PhotoSwiper: FC<Props> = ({ date, range }) => {
       {range.map((ran) => {
         return (
           <SwiperSlide key={`${ran.year}-${ran.month}`}>
-            <PhotoGridContainer year={ran.year} month={ran.month} />
+            <PhotoGridContainer year={ran.year} month={ran.month} date={date} />
           </SwiperSlide>
         )
       })}

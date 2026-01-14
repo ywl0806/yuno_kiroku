@@ -10,6 +10,9 @@ interface ImageDimensions {
   width: number
   height: number
 }
+const getColumnCount = (width: number) => {
+  return Math.abs(Math.floor(width / 300))
+}
 
 // 이미지의 실제 크기를 가져오는 헬퍼 함수
 const getImageDimensions = (file: File): Promise<ImageDimensions> => {
@@ -89,7 +92,15 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
   const handleRemove = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index))
   }
+  const [columnCount, setColumnCount] = useState(getColumnCount(window.innerWidth))
 
+  useEffect(() => {
+    const handleResize = () => {
+      setColumnCount(getColumnCount(window.innerWidth))
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="sticky top-2 z-50 flex items-center justify-center gap-2">
@@ -120,7 +131,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
         <div className="overflow-y-visible rounded-md border-2 p-2">
           <PhotoGrid
             photos={photoAlbum}
-            columnCount={1}
+            columnCount={columnCount}
             renderPhoto={(props) => (
               <div className="relative" key={props.photo.key}>
                 {!isUploaded && (

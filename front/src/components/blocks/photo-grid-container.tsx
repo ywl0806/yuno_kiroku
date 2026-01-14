@@ -1,22 +1,31 @@
 import { PhotoDetailSwipeDialog } from '@/components/blocks/photo-detail-swipe-dialog'
 import { PhotoGrid } from '@/components/blocks/photo-grid'
 import { useGetMediaItems } from '@/feature/home/hooks/use-get-media-items'
-import { FC, useMemo, useState } from 'react'
+import { FC, useEffect, useMemo, useState } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
 
 type Props = {
   year: number
   month: number
+  date: string
 }
 
-export const PhotoGridContainer: FC<Props> = ({ year, month }) => {
-  const { data: photos } = useGetMediaItems({ year, month })
+export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
+  const { data: photos, refetch, isFetched } = useGetMediaItems({ year, month, enabled: false })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
 
+  useEffect(() => {
+    if (!date || isFetched) return
+    const [y, m] = date.split('-')
+    if (parseInt(y) === year && parseInt(m) === month) {
+      refetch()
+    }
+  }, [date, year, month, refetch])
+
   const photoAlbum: AlbumPhoto[] = useMemo(() => {
     if (!photos) return []
-    console.log(photos)
+
     return photos.map((mediaItem) => {
       return {
         key: mediaItem.id,

@@ -13,5 +13,6 @@ export const useGetAlbums = () => {
   return useQuery({
     queryKey: ['albums'],
     queryFn: fetchFunc,
+    staleTime: 1000 * 60 * 1,
   })
 }

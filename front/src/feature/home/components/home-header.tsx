@@ -1,7 +1,7 @@
 import colors from '@/colors'
 import { DropdownYear } from '@/components/blocks/dropdown-year'
 // import { ScrollHideWrapper } from '@/components/layouts/scroll-hide-wrapper'
-import { PhotoRange } from '@/service/get-media-item-range'
+import { MediaItemRange } from '@/types'
 import { Tab, Tabs } from '@mui/material'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -13,10 +13,9 @@ type SelectedDate = {
 
 type Props = {
   date: string
-  range: PhotoRange[]
-  rangeFetched: boolean
+  range: MediaItemRange[]
 }
-export const HomeHeader: FC<Props> = ({ date, range, rangeFetched }) => {
+export const HomeHeader: FC<Props> = ({ date, range }) => {
   const nav = useNavigate()
 
   const [selectedDate, setSelectedDate] = useState<SelectedDate>({
@@ -30,9 +29,12 @@ export const HomeHeader: FC<Props> = ({ date, range, rangeFetched }) => {
 
   const years = useMemo(() => {
     const set = new Set<number>()
+    const thisYear = new Date().getFullYear()
+    set.add(thisYear)
     range.forEach((r) => {
       set.add(r.year)
     })
+
     return Array.from(set)
   }, [range])
 
@@ -62,7 +64,7 @@ export const HomeHeader: FC<Props> = ({ date, range, rangeFetched }) => {
       {/* </ScrollHideWrapper> */}
 
       <div className="z-99 bg-background h-full">
-        {rangeFetched && (
+        {range.length > 0 && (
           <Tabs
             sx={{
               '&.MuiTabs-root': {

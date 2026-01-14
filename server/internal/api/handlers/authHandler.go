@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
+	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/api/services"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils/jwt"
@@ -14,11 +16,12 @@ import (
 )
 
 type AuthHandler struct {
-	userService *services.UserService
+	userService   *services.UserService
+	authSecretKey string
 }
 
 func NewAuthHandler(userService *services.UserService) *AuthHandler {
-	return &AuthHandler{userService: userService}
+	return &AuthHandler{userService: userService, authSecretKey: viper.GetString("AUTH_SECRET_KEY")}
 }
 
 type LoginRequest struct {
@@ -61,18 +64,29 @@ func (con *AuthHandler) Login(c echo.Context) error {
 		GroupId:     cast.ToString(user.GroupID),
 		ClanGroupId: cast.ToString(user.ClanGroupID),
 	}
-	token, err := jwt.GenerateJWT(accessTokenClaims, viper.GetString("AUTH_SECRET_KEY"), 60*24*30)
+	token, err := jwt.GenerateJWT(accessTokenClaims, con.authSecretKey, consts.AccessTokenCookieMaxAge)
 
 	if err != nil {
 		return c.JSON(500, map[string]string{"error": "Failed to generate token"})
 	}
 
-	claims := &jwt.AccessTokenClaims{}
-	err = jwt.ParseJWT(token, viper.GetString("AUTH_SECRET_KEY"), claims)
+	refreshTokenClaims := &jwt.RefreshTokenClaims{
+		ID: cast.ToString(user.ID),
+	}
+
+	refreshToken, err := jwt.GenerateJWT(refreshTokenClaims, con.authSecretKey, consts.RefreshTokenCookieMaxAge)
 
 	if err != nil {
 		return c.JSON(500, map[string]string{"error": "Failed to generate token"})
 	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     consts.RefreshTokenCookieName,
+		Value:    refreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   consts.RefreshTokenCookieMaxAge,
+	})
 
 	return c.JSON(200,
 		map[string]any{

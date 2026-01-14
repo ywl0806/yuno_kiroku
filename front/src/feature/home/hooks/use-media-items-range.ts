@@ -15,6 +15,7 @@ export const useMediaItemsRange = () => {
     queryFn: () => {
       return fetchFunc()
     },
+    staleTime: 1000 * 60 * 1,
   })
 
   const range = useMemo(() => {

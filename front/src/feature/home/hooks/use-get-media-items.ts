@@ -7,8 +7,9 @@ import { useCallback } from 'react'
 export type UseGetMediaItemsProps = {
   year: number
   month: number
+  enabled?: boolean
 }
-export const useGetMediaItems = ({ year, month }: UseGetMediaItemsProps) => {
+export const useGetMediaItems = ({ year, month, enabled }: UseGetMediaItemsProps) => {
   const fetchFunc = useCallback(async () => {
     const from = new Date(year, month - 1, 1)
     const to = new Date(year, month)
@@ -24,5 +25,7 @@ export const useGetMediaItems = ({ year, month }: UseGetMediaItemsProps) => {
   return useQuery({
     queryKey: ['mediaItems', year, month],
     queryFn: fetchFunc,
+    enabled,
+    staleTime: 1000 * 60 * 1,
   })
 }

@@ -3,6 +3,7 @@
 package imageHandler
 
 import (
+	"bytes"
 	"log"
 	"strings"
 	"sync"
@@ -11,14 +12,11 @@ import (
 	"io"
 
 	"github.com/davidbyttow/govips/v2/vips"
+	"github.com/rwcarlsen/goexif/exif"
 )
 
 var (
 	vipsOnce sync.Once
-)
-
-const (
-	MaxLength = 2048
 )
 
 type ResizedFile struct {
@@ -35,8 +33,8 @@ type ImageHelper struct {
 
 	resizedFiles map[int]ResizedFile
 
-	Ext  string
-	Exif map[string]string
+	Ext     string
+	takenAt time.Time
 }
 
 func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
@@ -65,6 +63,21 @@ func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
 	}
 	handler.OriginalWidth = originalWidth
 	handler.OriginalHeight = originalHeight
+
+	// EXIF 정보 가져오기
+	exifReader := bytes.NewReader(originalFileBytes)
+
+	exifData, _ := exif.Decode(exifReader)
+
+	if exifData != nil {
+		takenAt, err := exifData.DateTime()
+
+		if err != nil {
+			handler.takenAt = time.Now()
+		} else {
+			handler.takenAt = takenAt
+		}
+	}
 
 	return handler, nil
 }
@@ -154,6 +167,7 @@ func (ih *ImageHelper) getOriginalImageSize() (int, int, error) {
 	// 회전 후 실제 이미지 크기 저장
 	originalWidth := img.Width()
 	originalHeight := img.Height()
+
 	return originalWidth, originalHeight, nil
 }
 
@@ -162,15 +176,7 @@ func (ih *ImageHelper) GetOriginalImageSize() (int, int) {
 }
 
 func (ih *ImageHelper) GetTakenAt() time.Time {
-	takenAt, _ := ih.Exif["DateTime"]
-	if takenAt == "" {
-		return time.Now()
-	}
-	takenAtTime, err := time.Parse(time.RFC3339, takenAt)
-	if err != nil {
-		return time.Now()
-	}
-	return takenAtTime
+	return ih.takenAt
 }
 
 // 긴변을 MaxLength로 고정하고 짧은변을 계산

@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { Dialog, IconButton, Slide } from '@mui/material'
 import { TransitionProps } from '@mui/material/transitions'
 import { FC, forwardRef, useEffect, useState } from 'react'
+import { LazyLoadImage } from 'react-lazy-load-image-component'
 import { Swiper, SwiperClass, SwiperSlide } from 'swiper/react'
 
 type Props = {
@@ -50,10 +51,26 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
             }}
             controller={{ control: swiper }}
             onSwiper={(swiper) => setSwiper(swiper)}
+            className="h-full w-full"
+            wrapperClass="h-full w-full"
           >
             {photos.map((photo) => (
-              <SwiperSlide key={photo.id} className="flex items-center justify-center px-1">
-                {photo.live_url ? <LivePhoto photo={photo} /> : <img src={photo.view_url} alt={photo.file_name} />}
+              <SwiperSlide key={photo.id} className="flex h-full w-full items-center justify-center px-1 pb-5">
+                <div className="flex h-full w-full items-center justify-center">
+                  {photo.live_url ? (
+                    <LivePhoto photo={photo} />
+                  ) : (
+                    <LazyLoadImage
+                      className="mx-auto max-h-[90vh] object-cover"
+                      src={photo.view_url}
+                      alt={photo.file_name}
+                      effect="blur"
+                      onClick={() => {
+                        window.open(photo.view_url, '_blank')
+                      }}
+                    />
+                  )}
+                </div>
               </SwiperSlide>
             ))}
           </Swiper>

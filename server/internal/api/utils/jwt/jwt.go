@@ -24,8 +24,8 @@ type RefreshTokenClaims struct {
 }
 
 // GenerateJWT generates a JWT for the given claims type (AccessToken or RefreshToken).
-func GenerateJWT(claims JWTClaims, secretKey string, expireMinute int) (string, error) {
-	expireAt := time.Now().Add(time.Duration(expireMinute) * time.Minute)
+func GenerateJWT(claims JWTClaims, secretKey string, expireSeconds int) (string, error) {
+	expireAt := time.Now().Add(time.Duration(time.Duration(expireSeconds).Seconds()))
 
 	// Set common registered claims
 	switch c := claims.(type) {

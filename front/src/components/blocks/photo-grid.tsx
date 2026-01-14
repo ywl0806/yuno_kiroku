@@ -10,10 +10,7 @@ type Props = {
   columnCount?: number
 }
 const getColumnCount = (width: number) => {
-  if (width < 1024) {
-    return 2
-  }
-  return 3
+  return Math.abs(Math.floor(width / 300)) + 1
 }
 
 export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto, columnCount: _columnCount }) => {
@@ -34,7 +31,7 @@ export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto, columnCount
       photos={photos}
       columns={_columnCount ?? columnCount}
       layout="masonry"
-      spacing={0}
+      spacing={2}
       targetRowHeight={300}
       renderPhoto={(props) => {
         const { photo, wrapperStyle, ...rest } = props

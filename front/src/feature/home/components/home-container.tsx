@@ -1,16 +1,25 @@
 import { HomeHeader } from '@/feature/home/components/home-header'
 import { PhotoSwiper } from '@/feature/home/components/photo-swiper'
-import { useMediaItemsRange } from '@/feature/home/hooks/use-media-items-range'
-import { FC } from 'react'
+import { MediaItemRange } from '@/types'
+import { FC, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 type Props = {
+  range: MediaItemRange[]
   date: string
 }
-export const HomeContainer: FC<Props> = ({ date }) => {
-  const { range, isFetched } = useMediaItemsRange()
+export const HomeContainer: FC<Props> = ({ date, range }) => {
+  const nav = useNavigate()
+  useEffect(() => {
+    if (!range || date) return
+
+    if (range.length > 0) {
+      nav(`/${range[0].year}-${range[0].month}`)
+    }
+  }, [date, range])
   return (
     <div className="flex h-full flex-col">
-      <HomeHeader date={date ?? ''} range={range} rangeFetched={isFetched} />
+      <HomeHeader date={date ?? ''} range={range} />
       <PhotoSwiper date={date ?? ''} range={range} />
     </div>
   )

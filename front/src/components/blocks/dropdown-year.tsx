@@ -15,7 +15,7 @@ export const DropdownYear: FC<Props> = ({ years, selectedYear, onChange }) => {
           onChange(parseInt(value))
         }}
       >
-        <SelectTrigger className=" shadow-none ring-0 focus:ring-0">
+        <SelectTrigger className="min-w-[80px] border-none shadow-none ring-0 focus:ring-0">
           <SelectValue placeholder="YYYY" />
         </SelectTrigger>
         <SelectContent className="z-999">
