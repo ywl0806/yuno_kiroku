@@ -85,13 +85,15 @@ type MediaFile struct {
 }
 
 type MediaItem struct {
-	ID        int32
-	GroupID   int32
-	AlbumID   int32
-	TakenAt   time.Time
-	FileName  sql.NullString
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            int32
+	GroupID       int32
+	AlbumID       int32
+	UploadBatchID int32
+	UploadStatus  string
+	TakenAt       time.Time
+	FileName      sql.NullString
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type RefreshToken struct {
@@ -100,6 +102,14 @@ type RefreshToken struct {
 	ExpiresAt time.Time
 	UserID    int32
 	CreatedAt time.Time
+}
+
+type UploadBatch struct {
+	ID        int32
+	AlbumID   int32
+	UploadAt  time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type User struct {

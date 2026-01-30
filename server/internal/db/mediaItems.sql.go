@@ -27,6 +27,8 @@ RETURNING
     id,
     group_id,
     album_id,
+    upload_batch_id,
+    upload_status,
     taken_at,
     file_name,
     created_at,
@@ -52,6 +54,8 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 		&i.ID,
 		&i.GroupID,
 		&i.AlbumID,
+		&i.UploadBatchID,
+		&i.UploadStatus,
 		&i.TakenAt,
 		&i.FileName,
 		&i.CreatedAt,
@@ -63,7 +67,7 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 const getMediaItemByFaceDetection = `-- name: GetMediaItemByFaceDetection :one
 
 SELECT
-    mi.id, mi.group_id, mi.album_id, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
+    mi.id, mi.group_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
 FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
@@ -113,6 +117,8 @@ func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaI
 		&i.ID,
 		&i.GroupID,
 		&i.AlbumID,
+		&i.UploadBatchID,
+		&i.UploadStatus,
 		&i.TakenAt,
 		&i.FileName,
 		&i.CreatedAt,
@@ -178,7 +184,7 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]G
 
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
-    mi.id, mi.group_id, mi.album_id, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.group_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     COALESCE(original_media_file.storage_key, '') AS original_storage_key,
     COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
     COALESCE(view_media_file.storage_key, '') AS view_storage_key,
@@ -193,28 +199,26 @@ FROM
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
     LEFT JOIN LATERAL (
-        SELECT storage_key, width, height 
+        SELECT storage_key, width, height, media_item_id
         FROM media_files 
-        WHERE media_item_id = mi.id AND role = 'original' 
-        LIMIT 1
-    ) AS original_media_file ON true
+        WHERE role = '01' 
+    ) AS original_media_file ON original_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
         SELECT storage_key, width, height 
         FROM media_files 
-        WHERE media_item_id = mi.id AND role = 'thumbnail' 
-        LIMIT 1
-    ) AS thumbnail_media_file ON true
+        WHERE role = '02' 
+    ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
         SELECT storage_key, width, height 
         FROM media_files 
-        WHERE media_item_id = mi.id AND role = 'view' 
-        LIMIT 1
-    ) AS view_media_file ON true
+        WHERE role = '03' 
+    ) AS view_media_file ON view_media_file.media_item_id = mi.id
 WHERE
     acgp.clan_group_id = $1::int
     AND acgp.permission = 'R'
     AND mi.taken_at >= $2::timestamp
     AND mi.taken_at <= $3::timestamp
+    AND mi.upload_status = '03' -- 03: completed
 ORDER BY
     mi.taken_at DESC
 `
@@ -229,6 +233,8 @@ type GetMediaItemsByTakenAtRow struct {
 	ID                  int32
 	GroupID             int32
 	AlbumID             int32
+	UploadBatchID       int32
+	UploadStatus        string
 	TakenAt             time.Time
 	FileName            sql.NullString
 	CreatedAt           time.Time
@@ -257,6 +263,8 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.ID,
 			&i.GroupID,
 			&i.AlbumID,
+			&i.UploadBatchID,
+			&i.UploadStatus,
 			&i.TakenAt,
 			&i.FileName,
 			&i.CreatedAt,
@@ -282,4 +290,72 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUploadStatuses = `-- name: GetUploadStatuses :many
+SELECT
+    mi.id,
+    mi.upload_status
+FROM media_items AS mi
+WHERE mi.upload_batch_id = $1
+ORDER BY mi.id ASC
+`
+
+type GetUploadStatusesRow struct {
+	ID           int32
+	UploadStatus string
+}
+
+func (q *Queries) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]GetUploadStatusesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUploadStatuses, uploadBatchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUploadStatusesRow
+	for rows.Next() {
+		var i GetUploadStatusesRow
+		if err := rows.Scan(&i.ID, &i.UploadStatus); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateMediaItemUploadStatus = `-- name: UpdateMediaItemUploadStatus :one
+UPDATE media_items
+SET upload_status = $2
+WHERE id = $1
+RETURNING id, upload_status, created_at, updated_at
+`
+
+type UpdateMediaItemUploadStatusParams struct {
+	ID           int32
+	UploadStatus string
+}
+
+type UpdateMediaItemUploadStatusRow struct {
+	ID           int32
+	UploadStatus string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+func (q *Queries) UpdateMediaItemUploadStatus(ctx context.Context, arg UpdateMediaItemUploadStatusParams) (UpdateMediaItemUploadStatusRow, error) {
+	row := q.db.QueryRowContext(ctx, updateMediaItemUploadStatus, arg.ID, arg.UploadStatus)
+	var i UpdateMediaItemUploadStatusRow
+	err := row.Scan(
+		&i.ID,
+		&i.UploadStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

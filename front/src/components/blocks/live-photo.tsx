@@ -1,10 +1,10 @@
 import { LivePhotoBadge } from '@/components/blocks/live-photo-badge'
-import { Photo } from '@/types'
+import { MediaItem } from '@/types'
 import { Fade, IconButton } from '@mui/material'
 import { FC, useEffect, useRef, useState } from 'react'
 
 type Props = {
-  photo: Photo
+  photo: MediaItem
 }
 
 export const LivePhoto: FC<Props> = ({ photo }) => {

@@ -29,12 +29,12 @@ export const PhotoGrid: FC<Props> = ({ photos, onClick, renderPhoto, columnCount
         onClick && onClick(props.index)
       }}
       photos={photos}
-      columns={_columnCount ?? columnCount}
+      columns={_columnCount || columnCount}
       layout="masonry"
       spacing={2}
       targetRowHeight={300}
       renderPhoto={(props) => {
-        const { photo, wrapperStyle, ...rest } = props
+        const { photo, ...rest } = props
 
         return renderPhoto ? (
           renderPhoto(props)

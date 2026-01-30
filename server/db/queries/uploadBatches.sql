@@ -1,0 +1,26 @@
+-- name: CreateUploadBatch :one
+INSERT INTO upload_batches (
+    album_id
+)
+VALUES ($1)
+RETURNING id, album_id, upload_at, created_at, updated_at;
+
+-- name: GetUploadBatchesAndMediaItemCounts :many
+SELECT 
+    ub.id,
+    ub.album_id,
+    ub.upload_at,
+    item_counts.count
+FROM upload_batches AS ub
+INNER JOIN albums AS a ON a.id = ub.album_id
+INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+INNER JOIN (
+    SELECT upload_batch_id, COUNT(*) AS count
+    FROM media_items
+    GROUP BY upload_batch_id
+) AS item_counts ON item_counts.upload_batch_id = ub.id
+WHERE 
+    acgp.clan_group_id = sqlc.arg (clan_group_id)::int
+    AND acgp.permission = 'R'
+ORDER BY ub.upload_at DESC;
+

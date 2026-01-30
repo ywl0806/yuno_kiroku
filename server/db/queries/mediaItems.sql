@@ -12,6 +12,8 @@ RETURNING
     id,
     group_id,
     album_id,
+    upload_batch_id,
+    upload_status,
     taken_at,
     file_name,
     created_at,
@@ -34,28 +36,26 @@ FROM
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
     LEFT JOIN LATERAL (
-        SELECT storage_key, width, height 
+        SELECT storage_key, width, height, media_item_id
         FROM media_files 
-        WHERE media_item_id = mi.id AND role = 'original' 
-        LIMIT 1
-    ) AS original_media_file ON true
+        WHERE role = '01' 
+    ) AS original_media_file ON original_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
         SELECT storage_key, width, height 
         FROM media_files 
-        WHERE media_item_id = mi.id AND role = 'thumbnail' 
-        LIMIT 1
-    ) AS thumbnail_media_file ON true
+        WHERE role = '02' 
+    ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
         SELECT storage_key, width, height 
         FROM media_files 
-        WHERE media_item_id = mi.id AND role = 'view' 
-        LIMIT 1
-    ) AS view_media_file ON true
+        WHERE role = '03' 
+    ) AS view_media_file ON view_media_file.media_item_id = mi.id
 WHERE
     acgp.clan_group_id = sqlc.arg (clan_group_id)::int
     AND acgp.permission = 'R'
     AND mi.taken_at >= sqlc.arg (taken_at_from)::timestamp
     AND mi.taken_at <= sqlc.arg (taken_at_to)::timestamp
+    AND mi.upload_status = '03' -- 03: completed
 ORDER BY
     mi.taken_at DESC;
 
@@ -119,3 +119,17 @@ WHERE
 GROUP BY
     mi.id
 LIMIT 1;
+
+-- name: UpdateMediaItemUploadStatus :one
+UPDATE media_items
+SET upload_status = $2
+WHERE id = $1
+RETURNING id, upload_status, created_at, updated_at;
+
+-- name: GetUploadStatuses :many
+SELECT
+    mi.id,
+    mi.upload_status
+FROM media_items AS mi
+WHERE mi.upload_batch_id = $1
+ORDER BY mi.id ASC; 

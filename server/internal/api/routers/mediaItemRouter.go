@@ -19,5 +19,7 @@ func (mr *MediaItemRouter) Register(root *echo.Group) {
 
 	mediaItemRouter.GET("", mr.mediaItemHandler.GetMediaItems, guard.Handler)
 	mediaItemRouter.GET("/range", mr.mediaItemHandler.GetMediaItemRange, guard.Handler)
-	mediaItemRouter.POST("/upload", mr.mediaItemHandler.UploadImage, guard.Handler)
+	mediaItemRouter.POST("/upload-batch", mr.mediaItemHandler.CreateUploadBatch, guard.Handler)
+	mediaItemRouter.GET("/upload-batch/status", mr.mediaItemHandler.GetUploadBatchStatus, guard.Handler)
+	mediaItemRouter.POST("/image/upload", mr.mediaItemHandler.UploadImage, guard.Handler)
 }

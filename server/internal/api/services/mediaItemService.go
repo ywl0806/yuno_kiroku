@@ -39,6 +39,7 @@ type CreateMediaItemParams struct {
 	GroupId             int32
 	AlbumId             int32
 	OriginalFilename    string
+	UploadBatchID       *int32
 }
 
 func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
@@ -107,6 +108,83 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 	return &mediaItem, nil
 }
 
+// CreateMediaItemWithOriginalOnly creates a media item with only the original file
+func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
+	// 사진 저장 파라미터 생성
+	createMediaItemParams := db.CreateMediaItemParams{
+		GroupID:  params.GroupId,
+		AlbumID:  params.AlbumId,
+		TakenAt:  params.ImageHandler.GetTakenAt(),
+		FileName: sql.NullString{String: params.OriginalFilename, Valid: true},
+	}
+
+	mediaItem, err := s.queries.CreateMediaItem(ctx, createMediaItemParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// 원본 파일만 저장
+	createOriginalMediaFileParams := db.CreateMediaFileParams{
+		MediaItemID: mediaItem.ID,
+		Role:        string(enums.MediaItemRoleOriginal),
+		StorageKey:  params.OriginalStorageKey,
+		Width:       sql.NullInt32{Int32: int32(params.ImageHandler.OriginalWidth), Valid: true},
+		Height:      sql.NullInt32{Int32: int32(params.ImageHandler.OriginalHeight), Valid: true},
+		FileSize:    sql.NullInt64{Int64: int64(len(params.ImageHandler.OriginalFile)), Valid: true},
+	}
+
+	_, err = s.queries.CreateMediaFile(ctx, createOriginalMediaFileParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mediaItem, nil
+}
+
+// UpdateMediaItemWithResizedImages adds thumbnail and view files to an existing media item
+func (s *MediaItemService) UpdateMediaItemWithResizedImages(
+	ctx context.Context,
+	mediaItemID int32,
+	thumbnailStorageKey string,
+	viewStorageKey string,
+	imageHandler *imageHelper.ImageHelper,
+) error {
+	thumbnailFile, _ := imageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
+	viewFile, _ := imageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
+
+	// 썸네일 파일 저장
+	createThumbnailMediaFileParams := db.CreateMediaFileParams{
+		MediaItemID: mediaItemID,
+		Role:        string(enums.MediaItemRoleThumbnail),
+		StorageKey:  thumbnailStorageKey,
+		Width:       sql.NullInt32{Int32: int32(thumbnailFile.Width), Valid: true},
+		Height:      sql.NullInt32{Int32: int32(thumbnailFile.Height), Valid: true},
+		FileSize:    sql.NullInt64{Int64: int64(len(thumbnailFile.File)), Valid: true},
+	}
+
+	_, err := s.queries.CreateMediaFile(ctx, createThumbnailMediaFileParams)
+	if err != nil {
+		return err
+	}
+
+	// 뷰 파일 저장
+	createViewMediaFileParams := db.CreateMediaFileParams{
+		MediaItemID: mediaItemID,
+		Role:        string(enums.MediaItemRoleView),
+		StorageKey:  viewStorageKey,
+		Width:       sql.NullInt32{Int32: int32(viewFile.Width), Valid: true},
+		Height:      sql.NullInt32{Int32: int32(viewFile.Height), Valid: true},
+		FileSize:    sql.NullInt64{Int64: int64(len(viewFile.File)), Valid: true},
+	}
+
+	_, err = s.queries.CreateMediaFile(ctx, createViewMediaFileParams)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *MediaItemService) HandleImage(file *multipart.FileHeader) (*imageHelper.ImageHelper, error) {
 	ext := strings.Split(file.Filename, ".")[1]
 	originalFile, err := file.Open()
@@ -160,6 +238,53 @@ func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, up
 	}
 
 	return thumbnailStorageKey, viewStorageKey, originalStorageKey, nil
+}
+
+// UploadOriginalImage uploads only the original image
+func (s *MediaItemService) UploadOriginalImage(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, error) {
+	takenAt := imageHandler.GetTakenAt()
+	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
+	filename := uuid.New().String()
+
+	originalStorageKey, err := s.storageService.SaveFile(imageHandler.OriginalFile, folderName, consts.ORIGINAL_STORAGE_PREFIX+"/"+filename+"."+imageHandler.Ext)
+	if err != nil {
+		log.Println("Original Storage Error: ", err)
+		return "", err
+	}
+
+	return originalStorageKey, nil
+}
+
+// UploadResizedImages uploads thumbnail and view images
+func (s *MediaItemService) UploadResizedImages(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, error) {
+	takenAt := imageHandler.GetTakenAt()
+	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
+	filename := uuid.New().String()
+
+	thumbnailFile, err := imageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
+	if err != nil {
+		log.Println("Thumbnail File Error: ", err)
+		return "", "", err
+	}
+	thumbnailStorageKey, err := s.storageService.SaveFile(thumbnailFile.File, folderName, consts.THUMBNAIL_STORAGE_PREFIX+"/"+filename+thumbnailFile.Ext)
+	if err != nil {
+		log.Println("Thumbnail Storage Error: ", err)
+		return "", "", err
+	}
+
+	viewFile, err := imageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
+	if err != nil {
+		log.Println("View File Error: ", err)
+		return "", "", err
+	}
+
+	viewStorageKey, err := s.storageService.SaveFile(viewFile.File, folderName, consts.VIEW_STORAGE_PREFIX+"/"+filename+viewFile.Ext)
+	if err != nil {
+		log.Println("View Storage Error: ", err)
+		return "", "", err
+	}
+
+	return thumbnailStorageKey, viewStorageKey, nil
 }
 
 // func (s *PhotoService) UploadLiveMovie(liveMovie *multipart.FileHeader) (string, string, error) {
@@ -235,4 +360,29 @@ func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId in
 	}
 
 	return mediaItemRanges, nil
+}
+
+// CreateUploadBatch creates a new upload batch
+func (s *MediaItemService) CreateUploadBatch(ctx context.Context, groupId int32, albumId int32) (*db.UploadBatch, error) {
+	uploadBatch, err := s.queries.CreateUploadBatch(ctx, albumId)
+	if err != nil {
+		return nil, err
+	}
+	return &uploadBatch, nil
+}
+
+func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
+	_, err := s.queries.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
+		ID:           mediaItemID,
+		UploadStatus: string(uploadStatus),
+	})
+	return err
+}
+
+func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
+	uploadStatuses, err := s.queries.GetUploadStatuses(ctx, uploadBatchID)
+	if err != nil {
+		return nil, err
+	}
+	return uploadStatuses, nil
 }

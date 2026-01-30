@@ -1,7 +1,8 @@
 import { PhotoGrid } from './photo-grid'
 import { Button } from '@/components/ui/button'
+import { UPLOAD_STATUS } from '@/enums'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
-import { UPLOAD_MEDIA_ITEM_ERROR_CODE, UPLOAD_STATUS, UploadMediaItem } from '@/types'
+import { UploadMediaItem } from '@/types'
 import { BrushCleaning, Check, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction, RefObject } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
@@ -69,7 +70,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
     if (files) {
       setImages((prev) => [
         ...prev,
-        ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.IDLE })),
+        ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.PENDING })),
       ])
     }
   }
@@ -152,38 +153,37 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                     {images[props.layout.index].status === UPLOAD_STATUS.PENDING && (
                       <Loader2 className="animate-spin text-white" />
                     )}
-                    {images[props.layout.index].status === UPLOAD_STATUS.SUCCESS && <Check className="text-white" />}
-                    {images[props.layout.index].status === UPLOAD_STATUS.ERROR ? (
-                      images[props.layout.index].error?.code === UPLOAD_MEDIA_ITEM_ERROR_CODE.DUPLICATE ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <p className="rounded-md bg-white p-2 text-sm text-slate-500">すでに上げてるかも</p>
-                          <Button
-                            variant="default"
-                            className="rounded-full"
-                            onClick={() => reUploadPhoto(props.layout.index, albumId)}
-                          >
-                            <RefreshCcw />
-                            <span>けれどアップロードする</span>
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-2">
-                          <X className="text-red-500" />
-                          <p className="rounded-full bg-white p-2 text-sm text-red-500">アップロード失敗</p>
-                          <p className="rounded-md bg-white/90 p-2 text-sm">
-                            {images[props.layout.index].error?.message}
-                          </p>
-                          <Button
-                            variant="ghost"
-                            className="rounded-full bg-white"
-                            onClick={() => reUploadPhoto(props.layout.index, albumId)}
-                          >
-                            <RefreshCcw />
-                            <span>再アップロードする</span>
-                          </Button>
-                        </div>
-                      )
-                    ) : null}
+
+                    {images[props.layout.index].status === UPLOAD_STATUS.COMPLETED && <Check className="text-white" />}
+                    {images[props.layout.index].status === UPLOAD_STATUS.DUPLICATE && (
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="rounded-md bg-white p-2 text-sm text-slate-500">すでに上げてるかも</p>
+                        <Button
+                          variant="default"
+                          className="rounded-full"
+                          onClick={() => reUploadPhoto(props.layout.index, albumId)}
+                        >
+                          <RefreshCcw />
+                          <span>けれどアップロードする</span>
+                        </Button>
+                      </div>
+                    )}
+
+                    {images[props.layout.index].status === UPLOAD_STATUS.FAILED && (
+                      <div className="flex flex-col items-center gap-2">
+                        <X className="text-red-500" />
+                        <p className="rounded-full bg-white p-2 text-sm text-red-500">アップロード失敗</p>
+
+                        <Button
+                          variant="ghost"
+                          className="rounded-full bg-white"
+                          onClick={() => reUploadPhoto(props.layout.index, albumId)}
+                        >
+                          <RefreshCcw />
+                          <span>再アップロードする</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {props.renderDefaultPhoto()}

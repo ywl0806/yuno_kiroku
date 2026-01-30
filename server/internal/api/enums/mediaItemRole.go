@@ -3,8 +3,14 @@ package enums
 type MediaItemRole string
 
 const (
-	MediaItemRoleOriginal  MediaItemRole = "original"
-	MediaItemRoleThumbnail MediaItemRole = "thumbnail"
-	MediaItemRoleView      MediaItemRole = "view"
-	MediaItemRoleLive      MediaItemRole = "live"
+	// original
+	MediaItemRoleOriginal MediaItemRole = "01"
+	// thumbnail
+	MediaItemRoleThumbnail MediaItemRole = "02"
+	// view
+	MediaItemRoleView MediaItemRole = "03"
+	// live
+	MediaItemRoleLive MediaItemRole = "04"
+	// video
+	MediaItemRoleVideo MediaItemRole = "05"
 )

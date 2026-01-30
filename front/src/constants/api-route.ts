@@ -33,7 +33,9 @@ export const API_ROUTES = {
   // MediaItem
   MEDIA_ITEM: {
     LIST: '/media-item',
-    UPLOAD: '/media-item/upload',
+    UPLOAD: '/media-item/image/upload',
     RANGE: '/media-item/range',
+    UPLOAD_BATCH: '/media-item/upload-batch',
+    UPLOAD_BATCH_STATUS: '/media-item/upload-batch/status',
   },
 }

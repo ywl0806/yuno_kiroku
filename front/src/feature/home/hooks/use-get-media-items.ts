@@ -9,6 +9,7 @@ export type UseGetMediaItemsProps = {
   month: number
   enabled?: boolean
 }
+
 export const useGetMediaItems = ({ year, month, enabled }: UseGetMediaItemsProps) => {
   const fetchFunc = useCallback(async () => {
     const from = new Date(year, month - 1, 1)

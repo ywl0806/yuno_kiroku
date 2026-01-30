@@ -58,12 +58,23 @@ CREATE TABLE IF NOT EXISTS album_clan_groups_permissions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 업로드 배치 테이블
+CREATE TABLE IF NOT EXISTS upload_batches (
+    id SERIAL PRIMARY KEY,
+    album_id INTEGER NOT NULL REFERENCES albums (id),
+    upload_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 -- 미디어 아이템 테이블
 CREATE TABLE IF NOT EXISTS media_items (
     id SERIAL PRIMARY KEY,
     group_id INTEGER NOT NULL REFERENCES groups (id),
     album_id INTEGER NOT NULL REFERENCES albums (id),
+    upload_batch_id INTEGER NOT NULL REFERENCES upload_batches (id),
+    upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 01: pending | 02: processing | 03: completed | 04: failed | 05: duplicate
 
     taken_at TIMESTAMP NOT NULL,
     file_name VARCHAR(255),
@@ -71,12 +82,13 @@ CREATE TABLE IF NOT EXISTS media_items (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+
 -- 미디어 파일 테이블
 CREATE TABLE IF NOT EXISTS media_files (
     id SERIAL PRIMARY KEY,
     media_item_id INTEGER NOT NULL REFERENCES media_items (id) ON DELETE CASCADE,
 
-    role VARCHAR(20) NOT NULL, -- original | thumbnail | preview | live | stream
+    role VARCHAR(2) NOT NULL, -- 01: original | 02: thumbnail | 03: view | 04: live
     storage_key VARCHAR(512) NOT NULL,
     mime_type VARCHAR(50), -- image/jpeg, image/png, video/mp4, video/quicktime, video/mov, video/avi, video/wmv, video/flv, video/webm, video/mkv
 
@@ -180,16 +192,26 @@ CREATE INDEX IF NOT EXISTS idx_media_items_album_id ON media_items (album_id);
 
 CREATE INDEX IF NOT EXISTS idx_media_items_taken_at ON media_items (taken_at);
 
+CREATE INDEX IF NOT EXISTS idx_media_items_upload_batch_id ON media_items (upload_batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_media_items_group_album_id_created_at ON media_items (group_id, album_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_media_items_group_created_at ON media_items (group_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_media_items_upload_status ON media_items (upload_status);
+
+CREATE INDEX IF NOT EXISTS idx_media_items_upload_index ON media_items (upload_index);
+
 CREATE INDEX IF NOT EXISTS idx_albums_group_id ON albums (group_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_clan_groups_permissions_album_id ON album_clan_groups_permissions (album_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_clan_groups_permissions_clan_group_id ON album_clan_groups_permissions (clan_group_id);
 
-CREATE INDEX IF NOT EXISTS idx_media_items_group_album_id_created_at ON media_items (group_id, album_id, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_media_items_group_created_at ON media_items (group_id, created_at);
-
 CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_media_item_id ON identity_face_imgs (media_item_id);
 
 CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_identity_id ON identity_face_imgs (identity_id);
+
+CREATE INDEX IF NOT EXISTS idx_upload_batches_upload_at ON upload_batches (upload_at);
+
+CREATE INDEX IF NOT EXISTS idx_upload_batches_album_id ON upload_batches (album_id);

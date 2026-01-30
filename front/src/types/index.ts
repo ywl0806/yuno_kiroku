@@ -1,3 +1,5 @@
+import { UploadStatus } from "@/enums"
+
 export interface MediaItem {
   id: string
   group_id: string
@@ -33,18 +35,6 @@ export interface Album {
   updated_at: string
 }
 
-export const UPLOAD_STATUS = {
-  IDLE: 'idle',
-  PENDING: 'pending',
-  SUCCESS: 'success',
-  ERROR: 'error',
-} as const
-
-export type UploadStatus = (typeof UPLOAD_STATUS)[keyof typeof UPLOAD_STATUS]
-
-export type UploadPhotoStatus = {
-  [key: string]: UploadStatus
-}
 
 export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {
   DUPLICATE: 'duplicate',
@@ -57,6 +47,8 @@ export type UploadMediaItemError = {
 }
 
 export type UploadMediaItem = {
+  id?: string
+    media_item_id?: number
   file: File
   src: string
   status: UploadStatus
