@@ -18,11 +18,12 @@ INSERT INTO
     media_items (
         group_id,
         album_id,
+        upload_batch_id,
         taken_at,
         file_name
     )
 VALUES
-    ($1, $2, $3, $4)
+    ($1, $2, $3, $4, $5)
 RETURNING
     id,
     group_id,
@@ -36,16 +37,18 @@ RETURNING
 `
 
 type CreateMediaItemParams struct {
-	GroupID  int32
-	AlbumID  int32
-	TakenAt  time.Time
-	FileName sql.NullString
+	GroupID       int32
+	AlbumID       int32
+	UploadBatchID int32
+	TakenAt       time.Time
+	FileName      sql.NullString
 }
 
 func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams) (MediaItem, error) {
 	row := q.db.QueryRowContext(ctx, createMediaItem,
 		arg.GroupID,
 		arg.AlbumID,
+		arg.UploadBatchID,
 		arg.TakenAt,
 		arg.FileName,
 	)
@@ -204,12 +207,12 @@ FROM
         WHERE role = '01' 
     ) AS original_media_file ON original_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
-        SELECT storage_key, width, height 
+        SELECT storage_key, width, height, media_item_id
         FROM media_files 
         WHERE role = '02' 
     ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
-        SELECT storage_key, width, height 
+        SELECT storage_key, width, height, media_item_id
         FROM media_files 
         WHERE role = '03' 
     ) AS view_media_file ON view_media_file.media_item_id = mi.id

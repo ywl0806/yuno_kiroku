@@ -102,17 +102,10 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	// 컨텍스트 가져오기
 	ctx := c.Request().Context()
 
-	// 배치 상태를 processing으로 업데이트
-	if !retry {
-		err = con.mediaItemService.UpdateMediaItemUploadStatus(ctx, uploadBatchID, enums.UploadStatusProcessing)
-		if err != nil {
-			log.Println("배치 상태 업데이트 실패: ", err)
-		}
-	}
-
 	// 이미지 핸들러 생성
 	imgHandler, err := con.mediaItemService.HandleImage(file)
 	if err != nil {
+		log.Println("handle image error: ", err)
 		return err
 	}
 
@@ -122,21 +115,24 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	// 원본 파일만 먼저 저장 (즉시 반환을 위해)
 	originalStorageKey, err := con.mediaItemService.UploadOriginalImage(imgHandler, uploadPath)
 	if err != nil {
+		log.Println("upload original image error: ", err)
 		return err
 	}
 
 	// 미디어 아이템 생성 (원본만 저장)
 	createMediaItemParams := services.CreateMediaItemParams{
 		OriginalStorageKey: originalStorageKey,
-		ImageHandler:       imgHandler,
-		GroupId:            groupId,
-		AlbumId:            albumId,
-		OriginalFilename:   file.Filename,
-		UploadBatchID:      &uploadBatchID,
+
+		ImageHandler:     imgHandler,
+		GroupId:          groupId,
+		AlbumId:          albumId,
+		OriginalFilename: file.Filename,
+		UploadBatchID:    uploadBatchID,
 	}
 
 	mediaItem, err := con.mediaItemService.CreateMediaItemWithOriginalOnly(ctx, &createMediaItemParams)
 	if err != nil {
+		log.Println("create media item with original only error: ", err)
 		return err
 	}
 
@@ -306,9 +302,9 @@ func (con *MediaItemHandler) GetUploadBatchStatus(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, map[string]interface{}{
-		"upload_statuses": uploadStatuses,
-	})
+	uploadStatusesResponse := models.NewUploadBatchStatusResponse(uploadStatuses)
+
+	return c.JSON(200, uploadStatusesResponse)
 }
 
 // // @Tags Photo

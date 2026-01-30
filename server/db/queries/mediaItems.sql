@@ -3,11 +3,12 @@ INSERT INTO
     media_items (
         group_id,
         album_id,
+        upload_batch_id,
         taken_at,
         file_name
     )
 VALUES
-    ($1, $2, $3, $4)
+    ($1, $2, $3, $4, $5)
 RETURNING
     id,
     group_id,
@@ -41,12 +42,12 @@ FROM
         WHERE role = '01' 
     ) AS original_media_file ON original_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
-        SELECT storage_key, width, height 
+        SELECT storage_key, width, height, media_item_id
         FROM media_files 
         WHERE role = '02' 
     ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
     LEFT JOIN LATERAL (
-        SELECT storage_key, width, height 
+        SELECT storage_key, width, height, media_item_id
         FROM media_files 
         WHERE role = '03' 
     ) AS view_media_file ON view_media_file.media_item_id = mi.id

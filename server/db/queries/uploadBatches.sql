@@ -22,5 +22,6 @@ INNER JOIN (
 WHERE 
     acgp.clan_group_id = sqlc.arg (clan_group_id)::int
     AND acgp.permission = 'R'
+    
 ORDER BY ub.upload_at DESC;
 

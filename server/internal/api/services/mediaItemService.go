@@ -39,7 +39,7 @@ type CreateMediaItemParams struct {
 	GroupId             int32
 	AlbumId             int32
 	OriginalFilename    string
-	UploadBatchID       *int32
+	UploadBatchID       int32
 }
 
 func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
@@ -49,10 +49,11 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
-		GroupID:  params.GroupId,
-		AlbumID:  params.AlbumId,
-		TakenAt:  params.ImageHandler.GetTakenAt(),
-		FileName: sql.NullString{String: params.OriginalFilename, Valid: true},
+		GroupID:       params.GroupId,
+		AlbumID:       params.AlbumId,
+		UploadBatchID: params.UploadBatchID,
+		TakenAt:       params.ImageHandler.GetTakenAt(),
+		FileName:      sql.NullString{String: params.OriginalFilename, Valid: true},
 	}
 
 	mediaItem, err := s.queries.CreateMediaItem(ctx, createMediaItemParams)
@@ -112,10 +113,11 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
-		GroupID:  params.GroupId,
-		AlbumID:  params.AlbumId,
-		TakenAt:  params.ImageHandler.GetTakenAt(),
-		FileName: sql.NullString{String: params.OriginalFilename, Valid: true},
+		GroupID:       params.GroupId,
+		AlbumID:       params.AlbumId,
+		UploadBatchID: params.UploadBatchID,
+		TakenAt:       params.ImageHandler.GetTakenAt(),
+		FileName:      sql.NullString{String: params.OriginalFilename, Valid: true},
 	}
 
 	mediaItem, err := s.queries.CreateMediaItem(ctx, createMediaItemParams)

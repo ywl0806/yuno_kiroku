@@ -1,4 +1,7 @@
 {
   "CodeGPT.apiKey": "CodeGPT Plus Beta",
-  "java.compile.nullAnalysis.mode": "disabled"
+  "java.compile.nullAnalysis.mode": "disabled",
+  "files.exclude": {
+    "**/node_modules": true
+  }
 }

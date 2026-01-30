@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS media_items (
     group_id INTEGER NOT NULL REFERENCES groups (id),
     album_id INTEGER NOT NULL REFERENCES albums (id),
     upload_batch_id INTEGER NOT NULL REFERENCES upload_batches (id),
-    upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 01: pending | 02: processing | 03: completed | 04: failed
+    upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 01: pending | 02: processing | 03: completed | 04: failed | 05: duplicate
 
     taken_at TIMESTAMP NOT NULL,
     file_name VARCHAR(255),
@@ -199,8 +199,6 @@ CREATE INDEX IF NOT EXISTS idx_media_items_group_album_id_created_at ON media_it
 CREATE INDEX IF NOT EXISTS idx_media_items_group_created_at ON media_items (group_id, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_media_items_upload_status ON media_items (upload_status);
-
-CREATE INDEX IF NOT EXISTS idx_media_items_upload_index ON media_items (upload_index);
 
 CREATE INDEX IF NOT EXISTS idx_albums_group_id ON albums (group_id);
 

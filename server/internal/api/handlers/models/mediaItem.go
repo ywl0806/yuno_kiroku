@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"github.com/ywl0806/yuno_kiroku/internal/api/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
@@ -66,4 +67,31 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 		mediaItemResponses[i] = *NewMediaItemResponse(&mediaItem)
 	}
 	return &mediaItemResponses
+}
+
+type UploadBatchStatus struct {
+	ID           int32  `json:"id"`
+	UploadStatus string `json:"upload_status"`
+}
+type UploadBatchStatusResponse struct {
+	Statuses    []UploadBatchStatus `json:"statuses"`
+	IsCompleted bool                `json:"is_completed"`
+}
+
+func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *UploadBatchStatusResponse {
+	statuses := make([]UploadBatchStatus, len(uploadStatuses))
+	isCompleted := true
+	for i, uploadStatus := range uploadStatuses {
+		if uploadStatus.UploadStatus == string(enums.UploadStatusProcessing) || uploadStatus.UploadStatus == string(enums.UploadStatusPending) {
+			isCompleted = false
+		}
+		statuses[i] = UploadBatchStatus{
+			ID:           uploadStatus.ID,
+			UploadStatus: uploadStatus.UploadStatus,
+		}
+	}
+	return &UploadBatchStatusResponse{
+		Statuses:    statuses,
+		IsCompleted: isCompleted,
+	}
 }

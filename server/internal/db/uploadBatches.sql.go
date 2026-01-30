@@ -48,6 +48,7 @@ INNER JOIN (
 WHERE 
     acgp.clan_group_id = $1::int
     AND acgp.permission = 'R'
+    
 ORDER BY ub.upload_at DESC
 `
 
@@ -58,6 +59,9 @@ type GetUploadBatchesAndMediaItemCountsRow struct {
 	Count    int64
 }
 
+// media_items 테이블에서 upload_batch_id 별로 미디어 아이템 개수를 조회하여 item_counts 테이블에 저장
+// media_items 테이블에서 upload_batch_id 별로 미디어 아이템 개수를 조회하여 item_counts 테이블에 저장
+// media_items 테이블에서 upload_batch_id 별로 미디어 아이템 개수를 조회하여 item_counts 테이블에 저장
 func (q *Queries) GetUploadBatchesAndMediaItemCounts(ctx context.Context, clanGroupID int32) ([]GetUploadBatchesAndMediaItemCountsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUploadBatchesAndMediaItemCounts, clanGroupID)
 	if err != nil {

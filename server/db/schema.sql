@@ -200,8 +200,6 @@ CREATE INDEX IF NOT EXISTS idx_media_items_group_created_at ON media_items (grou
 
 CREATE INDEX IF NOT EXISTS idx_media_items_upload_status ON media_items (upload_status);
 
-CREATE INDEX IF NOT EXISTS idx_media_items_upload_index ON media_items (upload_index);
-
 CREATE INDEX IF NOT EXISTS idx_albums_group_id ON albums (group_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_clan_groups_permissions_album_id ON album_clan_groups_permissions (album_id);
