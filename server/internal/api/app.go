@@ -40,7 +40,7 @@ func Init(e *echo.Echo) {
 	// service
 	userService := services.NewUserService(queries)
 	faceService := services.NewFaceService(queries)
-	mediaItemService := services.NewMediaItemService(queries, storageService)
+	mediaItemService := services.NewMediaItemService(queries, storageService, faceService)
 	identityService := services.NewIdentityService(queries)
 	albumService := services.NewAlbumService(queries)
 
@@ -72,7 +72,7 @@ func Init(e *echo.Echo) {
 	e.Use(middleware.Recover())
 	// 2. Logger - 로깅
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n  ${error}\n ",
+		Format: "${time_rfc3339} ${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n  ${error}\n ",
 	}))
 	// 3. ErrorHandler - 에러 처리 (가장 바깥쪽에서 실행, 모든 에러를 처리)
 	errorHandler := middlewares.NewErrorHandler()

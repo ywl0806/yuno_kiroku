@@ -12,8 +12,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
-	apiErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
+	"github.com/ywl0806/yuno_kiroku/internal/api/appErrors"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
@@ -32,14 +31,11 @@ func NewFaceService(queries *db.Queries) *FaceService {
 	return &FaceService{queries: queries}
 }
 
-/*
-*
-
-	얼굴 인식 결과를 검색 후 저장
-	1. 얼굴 임베딩을 데이터베이스에서 검색
-	2. 얼굴 임베딩이 있으면 FaceDetection을 생성
-	3. 얼굴 임베딩이 없으면 Identity를 생성 후 FaceDetection을 생성
-*/
+// 얼굴 인식 결과를 검색 후 저장
+//
+// 1. 얼굴 임베딩을 데이터베이스에서 검색
+// 2. 얼굴 임베딩이 있으면 FaceDetection을 생성
+// 3. 얼굴 임베딩이 없으면 Identity를 생성 후 FaceDetection을 생성
 func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId int32, mediaItemId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
 
 	// 얼굴인식 결과를 저장할 파라미터 리스트
@@ -221,7 +217,7 @@ func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, gr
 		return nil
 	}
 	if mediaItem.ID != 0 {
-		return apiErrors.NewDuplicateError(consts.Photo)
+		return appErrors.NewDuplicateError("")
 	}
 
 	return nil

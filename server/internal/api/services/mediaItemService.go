@@ -19,18 +19,28 @@ import (
 type MediaItemService struct {
 	queries        *db.Queries
 	storageService storage.StorageService
+	faceService    *FaceService
 }
 
 func NewMediaItemService(
 	queries *db.Queries,
 	storageService storage.StorageService,
+	faceService *FaceService,
 ) *MediaItemService {
 	return &MediaItemService{
 		queries:        queries,
 		storageService: storageService,
+		faceService:    faceService,
 	}
 }
 
+// 이미지 업로드 결과
+type UploadImageResult struct {
+	MediaItemID int32
+	Status      string
+}
+
+// 미디어 아이템 생성 파라미터
 type CreateMediaItemParams struct {
 	ThumbnailStorageKey string
 	OriginalStorageKey  string
@@ -42,6 +52,18 @@ type CreateMediaItemParams struct {
 	UploadBatchID       int32
 }
 
+// 이미지 처리 백그라운드 처리 파라미터
+type ProcessImageParams struct {
+	GroupId       int32
+	AlbumId       int32
+	UploadBatchID int32
+	MediaItemID   int32
+	ImageHandler  *imageHelper.ImageHelper
+	UploadPath    string
+	Retry         bool
+}
+
+// 미디어 아이템 생성
 func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
 
 	thumbnailFile, _ := params.ImageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
@@ -109,7 +131,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 	return &mediaItem, nil
 }
 
-// CreateMediaItemWithOriginalOnly creates a media item with only the original file
+// 미디어 아이템 생성 (원본 파일만 저장)
 func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
@@ -143,7 +165,112 @@ func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, 
 	return &mediaItem, nil
 }
 
-// UpdateMediaItemWithResizedImages adds thumbnail and view files to an existing media item
+// 이미지 업로드
+func (s *MediaItemService) UploadImage(
+	ctx context.Context,
+	file *multipart.FileHeader,
+	groupId int32,
+	albumId int32,
+	uploadBatchID int32,
+	retry bool,
+) (*UploadImageResult, error) {
+	imgHandler, err := s.HandleImage(file)
+	if err != nil {
+		return nil, err
+	}
+
+	uploadPath := s.CreateUploadPath(groupId, albumId)
+
+	originalStorageKey, err := s.UploadOriginalImage(imgHandler, uploadPath)
+	if err != nil {
+		return nil, err
+	}
+
+	createMediaItemParams := CreateMediaItemParams{
+		OriginalStorageKey: originalStorageKey,
+		ImageHandler:       imgHandler,
+		GroupId:            groupId,
+		AlbumId:            albumId,
+		OriginalFilename:   file.Filename,
+		UploadBatchID:      uploadBatchID,
+	}
+
+	mediaItem, err := s.CreateMediaItemWithOriginalOnly(ctx, &createMediaItemParams)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		bgCtx := context.Background()
+		s.processImageInBackground(bgCtx, &ProcessImageParams{
+			GroupId:       groupId,
+			AlbumId:       albumId,
+			UploadBatchID: uploadBatchID,
+			MediaItemID:   mediaItem.ID,
+			ImageHandler:  imgHandler,
+			UploadPath:    uploadPath,
+			Retry:         retry,
+		})
+	}()
+
+	return &UploadImageResult{MediaItemID: mediaItem.ID, Status: "uploaded"}, nil
+}
+
+// 이미지 처리 백그라운드 처리
+func (s *MediaItemService) processImageInBackground(ctx context.Context, p *ProcessImageParams) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("백그라운드 처리 중 패닉 발생: ", r)
+			s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
+		}
+	}()
+
+	viewImageFile, err := p.ImageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
+	if err != nil {
+		log.Println("뷰 이미지 생성 실패: ", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
+		return
+	}
+
+	faceDetections, err := s.faceService.GetFaceDetection(viewImageFile.File)
+	if err != nil {
+		log.Println("얼굴 인식 실패: ", err)
+	}
+
+	if !p.Retry && faceDetections != nil {
+		err = s.faceService.CheckImageDuplicateByFaceDetection(ctx, p.GroupId, p.AlbumId, *faceDetections)
+		if err != nil {
+			log.Println("중복 사진 발견: ", err)
+			s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusDuplicate)
+			return
+		}
+	}
+
+	thumbnailStorageKey, viewStorageKey, err := s.UploadResizedImages(p.ImageHandler, p.UploadPath)
+	if err != nil {
+		log.Println("리사이즈 이미지 업로드 실패: ", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
+		return
+	}
+
+	err = s.UpdateMediaItemWithResizedImages(ctx, p.MediaItemID, thumbnailStorageKey, viewStorageKey, p.ImageHandler)
+	if err != nil {
+		log.Println("미디어 파일 업데이트 실패: ", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
+		return
+	}
+
+	if faceDetections != nil {
+		_, err = s.faceService.SearchAndSaveFaceDetections(ctx, p.GroupId, p.MediaItemID, *faceDetections)
+		if err != nil {
+			log.Println("얼굴 인식 결과 저장 실패: ", err)
+		}
+	}
+
+	s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusCompleted)
+}
+
+// 미디어 아이템 업데이트 (썸네일 파일과 뷰 파일 추가)
 func (s *MediaItemService) UpdateMediaItemWithResizedImages(
 	ctx context.Context,
 	mediaItemID int32,
@@ -205,7 +332,8 @@ func (s *MediaItemService) HandleImage(file *multipart.FileHeader) (*imageHelper
 	return imgHandler, nil
 }
 
-func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, string, error) {
+// UploadImageAll uploads thumbnail, view, and original images in one go (legacy helper).
+func (s *MediaItemService) UploadImageAll(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, string, error) {
 	takenAt := imageHandler.GetTakenAt()
 
 	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
@@ -242,7 +370,7 @@ func (s *MediaItemService) UploadImage(imageHandler *imageHelper.ImageHelper, up
 	return thumbnailStorageKey, viewStorageKey, originalStorageKey, nil
 }
 
-// UploadOriginalImage uploads only the original image
+// 원본 이미지 업로드
 func (s *MediaItemService) UploadOriginalImage(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, error) {
 	takenAt := imageHandler.GetTakenAt()
 	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
@@ -257,7 +385,7 @@ func (s *MediaItemService) UploadOriginalImage(imageHandler *imageHelper.ImageHe
 	return originalStorageKey, nil
 }
 
-// UploadResizedImages uploads thumbnail and view images
+// 리사이즈 이미지 업로드
 func (s *MediaItemService) UploadResizedImages(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, error) {
 	takenAt := imageHandler.GetTakenAt()
 	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
@@ -289,32 +417,7 @@ func (s *MediaItemService) UploadResizedImages(imageHandler *imageHelper.ImageHe
 	return thumbnailStorageKey, viewStorageKey, nil
 }
 
-// func (s *PhotoService) UploadLiveMovie(liveMovie *multipart.FileHeader) (string, string, error) {
-
-// 	live, err := liveMovie.Open()
-
-// 	if err != nil {
-// 		log.Println("live movie file open error: ", err)
-// 		return "", "", err
-// 	}
-// 	defer live.Close()
-
-// 	liveBytes, err := io.ReadAll(live)
-// 	if err != nil {
-// 		log.Println("live movie file read error: ", err)
-// 		return "", "", err
-// 	}
-// 	// todo: resize live movie
-
-// 	url, err := s.thumbnailStorage.SaveFile(liveBytes, "live", liveMovie.Filename)
-// 	if err != nil {
-// 		log.Println("Thumbnail Storage Error : ", err)
-// 		return "", "", err
-// 	}
-
-// 	return url, url, nil
-// }
-
+// 업로드 경로 생성
 func (s *MediaItemService) CreateUploadPath(groupId int32, albumId int32) string {
 	uploadPath := strconv.Itoa(int(groupId))
 	if albumId != 0 {
@@ -323,6 +426,7 @@ func (s *MediaItemService) CreateUploadPath(groupId int32, albumId int32) string
 	return uploadPath
 }
 
+// 미디어 아이템 조회
 func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, params *db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error) {
 	mediaItems, err := s.queries.GetMediaItemsByTakenAt(ctx, *params)
 	if err != nil {
@@ -332,11 +436,13 @@ func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, params *d
 	return mediaItems, nil
 }
 
+// 미디어 아이템 범위
 type MediaItemRange struct {
 	Year  int `json:"year"`
 	Month int `json:"month"`
 }
 
+// 미디어 아이템 범위 조회
 func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId int32) ([]MediaItemRange, error) {
 	// 사진들을 년도와 월로 그룹화
 	ranges, err := s.queries.GetMediaItemRange(ctx, clanGroupId)
@@ -364,7 +470,7 @@ func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId in
 	return mediaItemRanges, nil
 }
 
-// CreateUploadBatch creates a new upload batch
+// 업로드 배치 생성
 func (s *MediaItemService) CreateUploadBatch(ctx context.Context, groupId int32, albumId int32) (*db.UploadBatch, error) {
 	uploadBatch, err := s.queries.CreateUploadBatch(ctx, albumId)
 	if err != nil {
@@ -373,6 +479,7 @@ func (s *MediaItemService) CreateUploadBatch(ctx context.Context, groupId int32,
 	return &uploadBatch, nil
 }
 
+// 미디어 아이템 업로드 상태 업데이트
 func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
 	_, err := s.queries.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
@@ -381,6 +488,7 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 	return err
 }
 
+// 업로드 배치 상태 조회
 func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
 	uploadStatuses, err := s.queries.GetUploadStatuses(ctx, uploadBatchID)
 	if err != nil {

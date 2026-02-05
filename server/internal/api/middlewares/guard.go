@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"log"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -25,7 +26,9 @@ func NewGuard() *Guard {
 func (g *Guard) Handler(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		token := c.Request().Header.Get("Authorization")
+
 		if token == "" {
+			log.Println("token is required")
 			return echo.NewHTTPError(401, "Unauthorized")
 		}
 
@@ -33,11 +36,13 @@ func (g *Guard) Handler(next echo.HandlerFunc) echo.HandlerFunc {
 
 		token, ok := strings.CutPrefix(token, "Bearer ")
 		if !ok {
+			log.Println("token is required")
 			return echo.NewHTTPError(401, "Unauthorized")
 		}
 
 		err := jwt.ParseJWT(token, viper.GetString("AUTH_SECRET_KEY"), &claims)
 		if err != nil {
+			log.Println("token is invalid: ", err)
 			return echo.NewHTTPError(401, "Unauthorized")
 		}
 

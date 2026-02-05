@@ -15,6 +15,36 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/album/write": {
+            "get": {
+                "description": "Get albums for write",
+                "tags": [
+                    "Album"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AlbumResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "login",
@@ -120,11 +150,11 @@ const docTemplate = `{
                 }
             }
         },
-        "/photo": {
+        "/media-item": {
             "get": {
-                "description": "사진 목록 조회",
+                "description": "미디어 아이템 목록 조회",
                 "tags": [
-                    "Photo"
+                    "MediaItem"
                 ],
                 "parameters": [
                     {
@@ -160,13 +190,44 @@ const docTemplate = `{
                 }
             }
         },
-        "/photo/identity/{identity_id}/random": {
-            "get": {
-                "description": "신원 ID를 기반으로 랜덤 사진 조회",
+        "/media-item/image/upload": {
+            "post": {
+                "description": "이미지 업로드",
+                "consumes": [
+                    "multipart/form-data"
+                ],
                 "tags": [
-                    "Photo"
+                    "MediaItem"
                 ],
                 "parameters": [
+                    {
+                        "type": "file",
+                        "description": "file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Album ID",
+                        "name": "album_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Upload Batch ID",
+                        "name": "upload_batch_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "1",
+                        "description": "Retry",
+                        "name": "retry",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "format": "bearer",
@@ -175,30 +236,16 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Identity ID",
-                        "name": "identity_id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.IdentityRandomPhotoResponse"
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
-        "/photo/range": {
+        "/media-item/range": {
             "get": {
                 "description": "사진이 있는 년도와 월 목록 조회",
                 "tags": [
-                    "Photo"
+                    "MediaItem"
                 ],
                 "parameters": [
                     {
@@ -217,30 +264,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/db.GetPhotoRangeRow"
+                                "$ref": "#/definitions/services.MediaItemRange"
                             }
                         }
                     }
                 }
             }
         },
-        "/photo/upload": {
+        "/media-item/upload-batch": {
             "post": {
-                "description": "사진 업로드",
-                "consumes": [
-                    "multipart/form-data"
-                ],
+                "description": "업로드 배치 생성",
                 "tags": [
-                    "Photo"
+                    "MediaItem"
                 ],
                 "parameters": [
-                    {
-                        "type": "file",
-                        "description": "file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Album ID",
@@ -261,35 +298,18 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/photo/upload-live/{album_id}": {
-            "post": {
-                "description": "upload live photo",
-                "consumes": [
-                    "multipart/form-data"
-                ],
+        "/media-item/upload-batch/status": {
+            "get": {
+                "description": "업로드 배치 상태 조회",
                 "tags": [
-                    "Photo"
+                    "MediaItem"
                 ],
                 "parameters": [
                     {
-                        "type": "file",
-                        "description": "photo",
-                        "name": "photo",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "live",
-                        "name": "live",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Album ID",
-                        "name": "album_id",
-                        "in": "path",
+                        "type": "string",
+                        "description": "Upload Batch ID",
+                        "name": "upload_batch_id",
+                        "in": "query",
                         "required": true
                     },
                     {
@@ -335,17 +355,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "db.GetPhotoRangeRow": {
-            "type": "object",
-            "properties": {
-                "month": {
-                    "type": "string"
-                },
-                "year": {
-                    "type": "string"
-                }
-            }
-        },
         "handlers.CreateUserRequest": {
             "type": "object",
             "required": [
@@ -391,6 +400,23 @@ const docTemplate = `{
                 }
             }
         },
+        "models.AlbumResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "models.IdentityListResponse": {
             "type": "object",
             "properties": {
@@ -399,44 +425,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.IdentityResponse"
                     }
-                }
-            }
-        },
-        "models.IdentityRandomPhotoResponse": {
-            "type": "object",
-            "properties": {
-                "album_id": {
-                    "type": "integer"
-                },
-                "file_name": {
-                    "type": "string"
-                },
-                "group_id": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "location_bottom": {
-                    "type": "integer"
-                },
-                "location_left": {
-                    "type": "integer"
-                },
-                "location_right": {
-                    "type": "integer"
-                },
-                "location_top": {
-                    "type": "integer"
-                },
-                "orientation": {
-                    "type": "integer"
-                },
-                "photo_created_at": {
-                    "type": "string"
-                },
-                "thumbnail_url": {
-                    "type": "string"
                 }
             }
         },
@@ -468,6 +456,17 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "services.MediaItemRange": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         }

@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	apiErrors "github.com/ywl0806/yuno_kiroku/internal/api/errors"
+	"github.com/ywl0806/yuno_kiroku/internal/api/appErrors"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
@@ -15,27 +15,26 @@ func NewUserService(queries *db.Queries) *UserService {
 	return &UserService{queries: queries}
 }
 
+// 유저 생성
 func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 
 	user, err := s.queries.CreateUser(ctx, params)
 	if err != nil {
-		return db.User{}, err
+		return db.User{}, appErrors.ClassifyDBError(err)
 	}
 	return user, nil
 }
 
+// 유저 이름으로 유저 조회
 func (s *UserService) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
 	user, err := s.queries.FindUserByUsername(ctx, username)
-
 	if err != nil {
-		return db.User{}, err
-	}
-	if user.ID == 0 {
-		return db.User{}, apiErrors.NewNotFoundError("user")
+		return db.User{}, appErrors.ClassifyDBError(err, "user")
 	}
 	return user, nil
 }
 
+// 유저 생성 파라미터 검증
 func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.CreateUserParams) error {
 	// Username 중복체크
 	err := s.validateDuplicateUsername(ctx, params.Username)
@@ -62,7 +61,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 		return err
 	}
 	if group.ID == 0 {
-		return apiErrors.NewNotFoundError("group")
+		return appErrors.NewNotFoundError("group")
 	}
 	return nil
 }
@@ -74,7 +73,7 @@ func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID i
 		return err
 	}
 	if clanGroup.ID == 0 {
-		return apiErrors.NewNotFoundError("clan group")
+		return appErrors.NewNotFoundError("clan group")
 	}
 	return nil
 }
@@ -86,7 +85,7 @@ func (s *UserService) validateDuplicateUsername(ctx context.Context, username st
 		return err
 	}
 	if user.ID != 0 {
-		return apiErrors.NewAlreadyExistsError("username")
+		return appErrors.NewConflictError("")
 	}
 	return nil
 }
