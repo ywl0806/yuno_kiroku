@@ -5,20 +5,22 @@ import (
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/store"
 )
 
 type UserService struct {
-	queries *db.Queries
+	userStore  store.UserStore
+	groupStore store.GroupStore
 }
 
-func NewUserService(queries *db.Queries) *UserService {
-	return &UserService{queries: queries}
+func NewUserService(userStore store.UserStore, groupStore store.GroupStore) *UserService {
+	return &UserService{userStore: userStore, groupStore: groupStore}
 }
 
 // 유저 생성
 func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 
-	user, err := s.queries.CreateUser(ctx, params)
+	user, err := s.userStore.CreateUser(ctx, params)
 	if err != nil {
 		return db.User{}, apperr.ClassifyDBError(err)
 	}
@@ -27,7 +29,7 @@ func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams
 
 // 유저 이름으로 유저 조회
 func (s *UserService) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
-	user, err := s.queries.FindUserByUsername(ctx, username)
+	user, err := s.userStore.FindUserByUsername(ctx, username)
 	if err != nil {
 		return db.User{}, apperr.ClassifyDBError(err, "user")
 	}
@@ -56,7 +58,7 @@ func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.Cr
 
 // group 존재 체크
 func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) error {
-	group, err := s.queries.FindGroupByID(ctx, groupID)
+	group, err := s.groupStore.FindGroupByID(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 
 // clan group 존재 체크
 func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID int32) error {
-	clanGroup, err := s.queries.FindClanGroupByID(ctx, clanGroupID)
+	clanGroup, err := s.groupStore.FindClanGroupByID(ctx, clanGroupID)
 	if err != nil {
 		return err
 	}
@@ -80,7 +82,7 @@ func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID i
 
 // username 중복 체크
 func (s *UserService) validateDuplicateUsername(ctx context.Context, username string) error {
-	user, err := s.queries.FindUserByUsername(ctx, username)
+	user, err := s.userStore.FindUserByUsername(ctx, username)
 	if err != nil {
 		return err
 	}

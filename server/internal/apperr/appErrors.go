@@ -4,13 +4,14 @@ type ErrorCode string
 
 // 에러 코드
 const (
-	Unauthorized ErrorCode = "UNAUTHORIZED"
-	Forbidden    ErrorCode = "FORBIDDEN"
-	Conflict     ErrorCode = "CONFLICT"
-	Validation   ErrorCode = "VALIDATION"
-	Internal     ErrorCode = "INTERNAL"
-	NotFound     ErrorCode = "NOT_FOUND"
-	Duplicate    ErrorCode = "DUPLICATE"
+	Unauthorized     ErrorCode = "UNAUTHORIZED"
+	Forbidden        ErrorCode = "FORBIDDEN"
+	Conflict         ErrorCode = "CONFLICT"
+	Validation       ErrorCode = "VALIDATION"
+	Internal         ErrorCode = "INTERNAL"
+	NotFound         ErrorCode = "NOT_FOUND"
+	Duplicate        ErrorCode = "DUPLICATE"
+	InvalidReference ErrorCode = "INVALID_REFERENCE"
 )
 
 // 어플리케이션 에러 타입
@@ -60,4 +61,9 @@ func NewNotFoundError(message string) error {
 // 중복 에러 생성
 func NewDuplicateError(message string) error {
 	return &AppErrors{Code: Duplicate, Message: message}
+}
+
+// 참조 오류 생성
+func NewInvalidReferenceError(message string) error {
+	return &AppErrors{Code: InvalidReference, Message: message}
 }

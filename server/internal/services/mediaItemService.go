@@ -12,23 +12,24 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
+	"github.com/ywl0806/yuno_kiroku/internal/store"
 	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/imageHelper"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
 
 type MediaItemService struct {
-	queries        *db.Queries
+	mediaItemStore store.MediaItemStore
 	storageService storage.StorageService
 	faceService    *FaceService
 }
 
 func NewMediaItemService(
-	queries *db.Queries,
+	mediaItemStore store.MediaItemStore,
 	storageService storage.StorageService,
 	faceService *FaceService,
 ) *MediaItemService {
 	return &MediaItemService{
-		queries:        queries,
+		mediaItemStore: mediaItemStore,
 		storageService: storageService,
 		faceService:    faceService,
 	}
@@ -78,7 +79,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 		FileName:      sql.NullString{String: params.OriginalFilename, Valid: true},
 	}
 
-	mediaItem, err := s.queries.CreateMediaItem(ctx, createMediaItemParams)
+	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, createMediaItemParams)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 		FileSize: sql.NullInt64{Int64: int64(len(params.ImageHandler.OriginalFile)), Valid: true},
 	}
 
-	_, err = s.queries.CreateMediaFile(ctx, createOriginalMediaFileParams)
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, createOriginalMediaFileParams)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 		FileSize: sql.NullInt64{Int64: int64(len(thumbnailFile.File)), Valid: true},
 	}
 
-	_, err = s.queries.CreateMediaFile(ctx, createThumbnailMediaFileParams)
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, createThumbnailMediaFileParams)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 		FileSize: sql.NullInt64{Int64: int64(len(viewFile.File)), Valid: true},
 	}
 
-	_, err = s.queries.CreateMediaFile(ctx, createViewMediaFileParams)
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, createViewMediaFileParams)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, 
 		FileName:      sql.NullString{String: params.OriginalFilename, Valid: true},
 	}
 
-	mediaItem, err := s.queries.CreateMediaItem(ctx, createMediaItemParams)
+	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, createMediaItemParams)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, 
 		FileSize:    sql.NullInt64{Int64: int64(len(params.ImageHandler.OriginalFile)), Valid: true},
 	}
 
-	_, err = s.queries.CreateMediaFile(ctx, createOriginalMediaFileParams)
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, createOriginalMediaFileParams)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +292,7 @@ func (s *MediaItemService) UpdateMediaItemWithResizedImages(
 		FileSize:    sql.NullInt64{Int64: int64(len(thumbnailFile.File)), Valid: true},
 	}
 
-	_, err := s.queries.CreateMediaFile(ctx, createThumbnailMediaFileParams)
+	_, err := s.mediaItemStore.CreateMediaFile(ctx, createThumbnailMediaFileParams)
 	if err != nil {
 		return err
 	}
@@ -306,7 +307,7 @@ func (s *MediaItemService) UpdateMediaItemWithResizedImages(
 		FileSize:    sql.NullInt64{Int64: int64(len(viewFile.File)), Valid: true},
 	}
 
-	_, err = s.queries.CreateMediaFile(ctx, createViewMediaFileParams)
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, createViewMediaFileParams)
 	if err != nil {
 		return err
 	}
@@ -428,7 +429,7 @@ func (s *MediaItemService) CreateUploadPath(groupId int32, albumId int32) string
 
 // 미디어 아이템 조회
 func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, params *db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error) {
-	mediaItems, err := s.queries.GetMediaItemsByTakenAt(ctx, *params)
+	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, *params)
 	if err != nil {
 		log.Println("get media items by taken at error: ", err)
 		return nil, err
@@ -445,7 +446,7 @@ type MediaItemRange struct {
 // 미디어 아이템 범위 조회
 func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId int32) ([]MediaItemRange, error) {
 	// 사진들을 년도와 월로 그룹화
-	ranges, err := s.queries.GetMediaItemRange(ctx, clanGroupId)
+	ranges, err := s.mediaItemStore.GetMediaItemRange(ctx, clanGroupId)
 	if err != nil {
 		return nil, err
 	}
@@ -472,7 +473,7 @@ func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId in
 
 // 업로드 배치 생성
 func (s *MediaItemService) CreateUploadBatch(ctx context.Context, groupId int32, albumId int32) (*db.UploadBatch, error) {
-	uploadBatch, err := s.queries.CreateUploadBatch(ctx, albumId)
+	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +482,7 @@ func (s *MediaItemService) CreateUploadBatch(ctx context.Context, groupId int32,
 
 // 미디어 아이템 업로드 상태 업데이트
 func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
-	_, err := s.queries.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
+	_, err := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(uploadStatus),
 	})
@@ -490,7 +491,7 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 
 // 업로드 배치 상태 조회
 func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
-	uploadStatuses, err := s.queries.GetUploadStatuses(ctx, uploadBatchID)
+	uploadStatuses, err := s.mediaItemStore.GetUploadStatuses(ctx, uploadBatchID)
 	if err != nil {
 		return nil, err
 	}

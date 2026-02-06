@@ -4,20 +4,20 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/store"
 )
 
 type IdentityService struct {
-	queries *db.Queries
+	identityStore store.IdentityStore
 }
 
-func NewIdentityService(queries *db.Queries) *IdentityService {
-	return &IdentityService{queries: queries}
+func NewIdentityService(identityStore store.IdentityStore) *IdentityService {
+	return &IdentityService{identityStore: identityStore}
 }
 
 func (s *IdentityService) CreateIdentity(ctx context.Context, name string, groupId int32) (db.Identity, error) {
-	identity, err := s.queries.CreateIdentity(ctx, db.CreateIdentityParams{
+	identity, err := s.identityStore.CreateIdentity(ctx, db.CreateIdentityParams{
 		Name:    sql.NullString{String: name, Valid: true},
 		GroupID: groupId,
 	})
@@ -28,13 +28,10 @@ func (s *IdentityService) CreateIdentity(ctx context.Context, name string, group
 }
 
 func (s *IdentityService) FindIdentityByIdAndGroupId(ctx context.Context, id int32, groupId int32) (db.Identity, error) {
-	identity, err := s.queries.FindIdentityByIdAndGroupId(ctx, db.FindIdentityByIdAndGroupIdParams{
+	identity, err := s.identityStore.FindIdentityByIdAndGroupId(ctx, db.FindIdentityByIdAndGroupIdParams{
 		ID:      id,
 		GroupID: groupId,
 	})
-	if err == sql.ErrNoRows {
-		return db.Identity{}, apperr.NewNotFoundError("identity")
-	}
 	if err != nil {
 		return db.Identity{}, err
 	}
@@ -42,11 +39,10 @@ func (s *IdentityService) FindIdentityByIdAndGroupId(ctx context.Context, id int
 }
 
 func (s *IdentityService) FindIdentitiesByGroupId(ctx context.Context, groupId int32) ([]db.Identity, error) {
-	identities, err := s.queries.FindIdentitiesByGroupId(ctx, groupId)
+	identities, err := s.identityStore.FindIdentitiesByGroupId(ctx, groupId)
 	if err != nil {
 		return nil, err
 	}
-	// 빈 배열은 정상적인 결과이므로 에러가 아님
 	if identities == nil {
 		return []db.Identity{}, nil
 	}
@@ -55,7 +51,7 @@ func (s *IdentityService) FindIdentitiesByGroupId(ctx context.Context, groupId i
 
 func (s *IdentityService) UpdateIdentityByIdAndGroupId(ctx context.Context, id int32, groupId int32, name string) (db.Identity, error) {
 
-	identity, err := s.queries.UpdateIdentityByIdAndGroupId(ctx, db.UpdateIdentityByIdAndGroupIdParams{
+	identity, err := s.identityStore.UpdateIdentityByIdAndGroupId(ctx, db.UpdateIdentityByIdAndGroupIdParams{
 		ID:      id,
 		GroupID: groupId,
 		Name:    sql.NullString{String: name, Valid: true},

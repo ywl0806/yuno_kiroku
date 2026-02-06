@@ -15,6 +15,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/routers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
+	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/internal/validator"
 )
 
@@ -32,17 +33,18 @@ func Init(e *echo.Echo) {
 	}
 
 	queries := db.New(dbTx)
+	st := store.New(queries)
 
 	storageProvider := providers.NewStorageProvider()
 	// Storage service
 	storageService := storageProvider.StorageService()
 
-	// service
-	userService := services.NewUserService(queries)
-	faceService := services.NewFaceService(queries)
-	mediaItemService := services.NewMediaItemService(queries, storageService, faceService)
-	identityService := services.NewIdentityService(queries)
-	albumService := services.NewAlbumService(queries)
+	// service (store 계층을 통해 데이터 접근)
+	userService := services.NewUserService(st.User, st.Group)
+	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
+	mediaItemService := services.NewMediaItemService(st.MediaItem, storageService, faceService)
+	identityService := services.NewIdentityService(st.Identity)
+	albumService := services.NewAlbumService(st.Album)
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)

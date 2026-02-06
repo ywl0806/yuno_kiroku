@@ -15,6 +15,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
+	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
@@ -24,11 +25,17 @@ const (
 )
 
 type FaceService struct {
-	queries *db.Queries
+	faceStore       store.FaceStore
+	identityStore   store.IdentityStore
+	mediaItemStore  store.MediaItemStore
 }
 
-func NewFaceService(queries *db.Queries) *FaceService {
-	return &FaceService{queries: queries}
+func NewFaceService(faceStore store.FaceStore, identityStore store.IdentityStore, mediaItemStore store.MediaItemStore) *FaceService {
+	return &FaceService{
+		faceStore:      faceStore,
+		identityStore:  identityStore,
+		mediaItemStore: mediaItemStore,
+	}
 }
 
 // 얼굴 인식 결과를 검색 후 저장
@@ -72,7 +79,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 			faceDetectionParams.IdentityID = similarFace.IdentityID
 		} else {
 			// 유사 얼굴 검색 결과가 없으면 새로운 사람 생성
-			newIdentity, err := s.queries.CreateIdentity(ctx, db.CreateIdentityParams{
+			newIdentity, err := s.identityStore.CreateIdentity(ctx, db.CreateIdentityParams{
 				Name:    sql.NullString{String: "", Valid: false},
 				GroupID: groupId,
 			})
@@ -89,7 +96,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 
 	// 얼굴인식 결과를 저장
 	for _, faceDetectionParams := range createFaceDetectionParams {
-		createdFaceDetection, err := s.queries.CreateFaceDetection(ctx, faceDetectionParams)
+		createdFaceDetection, err := s.faceStore.CreateFaceDetection(ctx, faceDetectionParams)
 		if err != nil {
 			log.Println("CreateFaceDetection error: ", err)
 			continue
@@ -106,7 +113,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 	1. 얼굴 임베딩이 없으면 nil 반환
 */
 func (s *FaceService) FindMostSimilarFace(ctx context.Context, groupId int32, embedding []float64) (*db.FindMostSimilarFaceRow, error) {
-	faceDetection, err := s.queries.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
+	faceDetection, err := s.faceStore.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
 		GroupID:             groupId,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
 		SimilarityThreshold: FACE_SEARCH_THRESHOLD,
@@ -209,7 +216,7 @@ func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, gr
 	for i, faceDetection := range faceDetections {
 		embeddings[i] = utils.Float64SliceToVectorString(faceDetection.Embedding)
 	}
-	mediaItem, err := s.queries.GetMediaItemByFaceDetection(ctx, db.GetMediaItemByFaceDetectionParams{
+	mediaItem, err := s.mediaItemStore.GetMediaItemByFaceDetection(ctx, db.GetMediaItemByFaceDetectionParams{
 		GroupID:    groupId,
 		Embeddings: embeddings,
 	})
