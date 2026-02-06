@@ -7,8 +7,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
-	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
-	"github.com/ywl0806/yuno_kiroku/internal/api/utils/jwt"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
+	"github.com/ywl0806/yuno_kiroku/internal/utils/jwt"
 )
 
 type AuthUser struct {

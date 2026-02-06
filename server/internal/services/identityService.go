@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/appErrors"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
@@ -33,7 +33,7 @@ func (s *IdentityService) FindIdentityByIdAndGroupId(ctx context.Context, id int
 		GroupID: groupId,
 	})
 	if err == sql.ErrNoRows {
-		return db.Identity{}, appErrors.NewNotFoundError("identity")
+		return db.Identity{}, apperr.NewNotFoundError("identity")
 	}
 	if err != nil {
 		return db.Identity{}, err

@@ -2,8 +2,8 @@ package routers
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
-	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
 )
 
 type AlbumRouter struct {

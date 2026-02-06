@@ -7,10 +7,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
-	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services"
-	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
-	"github.com/ywl0806/yuno_kiroku/internal/api/utils/jwt"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
+	"github.com/ywl0806/yuno_kiroku/internal/services"
+	"github.com/ywl0806/yuno_kiroku/internal/utils"
+	"github.com/ywl0806/yuno_kiroku/internal/utils/jwt"
 
 	_ "github.com/go-playground/validator/v10"
 )

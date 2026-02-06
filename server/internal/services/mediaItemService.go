@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/ywl0806/yuno_kiroku/internal/api/consts"
-	"github.com/ywl0806/yuno_kiroku/internal/api/enums"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/imageHelper"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )

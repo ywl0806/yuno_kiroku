@@ -1,11 +1,11 @@
-package appErrors
+package apperr
 
 import (
 	"database/sql"
 	"errors"
 
 	"github.com/lib/pq"
-	"github.com/ywl0806/yuno_kiroku/pkg/commonErrors"
+	"github.com/ywl0806/yuno_kiroku/pkg/errs"
 )
 
 // ClassifyDBError maps DB/driver errors to app or common errors.
@@ -37,5 +37,5 @@ func ClassifyDBError(err error, notFoundResource ...string) error {
 		}
 	}
 
-	return commonErrors.NewInternalError(err)
+	return errs.NewInternalError(err)
 }

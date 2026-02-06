@@ -1,4 +1,4 @@
-package commonErrors
+package errs
 
 import (
 	"runtime"

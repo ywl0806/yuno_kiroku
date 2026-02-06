@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
-	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/services"
 )
 
 type AlbumHandler struct {

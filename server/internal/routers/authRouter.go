@@ -2,7 +2,7 @@ package routers
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers"
 )
 
 type AuthRouter struct {

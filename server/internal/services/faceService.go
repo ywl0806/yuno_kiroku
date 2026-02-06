@@ -12,10 +12,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/appErrors"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
-	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
+	"github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
 const (
@@ -217,7 +217,7 @@ func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, gr
 		return nil
 	}
 	if mediaItem.ID != 0 {
-		return appErrors.NewDuplicateError("")
+		return apperr.NewDuplicateError("")
 	}
 
 	return nil

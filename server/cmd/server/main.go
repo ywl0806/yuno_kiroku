@@ -10,7 +10,7 @@ import (
 
 	echoSwagger "github.com/swaggo/echo-swagger"
 	_ "github.com/ywl0806/yuno_kiroku/docs"
-	"github.com/ywl0806/yuno_kiroku/internal/api"
+	api "github.com/ywl0806/yuno_kiroku/internal"
 	"github.com/ywl0806/yuno_kiroku/pkg/setting"
 )
 

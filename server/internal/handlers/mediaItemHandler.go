@@ -6,13 +6,13 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
-	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services"
-	"github.com/ywl0806/yuno_kiroku/internal/api/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/services"
+	"github.com/ywl0806/yuno_kiroku/internal/utils"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/appErrors"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 )
 
 type MediaItemHandler struct {
@@ -39,7 +39,7 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 	// album 쿼리 파라미터 가져오기
 	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
 	if err != nil {
-		return appErrors.NewValidationError(utils.GetMessage("", map[string]string{"field": "album_id"}))
+		return apperr.NewValidationError(utils.GetMessage("", map[string]string{"field": "album_id"}))
 	}
 
 	// 그룹 ID 가져오기
@@ -74,17 +74,17 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
-		return appErrors.NewValidationError("")
+		return apperr.NewValidationError("")
 	}
 
 	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
 	if err != nil {
-		return appErrors.NewValidationError("")
+		return apperr.NewValidationError("")
 	}
 
 	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
 	if err != nil {
-		return appErrors.NewValidationError("")
+		return apperr.NewValidationError("")
 	}
 
 	retry, _ := utils.ConvertToBool(c.QueryParam("retry"))
@@ -177,7 +177,7 @@ func (con *MediaItemHandler) GetUploadBatchStatus(c echo.Context) error {
 	// upload_batch_id 쿼리 파라미터 가져오기
 	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
 	if err != nil {
-		return appErrors.NewValidationError("")
+		return apperr.NewValidationError("")
 	}
 
 	// 컨텍스트 가져오기

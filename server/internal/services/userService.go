@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/ywl0806/yuno_kiroku/internal/api/appErrors"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
@@ -20,7 +20,7 @@ func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams
 
 	user, err := s.queries.CreateUser(ctx, params)
 	if err != nil {
-		return db.User{}, appErrors.ClassifyDBError(err)
+		return db.User{}, apperr.ClassifyDBError(err)
 	}
 	return user, nil
 }
@@ -29,7 +29,7 @@ func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams
 func (s *UserService) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
 	user, err := s.queries.FindUserByUsername(ctx, username)
 	if err != nil {
-		return db.User{}, appErrors.ClassifyDBError(err, "user")
+		return db.User{}, apperr.ClassifyDBError(err, "user")
 	}
 	return user, nil
 }
@@ -61,7 +61,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 		return err
 	}
 	if group.ID == 0 {
-		return appErrors.NewNotFoundError("group")
+		return apperr.NewNotFoundError("group")
 	}
 	return nil
 }
@@ -73,7 +73,7 @@ func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID i
 		return err
 	}
 	if clanGroup.ID == 0 {
-		return appErrors.NewNotFoundError("clan group")
+		return apperr.NewNotFoundError("clan group")
 	}
 	return nil
 }
@@ -85,7 +85,7 @@ func (s *UserService) validateDuplicateUsername(ctx context.Context, username st
 		return err
 	}
 	if user.ID != 0 {
-		return appErrors.NewConflictError("")
+		return apperr.NewConflictError("")
 	}
 	return nil
 }

@@ -9,13 +9,13 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
-	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
-	"github.com/ywl0806/yuno_kiroku/internal/api/providers"
-	"github.com/ywl0806/yuno_kiroku/internal/api/routers"
-	"github.com/ywl0806/yuno_kiroku/internal/api/services"
-	"github.com/ywl0806/yuno_kiroku/internal/api/validator"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/providers"
+	"github.com/ywl0806/yuno_kiroku/internal/routers"
+	"github.com/ywl0806/yuno_kiroku/internal/services"
+	"github.com/ywl0806/yuno_kiroku/internal/validator"
 )
 
 // Initialize the root router on the app

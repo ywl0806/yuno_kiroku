@@ -1,4 +1,4 @@
-package appErrors
+package apperr
 
 type ErrorCode string
 
