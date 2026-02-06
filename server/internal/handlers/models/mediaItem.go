@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
-	"github.com/ywl0806/yuno_kiroku/internal/utils"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
 type MediaFileResponse struct {

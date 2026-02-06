@@ -10,7 +10,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
-	"github.com/ywl0806/yuno_kiroku/internal/utils"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 )

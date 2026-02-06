@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
-	"github.com/ywl0806/yuno_kiroku/internal/utils"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 )

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
-	"github.com/ywl0806/yuno_kiroku/internal/utils"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 	"github.com/ywl0806/yuno_kiroku/internal/utils/jwt"
 
 	_ "github.com/go-playground/validator/v10"
