@@ -23,10 +23,10 @@ func NewGroupStore(queries *db.Queries) GroupStore {
 
 func (s *groupStore) FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error) {
 	row, err := s.queries.FindGroupByID(ctx, id)
-	return wrapErr(row, err, "group")
+	return wrapErr(row, err, "field.group")
 }
 
 func (s *groupStore) FindClanGroupByID(ctx context.Context, id int32) (db.FindClanGroupByIDRow, error) {
 	row, err := s.queries.FindClanGroupByID(ctx, id)
-	return wrapErr(row, err, "clan group")
+	return wrapErr(row, err, "field.clan_group")
 }

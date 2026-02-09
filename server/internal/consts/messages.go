@@ -1,12 +1,12 @@
 package consts
 
 const (
-	ErrNotFound      = "{{.field}} not found"
-	ErrAlreadyExists = "{{.field}} already exists"
-	ErrInvalid       = "{{.field}} is invalid"
-	ErrRequired      = "{{.field}} is required"
-	ErrInternal      = "internal server error"
-	ErrDuplicate     = "{{.field}} is duplicate"
+	ErrNotFound      = "error.not_found"
+	ErrAlreadyExists = "error.conflict"
+	ErrInvalid       = "error.validation"
+	ErrRequired      = "error.validation"
+	ErrInternal      = "error.internal"
+	ErrDuplicate     = "error.conflict"
 )
 
 const (

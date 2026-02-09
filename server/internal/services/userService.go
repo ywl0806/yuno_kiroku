@@ -22,7 +22,7 @@ func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams
 
 	user, err := s.userStore.CreateUser(ctx, params)
 	if err != nil {
-		return db.User{}, apperr.ClassifyDBError(err)
+		return db.User{}, err
 	}
 	return user, nil
 }
@@ -31,7 +31,7 @@ func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams
 func (s *UserService) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
 	user, err := s.userStore.FindUserByUsername(ctx, username)
 	if err != nil {
-		return db.User{}, apperr.ClassifyDBError(err, "user")
+		return db.User{}, err
 	}
 	return user, nil
 }
@@ -63,7 +63,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 		return err
 	}
 	if group.ID == 0 {
-		return apperr.NewNotFoundError("group")
+		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.group"})
 	}
 	return nil
 }
@@ -75,7 +75,7 @@ func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID i
 		return err
 	}
 	if clanGroup.ID == 0 {
-		return apperr.NewNotFoundError("clan group")
+		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.clan_group"})
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func (s *UserService) validateDuplicateUsername(ctx context.Context, username st
 		return err
 	}
 	if user.ID != 0 {
-		return apperr.NewConflictError("")
+		return apperr.NewAppErrorWithData(apperr.Conflict, "error.conflict.username", nil)
 	}
 	return nil
 }

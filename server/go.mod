@@ -14,6 +14,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/lib/pq v1.11.1
+	github.com/nicksnyder/go-i18n/v2 v2.4.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.2
@@ -87,7 +88,7 @@ require (
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/text v0.30.0
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

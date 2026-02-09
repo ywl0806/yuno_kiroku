@@ -16,12 +16,14 @@ const (
 
 // 어플리케이션 에러 타입
 // Code: 에러 코드
-// Message: 에러 메시지
+// Message: i18n 메시지 키 또는 메시지 문자열
+// TemplateData: Message가 키일 때 템플릿 치환 데이터 (예: field.group)
 // Err: 에러 객체
 type AppErrors struct {
-	Code    ErrorCode
-	Message string
-	Err     error
+	Code         ErrorCode
+	Message      string
+	TemplateData map[string]string
+	Err          error
 }
 
 func (e *AppErrors) Error() string {
@@ -34,36 +36,41 @@ func (e *AppErrors) Is(target error) bool {
 }
 
 // 인증 에러 생성
-func NewUnauthorizedError(message string) error {
+func NewUnauthorizedError(message string, templateData map[string]string) error {
 	return &AppErrors{Code: Unauthorized, Message: message}
 }
 
 // 권한 에러 생성
-func NewForbiddenError(message string) error {
-	return &AppErrors{Code: Forbidden, Message: message}
+func NewForbiddenError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: Forbidden, Message: message, TemplateData: templateData}
 }
 
 // 충돌 에러 생성
-func NewConflictError(message string) error {
-	return &AppErrors{Code: Conflict, Message: message}
+func NewConflictError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: Conflict, Message: message, TemplateData: templateData}
 }
 
 // 유효성 에러 생성
-func NewValidationError(message string) error {
-	return &AppErrors{Code: Validation, Message: message}
+func NewValidationError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: Validation, Message: message, TemplateData: templateData}
 }
 
 // 존재하지 않는 에러 생성
-func NewNotFoundError(message string) error {
-	return &AppErrors{Code: NotFound, Message: message}
+func NewNotFoundError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: NotFound, Message: message, TemplateData: templateData}
 }
 
 // 중복 에러 생성
-func NewDuplicateError(message string) error {
-	return &AppErrors{Code: Duplicate, Message: message}
+func NewDuplicateError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: Duplicate, Message: message, TemplateData: templateData}
 }
 
 // 참조 오류 생성
-func NewInvalidReferenceError(message string) error {
-	return &AppErrors{Code: InvalidReference, Message: message}
+func NewInvalidReferenceError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: InvalidReference, Message: message, TemplateData: templateData}
+}
+
+// i18n 메시지 키 + 템플릿 데이터로 에러 생성
+func NewAppErrorWithData(code ErrorCode, messageKey string, templateData map[string]string) error {
+	return &AppErrors{Code: code, Message: messageKey, TemplateData: templateData}
 }

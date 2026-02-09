@@ -29,7 +29,7 @@ func (s *identityStore) CreateIdentity(ctx context.Context, arg db.CreateIdentit
 
 func (s *identityStore) FindIdentityByIdAndGroupId(ctx context.Context, arg db.FindIdentityByIdAndGroupIdParams) (db.Identity, error) {
 	identity, err := s.queries.FindIdentityByIdAndGroupId(ctx, arg)
-	return wrapErr(identity, err, "identity")
+	return wrapErr(identity, err, "field.identity")
 }
 
 func (s *identityStore) FindIdentitiesByGroupId(ctx context.Context, groupID int32) ([]db.Identity, error) {

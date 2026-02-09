@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/i18n"
 	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/routers"
@@ -21,7 +22,10 @@ import (
 
 // Initialize the root router on the app
 func Init(e *echo.Echo) {
+	// i18n 초기화
+	i18n.Init()
 
+	// database 초기화
 	dbTx, err := sql.Open("postgres", viper.GetString("DATABASE_URL"))
 	if err != nil {
 		panic(err)
@@ -32,7 +36,10 @@ func Init(e *echo.Echo) {
 		panic("Failed to connect to database: " + err.Error())
 	}
 
+	// queries 초기화
 	queries := db.New(dbTx)
+
+	// store 초기화
 	st := store.New(queries)
 
 	storageProvider := providers.NewStorageProvider()
@@ -61,6 +68,7 @@ func Init(e *echo.Echo) {
 		return c.String(200, "OK")
 	})
 
+	// router 초기화
 	userRouter := routers.NewUserRouter(*userHandler)
 	mediaItemRouter := routers.NewMediaItemRouter(*mediaItemHandler)
 	authRouter := routers.NewAuthRouter(*authHandler)
@@ -69,17 +77,24 @@ func Init(e *echo.Echo) {
 
 	e.Validator = validator.NewCustomValidator()
 
-	// 미들웨어 등록 (등록 순서의 역순으로 실행됨)
-	// 1. Recover - 패닉 복구 (가장 안쪽에서 실행)
-	e.Use(middleware.Recover())
-	// 2. Logger - 로깅
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${time_rfc3339} ${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n  ${error}\n ",
+	// 미들웨어 등록 (등록 순서대로 요청 시 실행됨 - RequestID가 먼저 와야 Logger에서 request_id 사용 가능)
+	// 1. RequestID - 요청 ID 설정 (Logger보다 먼저 등록해야 Format에서 ${request_id} 출력됨)
+	e.Use(middleware.RequestIDWithConfig(middleware.RequestIDConfig{
+		Skipper: func(c echo.Context) bool {
+			return c.Path() == "/api/health"
+		},
 	}))
-	// 3. ErrorHandler - 에러 처리 (가장 바깥쪽에서 실행, 모든 에러를 처리)
+	// 2. Recover - 패닉 복구
+	e.Use(middleware.Recover())
+	// 3. Logger - 로깅
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: "${time_rfc3339} ${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n request_id=${id} \n\n",
+	}))
+	// 4. Locale - Accept-Language 기반 로케일 설정 (i18n)
+	e.Use(middlewares.LocaleMiddleware())
+	// 5. ErrorHandler - 에러 처리
 	errorHandler := middlewares.NewErrorHandler()
 	e.Use(errorHandler.Handler)
-
 	// init routers
 	userRouter.Register(root)
 	mediaItemRouter.Register(root)

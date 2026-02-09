@@ -25,9 +25,9 @@ const (
 )
 
 type FaceService struct {
-	faceStore       store.FaceStore
-	identityStore   store.IdentityStore
-	mediaItemStore  store.MediaItemStore
+	faceStore      store.FaceStore
+	identityStore  store.IdentityStore
+	mediaItemStore store.MediaItemStore
 }
 
 func NewFaceService(faceStore store.FaceStore, identityStore store.IdentityStore, mediaItemStore store.MediaItemStore) *FaceService {
@@ -224,7 +224,7 @@ func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, gr
 		return nil
 	}
 	if mediaItem.ID != 0 {
-		return apperr.NewDuplicateError("")
+		return apperr.NewAppErrorWithData(apperr.Duplicate, "error.conflict.duplicate", map[string]string{"field": "field.face_detection"})
 	}
 
 	return nil
