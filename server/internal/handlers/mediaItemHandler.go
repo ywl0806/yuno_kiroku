@@ -39,7 +39,7 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 	// album 쿼리 파라미터 가져오기
 	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
 	if err != nil {
-		return apperr.NewAppErrorWithData(apperr.Validation, "error.validation.required", map[string]string{"field": "field.album_id"})
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.album_id"})
 	}
 
 	// 그룹 ID 가져오기
@@ -74,17 +74,17 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
-		return apperr.NewAppErrorWithData(apperr.Validation, "error.validation.required", map[string]string{"field": "field.file"})
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.file"})
 	}
 
 	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
 	if err != nil {
-		return apperr.NewAppErrorWithData(apperr.Validation, "error.validation.required", map[string]string{"field": "field.album_id"})
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.album_id"})
 	}
 
 	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
 	if err != nil {
-		return apperr.NewAppErrorWithData(apperr.Validation, "error.validation.required", map[string]string{"field": "field.upload_batch_id"})
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.upload_batch_id"})
 	}
 
 	retry, _ := utils.ConvertToBool(c.QueryParam("retry"))
@@ -177,7 +177,7 @@ func (con *MediaItemHandler) GetUploadBatchStatus(c echo.Context) error {
 	// upload_batch_id 쿼리 파라미터 가져오기
 	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
 	if err != nil {
-		return apperr.NewAppErrorWithData(apperr.Validation, "error.validation.required", map[string]string{"field": "field.upload_batch_id"})
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.upload_batch_id"})
 	}
 
 	// 컨텍스트 가져오기
