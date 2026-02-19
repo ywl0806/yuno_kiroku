@@ -1,6 +1,6 @@
 // Package imageHandler provides functions for handling image files.
 
-package imageHandler
+package image
 
 import (
 	"bytes"

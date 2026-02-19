@@ -13,7 +13,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
-	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/imageHelper"
+	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/image"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
 
