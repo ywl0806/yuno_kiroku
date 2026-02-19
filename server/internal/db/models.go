@@ -71,6 +71,17 @@ type IdentityFaceImg struct {
 	UpdatedAt   time.Time
 }
 
+type InviteToken struct {
+	ID              int32
+	Token           string
+	GroupID         int32
+	ClanGroupID     int32
+	CreatedByUserID int32
+	ExpiresAt       time.Time
+	UsedAt          sql.NullTime
+	CreatedAt       time.Time
+}
+
 type MediaFile struct {
 	ID          int32
 	MediaItemID int32
@@ -113,12 +124,14 @@ type UploadBatch struct {
 }
 
 type User struct {
-	ID          int32
-	Name        sql.NullString
-	Username    string
-	Password    string
-	GroupID     int32
-	ClanGroupID int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             int32
+	Name           sql.NullString
+	Username       string
+	Password       string
+	GroupID        int32
+	ClanGroupID    int32
+	Provider       sql.NullString
+	ProviderUserID sql.NullString
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
@@ -34,6 +35,36 @@ func (s *UserService) FindUserByUsername(ctx context.Context, username string) (
 		return db.User{}, err
 	}
 	return user, nil
+}
+
+// FindUserByProvider 소셜 로그인 provider로 유저 조회
+func (s *UserService) FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error) {
+	return s.userStore.FindUserByProvider(ctx, provider, providerUserID)
+}
+
+// FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. groupID/clanGroupID로 가입할 그룹을 지정한다 (미지정 시 1,1).
+func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, groupID, clanGroupID int32) (db.User, error) {
+	user, err := s.userStore.FindUserByProvider(ctx, provider, providerUserID)
+	if err == nil && user.ID != 0 {
+		return user, nil
+	}
+	if groupID == 0 {
+		groupID = 1
+	}
+	if clanGroupID == 0 {
+		clanGroupID = 1
+	}
+	username := provider + "_" + providerUserID
+	params := db.CreateUserOAuthParams{
+		Name:           sql.NullString{String: displayName, Valid: displayName != ""},
+		Username:       username,
+		Password:       "",
+		GroupID:        groupID,
+		ClanGroupID:    clanGroupID,
+		Provider:       sql.NullString{String: provider, Valid: true},
+		ProviderUserID: sql.NullString{String: providerUserID, Valid: true},
+	}
+	return s.userStore.CreateUserOAuth(ctx, params)
 }
 
 // 유저 생성 파라미터 검증

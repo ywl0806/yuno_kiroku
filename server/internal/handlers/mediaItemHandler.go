@@ -55,10 +55,10 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, map[string]interface{}{
-		"id":         uploadBatch.ID,
-		"album_id":   uploadBatch.AlbumID,
-		"created_at": uploadBatch.CreatedAt,
+	return c.JSON(200, models.CreateUploadBatchResponse{
+		ID:        uploadBatch.ID,
+		AlbumID:   uploadBatch.AlbumID,
+		CreatedAt: uploadBatch.CreatedAt,
 	})
 }
 
@@ -99,9 +99,9 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, map[string]interface{}{
-		"media_item_id": result.MediaItemID,
-		"status":        result.Status,
+	return c.JSON(200, models.UploadImageResponse{
+		MediaItemID: result.MediaItemID,
+		Status:      result.Status,
 	})
 }
 

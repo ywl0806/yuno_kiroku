@@ -18,4 +18,9 @@ func (ar *AuthRouter) Register(root *echo.Group) {
 
 	auth.POST("/login", ar.authHandler.Login)
 
+	// 소셜 로그인: 로그인 페이지로 리다이렉트
+	auth.GET("/line", ar.authHandler.LineLoginRedirect)
+	auth.GET("/line/callback", ar.authHandler.LineCallback)
+	auth.GET("/kakao", ar.authHandler.KakaoLoginRedirect)
+	auth.GET("/kakao/callback", ar.authHandler.KakaoCallback)
 }

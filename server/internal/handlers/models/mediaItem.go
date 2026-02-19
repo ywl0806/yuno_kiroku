@@ -9,6 +9,19 @@ import (
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
+// CreateUploadBatchResponse 업로드 배치 생성 응답
+type CreateUploadBatchResponse struct {
+	ID        int32     `json:"id"`
+	AlbumID   int32     `json:"album_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// UploadImageResponse 이미지 업로드 응답
+type UploadImageResponse struct {
+	MediaItemID int32  `json:"media_item_id"`
+	Status      string `json:"status"`
+}
+
 type MediaFileResponse struct {
 	ID          int32  `json:"id"`
 	MediaItemID int32  `json:"media_item_id"`

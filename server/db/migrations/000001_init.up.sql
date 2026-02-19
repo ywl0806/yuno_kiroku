@@ -27,9 +27,26 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     group_id INTEGER NOT NULL REFERENCES groups (id),
     clan_group_id INTEGER NOT NULL REFERENCES clan_groups (id),
+    provider VARCHAR(50) DEFAULT NULL,
+    provider_user_id VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider_user ON users (provider, provider_user_id) WHERE provider IS NOT NULL AND provider_user_id IS NOT NULL;
+
+-- 초대 토큰 테이블 (초대 링크로 그룹/클랜 가입용)
+CREATE TABLE IF NOT EXISTS invite_tokens (
+    id SERIAL PRIMARY KEY,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    group_id INTEGER NOT NULL REFERENCES groups (id),
+    clan_group_id INTEGER NOT NULL REFERENCES clan_groups (id),
+    created_by_user_id INTEGER NOT NULL REFERENCES users (id),
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_invite_tokens_token ON invite_tokens (token);
+CREATE INDEX IF NOT EXISTS idx_invite_tokens_expires_at ON invite_tokens (expires_at);
 
 -- 리프레시 토큰 테이블
 CREATE TABLE IF NOT EXISTS refresh_tokens (

@@ -1,102 +1,190 @@
 package handlers
 
 import (
-	"log"
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/spf13/cast"
 	"github.com/spf13/viper"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
-	"github.com/ywl0806/yuno_kiroku/pkg/utils"
-	"github.com/ywl0806/yuno_kiroku/internal/utils/jwt"
 
 	_ "github.com/go-playground/validator/v10"
 )
 
 type AuthHandler struct {
-	userService   *services.UserService
-	authSecretKey string
+	authService *services.AuthService
+	frontURL    string
 }
 
-func NewAuthHandler(userService *services.UserService) *AuthHandler {
-	return &AuthHandler{userService: userService, authSecretKey: viper.GetString("AUTH_SECRET_KEY")}
+func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+	frontURL := viper.GetString("FRONT_URL")
+	if frontURL == "" {
+		frontURL = "http://localhost:5173"
+	}
+	return &AuthHandler{
+		authService: authService,
+		frontURL:    frontURL,
+	}
 }
 
+// LoginRequest 로그인 요청
 type LoginRequest struct {
 	Username string `json:"username" validate:"required" example:"admin"`
 	Password string `json:"password" validate:"required" example:"password"`
 }
 
-// @Description login
+// LoginResponse 로그인 성공 응답
+type LoginResponse struct {
+	Message string                  `json:"message"`
+	User    models.LoginUserResponse `json:"user"`
+	Token   string                  `json:"token"`
+}
+
+// @Description 아이디/비밀번호 로그인. 성공 시 액세스 토큰과 리프레시 토큰(쿠키) 반환.
 //
-// @Summary User login
-// @Tags auth
+// @Summary User Login
+// @Tags Auth
 // @Accept json
 // @Produce json
 // @Param loginRequest body LoginRequest true "Login credentials"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} LoginResponse
+// @Failure 401 "Invalid username or password"
+// @Failure 500 "Failed to generate token"
 // @Router /auth/login [post]
-func (con *AuthHandler) Login(c echo.Context) error {
-	var loginRequest LoginRequest
-
-	if err := c.Bind(&loginRequest); err != nil {
-		log.Println("Bind error: ", err)
+func (h *AuthHandler) Login(c echo.Context) error {
+	var req LoginRequest
+	if err := c.Bind(&req); err != nil {
 		return err
-
 	}
-
-	if err := c.Validate(loginRequest); err != nil {
-		log.Println("Validate error: ", err)
+	if err := c.Validate(&req); err != nil {
 		return err
 	}
 
-	user, _ := con.userService.FindUserByUsername(c.Request().Context(), loginRequest.Username)
-
-	if user.ID == 0 || !utils.CheckPassword(loginRequest.Password, user.Password) {
-		return c.JSON(401, map[string]string{"error": "Invalid username or password"})
-	}
-
-	accessTokenClaims := &jwt.AccessTokenClaims{
-		ID:          cast.ToString(user.ID),
-		Email:       user.Username,
-		GroupId:     cast.ToString(user.GroupID),
-		ClanGroupId: cast.ToString(user.ClanGroupID),
-	}
-	token, err := jwt.GenerateJWT(accessTokenClaims, con.authSecretKey, consts.AccessTokenCookieMaxAge)
-
+	result, err := h.authService.Login(c.Request().Context(), req.Username, req.Password)
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": "Failed to generate token"})
-	}
-
-	refreshTokenClaims := &jwt.RefreshTokenClaims{
-		ID: cast.ToString(user.ID),
-	}
-
-	refreshToken, err := jwt.GenerateJWT(refreshTokenClaims, con.authSecretKey, consts.RefreshTokenCookieMaxAge)
-
-	if err != nil {
-		return c.JSON(500, map[string]string{"error": "Failed to generate token"})
+		if errors.Is(err, services.ErrInvalidCredentials) {
+			return apperr.NewUnauthorizedError("message.invalid_credentials", nil)
+		}
+		return err
 	}
 
 	c.SetCookie(&http.Cookie{
 		Name:     consts.RefreshTokenCookieName,
-		Value:    refreshToken,
+		Value:    result.RefreshToken,
 		HttpOnly: true,
 		Secure:   true,
 		MaxAge:   consts.RefreshTokenCookieMaxAge,
 	})
 
-	return c.JSON(200,
-		map[string]any{
-			"message": "Login successful",
-			"user": map[string]any{
-				"id":            user.ID,
-				"username":      user.Username,
-				"group_id":      user.GroupID,
-				"clan_group_id": user.ClanGroupID,
-			},
-			"token": token,
-		})
+	return c.JSON(http.StatusOK, LoginResponse{
+		Message: "Login successful",
+		User: models.LoginUserResponse{
+			ID:          result.User.ID,
+			Username:    result.User.Username,
+			GroupID:     result.User.GroupID,
+			ClanGroupID: result.User.ClanGroupID,
+		},
+		Token: result.AccessToken,
+	})
+}
+
+// @Description LINE 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대 그룹 적용.
+//
+// @Summary LINE Login Redirect
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param invite_token query string false "Invite Token (optional)"
+// @Success 302 "Redirect to LINE authorization page"
+// @Failure 503 "LINE login is not configured"
+// @Router /auth/line [get]
+func (h *AuthHandler) LineLoginRedirect(c echo.Context) error {
+	state := c.QueryParam("invite_token")
+	url, configured := h.authService.GetLineAuthURL(state)
+	if !configured {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "LINE login is not configured")
+	}
+	return c.Redirect(http.StatusFound, url)
+}
+
+// @Description LINE 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로 리다이렉트.
+//
+// @Summary LINE Login Callback
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param code query string true "Authorization code from LINE"
+// @Param state query string false "State (invite_token if present)"
+// @Success 302 "Redirect to front login/callback with token"
+// @Failure 302 "Redirect to front /login with error query"
+// @Router /auth/line/callback [get]
+func (h *AuthHandler) LineCallback(c echo.Context) error {
+	code := c.QueryParam("code")
+	if code == "" {
+		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=missing_code")
+	}
+	state := c.QueryParam("state")
+
+	user, err := h.authService.ProcessLineCallback(c.Request().Context(), code, state)
+	if err != nil {
+		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=line_token")
+	}
+
+	token, err := h.authService.IssueOAuthAccessToken(user)
+	if err != nil {
+		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=token")
+	}
+	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback?token="+token)
+}
+
+// @Description 카카오 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대 그룹 적용.
+//
+// @Summary Kakao Login Redirect
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param invite_token query string false "Invite Token (optional)"
+// @Success 302 "Redirect to Kakao authorization page"
+// @Failure 503 "Kakao login is not configured"
+// @Router /auth/kakao [get]
+func (h *AuthHandler) KakaoLoginRedirect(c echo.Context) error {
+	state := c.QueryParam("invite_token")
+	url, configured := h.authService.GetKakaoAuthURL(state)
+	if !configured {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Kakao login is not configured")
+	}
+	return c.Redirect(http.StatusFound, url)
+}
+
+// @Description 카카오 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로 리다이렉트.
+//
+// @Summary Kakao Login Callback
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param code query string true "Authorization code from Kakao"
+// @Param state query string false "State (invite_token if present)"
+// @Success 302 "Redirect to front login/callback with token"
+// @Failure 302 "Redirect to front /login with error query"
+// @Router /auth/kakao/callback [get]
+func (h *AuthHandler) KakaoCallback(c echo.Context) error {
+	code := c.QueryParam("code")
+	if code == "" {
+		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=missing_code")
+	}
+	state := c.QueryParam("state")
+
+	user, err := h.authService.ProcessKakaoCallback(c.Request().Context(), code, state)
+	if err != nil {
+		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=kakao_token")
+	}
+
+	token, err := h.authService.IssueOAuthAccessToken(user)
+	if err != nil {
+		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=token")
+	}
+	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback?token="+token)
 }

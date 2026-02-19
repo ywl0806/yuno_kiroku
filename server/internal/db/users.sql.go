@@ -16,7 +16,7 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
-    id, name, username, password, group_id, clan_group_id, created_at, updated_at
+    id, name, username, password, group_id, clan_group_id, provider, provider_user_id, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -43,6 +43,86 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Password,
 		&i.GroupID,
 		&i.ClanGroupID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createUserOAuth = `-- name: CreateUserOAuth :one
+INSERT INTO
+    users (name, username, password, group_id, clan_group_id, provider, provider_user_id)
+VALUES
+    ($1, $2, $3, $4, $5, $6, $7)
+RETURNING
+    id, name, username, password, group_id, clan_group_id, provider, provider_user_id, created_at, updated_at
+`
+
+type CreateUserOAuthParams struct {
+	Name           sql.NullString
+	Username       string
+	Password       string
+	GroupID        int32
+	ClanGroupID    int32
+	Provider       sql.NullString
+	ProviderUserID sql.NullString
+}
+
+func (q *Queries) CreateUserOAuth(ctx context.Context, arg CreateUserOAuthParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUserOAuth,
+		arg.Name,
+		arg.Username,
+		arg.Password,
+		arg.GroupID,
+		arg.ClanGroupID,
+		arg.Provider,
+		arg.ProviderUserID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.GroupID,
+		&i.ClanGroupID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const findUserByProvider = `-- name: FindUserByProvider :one
+SELECT
+    id, name, username, password, group_id, clan_group_id, provider, provider_user_id, created_at, updated_at
+FROM
+    users
+WHERE
+    provider = $1
+    AND provider_user_id = $2
+`
+
+type FindUserByProviderParams struct {
+	Provider       sql.NullString
+	ProviderUserID sql.NullString
+}
+
+func (q *Queries) FindUserByProvider(ctx context.Context, arg FindUserByProviderParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByProvider, arg.Provider, arg.ProviderUserID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.GroupID,
+		&i.ClanGroupID,
+		&i.Provider,
+		&i.ProviderUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -51,7 +131,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 
 const findUserByUsername = `-- name: FindUserByUsername :one
 SELECT
-    id, name, username, password, group_id, clan_group_id, created_at, updated_at
+    id, name, username, password, group_id, clan_group_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
@@ -68,6 +148,8 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User
 		&i.Password,
 		&i.GroupID,
 		&i.ClanGroupID,
+		&i.Provider,
+		&i.ProviderUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

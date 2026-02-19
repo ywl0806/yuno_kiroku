@@ -13,6 +13,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/handlers"
 	"github.com/ywl0806/yuno_kiroku/internal/i18n"
 	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/oauth"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/routers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
@@ -48,6 +49,22 @@ func Init(e *echo.Echo) {
 
 	// service (store 계층을 통해 데이터 접근)
 	userService := services.NewUserService(st.User, st.Group)
+	inviteService := services.NewInviteService(st.InviteToken, st.Group)
+	authService := services.NewAuthService(
+		userService,
+		inviteService,
+		viper.GetString("AUTH_SECRET_KEY"),
+		&oauth.LineConfig{
+			ChannelID:     viper.GetString("LINE_CHANNEL_ID"),
+			ChannelSecret: viper.GetString("LINE_CHANNEL_SECRET"),
+			CallbackURL:   viper.GetString("LINE_CALLBACK_URL"),
+		},
+		&oauth.KakaoConfig{
+			ClientID:     viper.GetString("KAKAO_CLIENT_ID"),
+			ClientSecret: viper.GetString("KAKAO_CLIENT_SECRET"),
+			RedirectURI:  viper.GetString("KAKAO_REDIRECT_URI"),
+		},
+	)
 	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
 	mediaItemService := services.NewMediaItemService(st.MediaItem, storageService, faceService)
 	identityService := services.NewIdentityService(st.Identity)
@@ -56,7 +73,8 @@ func Init(e *echo.Echo) {
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
 	mediaItemHandler := handlers.NewMediaItemHandler(mediaItemService, faceService)
-	authHandler := handlers.NewAuthHandler(userService)
+	authHandler := handlers.NewAuthHandler(authService)
+	inviteHandler := handlers.NewInviteHandler(inviteService)
 	identityHandler := handlers.NewIdentityHandler(identityService)
 	albumHandler := handlers.NewAlbumHandler(albumService)
 
@@ -72,6 +90,7 @@ func Init(e *echo.Echo) {
 	userRouter := routers.NewUserRouter(*userHandler)
 	mediaItemRouter := routers.NewMediaItemRouter(*mediaItemHandler)
 	authRouter := routers.NewAuthRouter(*authHandler)
+	inviteRouter := routers.NewInviteRouter(*inviteHandler)
 	identityRouter := routers.NewIdentityRouter(*identityHandler)
 	albumRouter := routers.NewAlbumRouter(*albumHandler)
 
@@ -99,6 +118,7 @@ func Init(e *echo.Echo) {
 	userRouter.Register(root)
 	mediaItemRouter.Register(root)
 	authRouter.Register(root)
+	inviteRouter.Register(root)
 	identityRouter.Register(root)
 	albumRouter.Register(root)
 
