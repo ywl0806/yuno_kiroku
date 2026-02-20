@@ -1,7 +1,7 @@
 package api
 
 import (
-	"database/sql"
+	"log"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
@@ -26,15 +26,10 @@ func Init(e *echo.Echo) {
 	// i18n 초기화
 	i18n.Init()
 
-	// database 초기화
-	dbTx, err := sql.Open("postgres", viper.GetString("DATABASE_URL"))
+	// DB 초기화
+	dbTx, err := db.Init(viper.GetString("APP_MODE") == "dev" || viper.GetString("APP_MODE") == "local" || viper.GetString("APP_MODE") == "local_dev")
 	if err != nil {
-		panic(err)
-	}
-
-	// 연결 테스트
-	if err := dbTx.Ping(); err != nil {
-		panic("Failed to connect to database: " + err.Error())
+		log.Fatalf("Failed to initialize DB: %v", err)
 	}
 
 	// queries 초기화
