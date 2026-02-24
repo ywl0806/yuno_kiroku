@@ -6,6 +6,7 @@ import { API_ROUTES } from '@/constants/api-route'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
@@ -17,6 +18,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 export const LoginPage = () => {
+  const { t } = useTranslation()
   const nav = useNavigate()
   const form = useForm<LoginForm>({
     defaultValues: {
@@ -47,13 +49,13 @@ export const LoginPage = () => {
           className="flex min-w-[400px] flex-col gap-4 rounded-2xl border-2 p-20"
           onSubmit={form.handleSubmit((data) => login(data))}
         >
-          <h1 className="text-2xl font-bold">Login</h1>
+          <h1 className="text-2xl font-bold">{t('auth.login')}</h1>
           <FormField
             control={form.control}
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Username</FormLabel>
+                <FormLabel>{t('auth.username')}</FormLabel>
                 <Input type="text" {...field} />
               </FormItem>
             )}
@@ -63,12 +65,12 @@ export const LoginPage = () => {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel>{t('auth.password')}</FormLabel>
                 <Input type="password" {...field} />
               </FormItem>
             )}
           />
-          <Button type="submit">Login</Button>
+          <Button type="submit">{t('auth.login')}</Button>
         </form>
       </Form>
     </div>

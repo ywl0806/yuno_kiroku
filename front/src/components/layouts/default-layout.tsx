@@ -1,25 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { House, Settings, Upload } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-
-const navs: { path: string; icon: React.ElementType; label: string }[] = [
-  {
-    path: '/',
-    icon: House,
-    label: 'Album',
-  },
-  {
-    path: '/upload',
-    icon: Upload,
-    label: 'Upload',
-  },
-  {
-    path: '/settings',
-    icon: Settings,
-    label: 'Settings',
-  },
-]
 
 const NavItem = ({
   path,
@@ -43,7 +26,14 @@ const NavItem = ({
     </Button>
   )
 }
+const navConfig: { path: string; icon: React.ElementType; labelKey: string }[] = [
+  { path: '/', icon: House, labelKey: 'nav.album' },
+  { path: '/upload', icon: Upload, labelKey: 'nav.upload' },
+  { path: '/settings', icon: Settings, labelKey: 'nav.settings' },
+]
+
 export const DefaultLayout = () => {
+  const { t } = useTranslation()
   const location = useLocation()
   const pathname = location.pathname
   return (
@@ -53,12 +43,12 @@ export const DefaultLayout = () => {
       </div>
 
       <div className="flex h-[3.5rem] items-center justify-center gap-5 px-5">
-        {navs.map((nav) => (
+        {navConfig.map((nav) => (
           <NavItem
             key={nav.path}
             path={nav.path}
             icon={<nav.icon />}
-            label={nav.label}
+            label={t(nav.labelKey)}
             isActive={pathname === nav.path}
           />
         ))}

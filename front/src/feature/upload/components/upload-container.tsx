@@ -5,8 +5,10 @@ import { getSessionStorage, removeSessionStorage, SESSION_STORAGE_KEY, setSessio
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
 import { Album, ArrowLeft, Upload } from 'lucide-react'
 import { FC, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export const UploadContainer: FC = () => {
+  const { t } = useTranslation()
   const { data: albums } = useGetAlbums()
   const [albumId, setAlbumId] = useState<number | null>(
     getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
@@ -56,7 +58,7 @@ export const UploadContainer: FC = () => {
             <div className="flex-1">
               <Button variant="outline" size="sm" onClick={handleClearPhotos}>
                 <ArrowLeft />
-                <span>戻る</span>
+                <span>{t('upload.back')}</span>
               </Button>
             </div>
             <div className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap text-sm">
@@ -76,7 +78,7 @@ export const UploadContainer: FC = () => {
               {!isUploaded && mediaItems.length > 0 && (
                 <Button variant="outline" onClick={() => handleUploadPhotos(selectedAlbum.id)}>
                   <Upload />
-                  <span>アップロード</span>
+                  <span>{t('upload.upload')}</span>
                 </Button>
               )}
             </div>

@@ -1,6 +1,9 @@
 import { DefaultLayout } from '@/components/layouts/default-layout'
 import { HomePage } from '@/page/home-page'
 import { LoginPage } from '@/page/login-page'
+import { LogoutPage } from '@/page/logout-page'
+import { NotFoundPage } from '@/page/not-found-page'
+import { SettingsPage } from '@/page/settings-page'
 import { UploadPage } from '@/page/upload-page'
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 
@@ -14,9 +17,9 @@ export const router = createBrowserRouter(
         <Route index element={<HomePage />} />
         <Route path={'/:date'} element={<HomePage />} />
         <Route path="/upload" element={<UploadPage />} />
-        <Route path="/settings" element={<div>Settings</div>} />
-        <Route path="/logout" element={<div>Logout</div>} />
-        <Route path="*" element={<div>404</div>} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/logout" element={<LogoutPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Route>,
   ),

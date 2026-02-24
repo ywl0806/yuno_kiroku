@@ -1,0 +1,32 @@
+{
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "confirm": "확인",
+    "delete": "삭제",
+    "edit": "편집",
+    "loading": "로딩 중..."
+  },
+  "nav": {
+    "home": "홈",
+    "album": "앨범",
+    "upload": "업로드",
+    "settings": "설정",
+    "logout": "로그아웃"
+  },
+  "auth": {
+    "login": "로그인",
+    "logout": "로그아웃",
+    "username": "사용자명",
+    "password": "비밀번호"
+  },
+  "upload": {
+    "back": "돌아가기",
+    "upload": "업로드"
+  },
+  "page": {
+    "settings": "설정",
+    "logout": "로그아웃",
+    "notFound": "페이지를 찾을 수 없습니다"
+  }
+}

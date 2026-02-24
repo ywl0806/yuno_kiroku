@@ -1,0 +1,32 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "delete": "削除",
+    "edit": "編集",
+    "loading": "読み込み中..."
+  },
+  "nav": {
+    "home": "ホーム",
+    "album": "アルバム",
+    "upload": "アップロード",
+    "settings": "設定",
+    "logout": "ログアウト"
+  },
+  "auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "username": "ユーザー名",
+    "password": "パスワード"
+  },
+  "upload": {
+    "back": "戻る",
+    "upload": "アップロード"
+  },
+  "page": {
+    "settings": "設定",
+    "logout": "ログアウト",
+    "notFound": "ページが見つかりません"
+  }
+}
