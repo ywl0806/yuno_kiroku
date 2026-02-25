@@ -1,4 +1,4 @@
-import { UploadStatus } from "@/enums"
+import { UploadStatus } from '@/enums'
 
 export interface MediaItem {
   id: string
@@ -35,7 +35,6 @@ export interface Album {
   updated_at: string
 }
 
-
 export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {
   DUPLICATE: 'duplicate',
   INTERNAL_SERVER_ERROR: 'internal_server_error',
@@ -48,7 +47,7 @@ export type UploadMediaItemError = {
 
 export type UploadMediaItem = {
   id?: string
-    media_item_id?: number
+  media_item_id?: number
   file: File
   src: string
   status: UploadStatus

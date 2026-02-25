@@ -1,11 +1,11 @@
 import { DefaultLayout } from '@/components/layouts/default-layout'
-import { HomePage } from '@/page/home-page'
-import { LoginCallbackPage } from '@/page/login-callback-page'
-import { LoginPage } from '@/page/login-page'
-import { LogoutPage } from '@/page/logout-page'
+import { HomePage } from '@/page/home/home-page'
+import { LoginCallbackPage } from '@/page/auth/login-callback-page'
+import { LoginPage } from '@/page/auth/login-page'
+import { LogoutPage } from '@/page/auth/logout-page'
 import { NotFoundPage } from '@/page/not-found-page'
-import { SettingsPage } from '@/page/settings-page'
-import { UploadPage } from '@/page/upload-page'
+import { SettingsPage } from '@/page/setting/settings-page'
+import { UploadPage } from '@/page/upload/upload-page'
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 
 export const router = createBrowserRouter(
