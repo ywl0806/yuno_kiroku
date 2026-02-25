@@ -12,42 +12,42 @@ import (
 
 const createIdentity = `-- name: CreateIdentity :one
 INSERT INTO
-    identities (name, group_id)
+    identities (name, family_id)
 VALUES
     ($1, $2)
 RETURNING
-    id, name, group_id, created_at, updated_at
+    id, name, family_id, created_at, updated_at
 `
 
 type CreateIdentityParams struct {
-	Name    sql.NullString
-	GroupID int32
+	Name     sql.NullString
+	FamilyID int32
 }
 
 func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) (Identity, error) {
-	row := q.db.QueryRowContext(ctx, createIdentity, arg.Name, arg.GroupID)
+	row := q.db.QueryRowContext(ctx, createIdentity, arg.Name, arg.FamilyID)
 	var i Identity
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.GroupID,
+		&i.FamilyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const findIdentitiesByGroupId = `-- name: FindIdentitiesByGroupId :many
+const findIdentitiesByFamilyId = `-- name: FindIdentitiesByFamilyId :many
 SELECT
-    id, name, group_id, created_at, updated_at
+    id, name, family_id, created_at, updated_at
 FROM
     identities
 WHERE
-    group_id = $1::int
+    family_id = $1::int
 `
 
-func (q *Queries) FindIdentitiesByGroupId(ctx context.Context, groupID int32) ([]Identity, error) {
-	rows, err := q.db.QueryContext(ctx, findIdentitiesByGroupId, groupID)
+func (q *Queries) FindIdentitiesByFamilyId(ctx context.Context, familyID int32) ([]Identity, error) {
+	rows, err := q.db.QueryContext(ctx, findIdentitiesByFamilyId, familyID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (q *Queries) FindIdentitiesByGroupId(ctx context.Context, groupID int32) ([
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.GroupID,
+			&i.FamilyID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -75,59 +75,59 @@ func (q *Queries) FindIdentitiesByGroupId(ctx context.Context, groupID int32) ([
 	return items, nil
 }
 
-const findIdentityByIdAndGroupId = `-- name: FindIdentityByIdAndGroupId :one
+const findIdentityByIdAndFamilyId = `-- name: FindIdentityByIdAndFamilyId :one
 SELECT
-    id, name, group_id, created_at, updated_at
+    id, name, family_id, created_at, updated_at
 FROM
     identities
 WHERE
     id = $1::int
-    AND group_id = $2::int
+    AND family_id = $2::int
 `
 
-type FindIdentityByIdAndGroupIdParams struct {
-	ID      int32
-	GroupID int32
+type FindIdentityByIdAndFamilyIdParams struct {
+	ID       int32
+	FamilyID int32
 }
 
-func (q *Queries) FindIdentityByIdAndGroupId(ctx context.Context, arg FindIdentityByIdAndGroupIdParams) (Identity, error) {
-	row := q.db.QueryRowContext(ctx, findIdentityByIdAndGroupId, arg.ID, arg.GroupID)
+func (q *Queries) FindIdentityByIdAndFamilyId(ctx context.Context, arg FindIdentityByIdAndFamilyIdParams) (Identity, error) {
+	row := q.db.QueryRowContext(ctx, findIdentityByIdAndFamilyId, arg.ID, arg.FamilyID)
 	var i Identity
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.GroupID,
+		&i.FamilyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const updateIdentityByIdAndGroupId = `-- name: UpdateIdentityByIdAndGroupId :one
+const updateIdentityByIdAndFamilyId = `-- name: UpdateIdentityByIdAndFamilyId :one
 UPDATE
     identities
 SET
     name = $1
 WHERE
     id = $2::int
-    AND group_id = $3::int
+    AND family_id = $3::int
 RETURNING
-    id, name, group_id, created_at, updated_at
+    id, name, family_id, created_at, updated_at
 `
 
-type UpdateIdentityByIdAndGroupIdParams struct {
-	Name    sql.NullString
-	ID      int32
-	GroupID int32
+type UpdateIdentityByIdAndFamilyIdParams struct {
+	Name     sql.NullString
+	ID       int32
+	FamilyID int32
 }
 
-func (q *Queries) UpdateIdentityByIdAndGroupId(ctx context.Context, arg UpdateIdentityByIdAndGroupIdParams) (Identity, error) {
-	row := q.db.QueryRowContext(ctx, updateIdentityByIdAndGroupId, arg.Name, arg.ID, arg.GroupID)
+func (q *Queries) UpdateIdentityByIdAndFamilyId(ctx context.Context, arg UpdateIdentityByIdAndFamilyIdParams) (Identity, error) {
+	row := q.db.QueryRowContext(ctx, updateIdentityByIdAndFamilyId, arg.Name, arg.ID, arg.FamilyID)
 	var i Identity
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.GroupID,
+		&i.FamilyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

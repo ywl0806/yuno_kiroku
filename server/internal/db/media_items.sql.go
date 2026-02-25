@@ -16,7 +16,7 @@ import (
 const createMediaItem = `-- name: CreateMediaItem :one
 INSERT INTO
     media_items (
-        group_id,
+        family_id,
         album_id,
         upload_batch_id,
         taken_at,
@@ -26,7 +26,7 @@ VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
     id,
-    group_id,
+    family_id,
     album_id,
     upload_batch_id,
     upload_status,
@@ -37,7 +37,7 @@ RETURNING
 `
 
 type CreateMediaItemParams struct {
-	GroupID       int32
+	FamilyID      int32
 	AlbumID       int32
 	UploadBatchID int32
 	TakenAt       time.Time
@@ -46,7 +46,7 @@ type CreateMediaItemParams struct {
 
 func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams) (MediaItem, error) {
 	row := q.db.QueryRowContext(ctx, createMediaItem,
-		arg.GroupID,
+		arg.FamilyID,
 		arg.AlbumID,
 		arg.UploadBatchID,
 		arg.TakenAt,
@@ -55,7 +55,7 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 	var i MediaItem
 	err := row.Scan(
 		&i.ID,
-		&i.GroupID,
+		&i.FamilyID,
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
@@ -68,14 +68,13 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 }
 
 const getMediaItemByFaceDetection = `-- name: GetMediaItemByFaceDetection :one
-
 SELECT
-    mi.id, mi.group_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
 FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
 WHERE
-    mi.group_id = $1::int
+    mi.family_id = $1::int
     AND fd.embedding = ANY($2::vector[])
 GROUP BY
     mi.id
@@ -83,42 +82,16 @@ LIMIT 1
 `
 
 type GetMediaItemByFaceDetectionParams struct {
-	GroupID    int32
+	FamilyID   int32
 	Embeddings []interface{}
 }
 
-// -- name: GetIdentityRandomPhoto :one
-// SELECT
-//
-//	p.*,
-//	fd.location_top,
-//	fd.location_right,
-//	fd.location_bottom,
-//	fd.location_left
-//
-// FROM
-//
-//	(
-//	    SELECT photo_id, location_top, location_right, location_bottom, location_left
-//	    FROM face_detections
-//	    WHERE identity_id = sqlc.arg(identity_id)::int
-//	    ORDER BY RANDOM()
-//	    LIMIT 1
-//	) AS fd
-//	INNER JOIN photos AS p ON fd.photo_id = p.id
-//	INNER JOIN albums AS a ON p.album_id = a.id
-//	INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
-//
-// WHERE
-//
-//	acgp.clan_group_id = sqlc.arg (clan_group_id)::int
-//	AND acgp.permission = 'R';
 func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaItemByFaceDetectionParams) (MediaItem, error) {
-	row := q.db.QueryRowContext(ctx, getMediaItemByFaceDetection, arg.GroupID, pq.Array(arg.Embeddings))
+	row := q.db.QueryRowContext(ctx, getMediaItemByFaceDetection, arg.FamilyID, pq.Array(arg.Embeddings))
 	var i MediaItem
 	err := row.Scan(
 		&i.ID,
-		&i.GroupID,
+		&i.FamilyID,
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
@@ -145,10 +118,10 @@ SELECT
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
-    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+    INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
 WHERE
-    acgp.clan_group_id = $1::int
-    AND acgp.permission = 'R'
+    agp.group_id = $1::int
+    AND agp.permission = 'R'
 GROUP BY
     year,
     month
@@ -162,8 +135,8 @@ type GetMediaItemRangeRow struct {
 	Month string
 }
 
-func (q *Queries) GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]GetMediaItemRangeRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMediaItemRange, clanGroupID)
+func (q *Queries) GetMediaItemRange(ctx context.Context, groupID int32) ([]GetMediaItemRangeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMediaItemRange, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +160,7 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]G
 
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
-    mi.id, mi.group_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     COALESCE(original_media_file.storage_key, '') AS original_storage_key,
     COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
     COALESCE(view_media_file.storage_key, '') AS view_storage_key,
@@ -200,7 +173,7 @@ SELECT
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
-    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+    INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
     LEFT JOIN LATERAL (
         SELECT storage_key, width, height, media_item_id
         FROM media_files 
@@ -217,8 +190,8 @@ FROM
         WHERE role = '03' 
     ) AS view_media_file ON view_media_file.media_item_id = mi.id
 WHERE
-    acgp.clan_group_id = $1::int
-    AND acgp.permission = 'R'
+    agp.group_id = $1::int
+    AND agp.permission = 'R'
     AND mi.taken_at >= $2::timestamp
     AND mi.taken_at <= $3::timestamp
     AND mi.upload_status = '03' -- 03: completed
@@ -227,14 +200,14 @@ ORDER BY
 `
 
 type GetMediaItemsByTakenAtParams struct {
-	ClanGroupID int32
+	GroupID     int32
 	TakenAtFrom time.Time
 	TakenAtTo   time.Time
 }
 
 type GetMediaItemsByTakenAtRow struct {
 	ID                  int32
-	GroupID             int32
+	FamilyID            int32
 	AlbumID             int32
 	UploadBatchID       int32
 	UploadStatus        string
@@ -254,7 +227,7 @@ type GetMediaItemsByTakenAtRow struct {
 }
 
 func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsByTakenAtParams) ([]GetMediaItemsByTakenAtRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMediaItemsByTakenAt, arg.ClanGroupID, arg.TakenAtFrom, arg.TakenAtTo)
+	rows, err := q.db.QueryContext(ctx, getMediaItemsByTakenAt, arg.GroupID, arg.TakenAtFrom, arg.TakenAtTo)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +237,7 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 		var i GetMediaItemsByTakenAtRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.GroupID,
+			&i.FamilyID,
 			&i.AlbumID,
 			&i.UploadBatchID,
 			&i.UploadStatus,

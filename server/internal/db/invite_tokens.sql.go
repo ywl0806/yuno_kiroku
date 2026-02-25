@@ -12,17 +12,17 @@ import (
 
 const createInviteToken = `-- name: CreateInviteToken :one
 INSERT INTO
-    invite_tokens (token, group_id, clan_group_id, created_by_user_id, expires_at)
+    invite_tokens (token, family_id, group_id, created_by_user_id, expires_at)
 VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
-    id, token, group_id, clan_group_id, created_by_user_id, expires_at, used_at, created_at
+    id, token, family_id, group_id, created_by_user_id, expires_at, used_at, created_at
 `
 
 type CreateInviteTokenParams struct {
 	Token           string
+	FamilyID        int32
 	GroupID         int32
-	ClanGroupID     int32
 	CreatedByUserID int32
 	ExpiresAt       time.Time
 }
@@ -30,8 +30,8 @@ type CreateInviteTokenParams struct {
 func (q *Queries) CreateInviteToken(ctx context.Context, arg CreateInviteTokenParams) (InviteToken, error) {
 	row := q.db.QueryRowContext(ctx, createInviteToken,
 		arg.Token,
+		arg.FamilyID,
 		arg.GroupID,
-		arg.ClanGroupID,
 		arg.CreatedByUserID,
 		arg.ExpiresAt,
 	)
@@ -39,8 +39,8 @@ func (q *Queries) CreateInviteToken(ctx context.Context, arg CreateInviteTokenPa
 	err := row.Scan(
 		&i.ID,
 		&i.Token,
+		&i.FamilyID,
 		&i.GroupID,
-		&i.ClanGroupID,
 		&i.CreatedByUserID,
 		&i.ExpiresAt,
 		&i.UsedAt,
@@ -51,7 +51,7 @@ func (q *Queries) CreateInviteToken(ctx context.Context, arg CreateInviteTokenPa
 
 const getInviteTokenByToken = `-- name: GetInviteTokenByToken :one
 SELECT
-    id, token, group_id, clan_group_id, created_by_user_id, expires_at, used_at, created_at
+    id, token, family_id, group_id, created_by_user_id, expires_at, used_at, created_at
 FROM
     invite_tokens
 WHERE
@@ -66,8 +66,8 @@ func (q *Queries) GetInviteTokenByToken(ctx context.Context, token string) (Invi
 	err := row.Scan(
 		&i.ID,
 		&i.Token,
+		&i.FamilyID,
 		&i.GroupID,
-		&i.ClanGroupID,
 		&i.CreatedByUserID,
 		&i.ExpiresAt,
 		&i.UsedAt,

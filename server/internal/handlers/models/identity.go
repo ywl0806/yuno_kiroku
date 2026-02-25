@@ -9,7 +9,7 @@ import (
 type IdentityResponse struct {
 	ID        int32     `json:"id"`
 	Name      string    `json:"name"`
-	GroupId   int32     `json:"group_id"`
+	FamilyId  int32     `json:"family_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -18,7 +18,7 @@ func NewIdentityResponse(identity *db.Identity) *IdentityResponse {
 	return &IdentityResponse{
 		ID:        identity.ID,
 		Name:      identity.Name.String,
-		GroupId:   identity.GroupID,
+		FamilyId:  identity.FamilyID,
 		CreatedAt: identity.CreatedAt,
 		UpdatedAt: identity.UpdatedAt,
 	}

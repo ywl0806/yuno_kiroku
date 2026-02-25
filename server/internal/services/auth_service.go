@@ -77,16 +77,16 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	}, nil
 }
 
-// ResolveInviteState state가 유효한 초대 토큰이면 해당 group_id, clan_group_id 반환; 아니면 에러 반환
-func (s *AuthService) ResolveInviteState(ctx context.Context, state string) (groupID, clanGroupID int32, err error) {
+// ResolveInviteState state가 유효한 초대 토큰이면 해당 family_id, group_id 반환; 아니면 에러 반환
+func (s *AuthService) ResolveInviteState(ctx context.Context, state string) (familyID, groupID int32, err error) {
 	if state == "" {
 		return 0, 0, apperr.NewBadRequestError("message.validate.required", map[string]string{"field": "message-item.invite_token"})
 	}
-	gid, cid, err := s.inviteService.GetValidInviteToken(ctx, state)
+	fid, gid, err := s.inviteService.GetValidInviteToken(ctx, state)
 	if err != nil {
 		return 0, 0, apperr.NewBadRequestError("message.invalid", map[string]string{"field": "message-item.invite_token"})
 	}
-	return gid, cid, nil
+	return fid, gid, nil
 }
 
 // GetLineAuthURL LINE 로그인 URL 반환. 미설정 시 empty string, false
@@ -112,12 +112,12 @@ func (s *AuthService) ProcessLineCallback(ctx context.Context, code, state strin
 		log.Println("LINE profile error:", err)
 		return nil, err
 	}
-	groupID, clanGroupID, err := s.ResolveInviteState(ctx, state)
+	familyID, groupID, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, groupID, clanGroupID)
+	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, familyID, groupID)
 	if err != nil {
 		log.Println("FindOrCreateUserOAuth LINE error:", err)
 		return nil, err
@@ -151,12 +151,12 @@ func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state stri
 		log.Println("Kakao profile error:", err)
 		return nil, err
 	}
-	groupID, clanGroupID, err := s.ResolveInviteState(ctx, state)
+	familyID, groupID, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
 		log.Println("ResolveInviteState Kakao error:", err)
 		return nil, err
 	}
-	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, groupID, clanGroupID)
+	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, familyID, groupID)
 	if err != nil {
 		log.Println("FindOrCreateUserOAuth Kakao error:", err)
 		return nil, err
@@ -174,10 +174,10 @@ func (s *AuthService) IssueOAuthAccessToken(user *db.User) (string, error) {
 
 func (s *AuthService) issueAccessToken(user db.User) (string, error) {
 	claims := &jwt.AccessTokenClaims{
-		ID:          cast.ToString(user.ID),
-		Email:       user.Username,
-		GroupId:     cast.ToString(user.GroupID),
-		ClanGroupId: cast.ToString(user.ClanGroupID),
+		ID:        cast.ToString(user.ID),
+		Email:     user.Username,
+		FamilyId:  cast.ToString(user.FamilyID),
+		GroupId:   cast.ToString(user.GroupID),
 	}
 	return jwt.GenerateJWT(claims, s.authSecretKey, consts.AccessTokenCookieMaxAge)
 }

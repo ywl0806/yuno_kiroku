@@ -34,9 +34,19 @@
       "login-invited-user-only": "招待されたユーザーのみログイン可能です"
     }
   },
-  "message-item": {
+  "field": {
+    "family": "家族",
     "group": "グループ",
-    "clan_group": "クラングループ",
+    "user": "ユーザー",
+    "identity": "アイデンティティ",
+    "resource": "リソース",
+    "file": "ファイル",
+    "upload_batch_id": "アップロードバッチID",
+    "invite_token": "招待トークン"
+  },
+  "message-item": {
+    "family": "家族",
+    "group": "グループ",
     "user": "ユーザー",
     "identity": "アイデンティティ",
     "resource": "リソース",

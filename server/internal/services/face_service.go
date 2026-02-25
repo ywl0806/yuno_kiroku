@@ -43,7 +43,7 @@ func NewFaceService(faceStore store.FaceStore, identityStore store.IdentityStore
 // 1. 얼굴 임베딩을 데이터베이스에서 검색
 // 2. 얼굴 임베딩이 있으면 FaceDetection을 생성
 // 3. 얼굴 임베딩이 없으면 Identity를 생성 후 FaceDetection을 생성
-func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId int32, mediaItemId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
+func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, familyId int32, mediaItemId int32, faceDetections []models.FaceDetection) ([]db.FaceDetection, error) {
 
 	// 얼굴인식 결과를 저장할 파라미터 리스트
 	var createFaceDetectionParams []db.CreateFaceDetectionParams
@@ -61,7 +61,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 			Embedding:      utils.Float64SliceToVectorString(faceDetection.Embedding),
 		}
 		// 얼굴인식 결과를 검색
-		similarFace, err := s.FindMostSimilarFace(ctx, groupId, faceDetection.Embedding)
+		similarFace, err := s.FindMostSimilarFace(ctx, familyId, faceDetection.Embedding)
 
 		// 검색 에러 시 로깅, 다음 얼굴인식 결과 처리
 		if err != nil {
@@ -80,8 +80,8 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 		} else {
 			// 유사 얼굴 검색 결과가 없으면 새로운 사람 생성
 			newIdentity, err := s.identityStore.CreateIdentity(ctx, db.CreateIdentityParams{
-				Name:    sql.NullString{String: "", Valid: false},
-				GroupID: groupId,
+				Name:     sql.NullString{String: "", Valid: false},
+				FamilyID: familyId,
 			})
 			if err != nil {
 				log.Println("CreateIdentity error: ", err)
@@ -112,9 +112,9 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, groupId i
 	얼굴 임베딩을 데이터베이스에서 검색
 	1. 얼굴 임베딩이 없으면 nil 반환
 */
-func (s *FaceService) FindMostSimilarFace(ctx context.Context, groupId int32, embedding []float64) (*db.FindMostSimilarFaceRow, error) {
+func (s *FaceService) FindMostSimilarFace(ctx context.Context, familyId int32, embedding []float64) (*db.FindMostSimilarFaceRow, error) {
 	faceDetection, err := s.faceStore.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
-		GroupID:             groupId,
+		FamilyID:            familyId,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
 		SimilarityThreshold: FACE_SEARCH_THRESHOLD,
 	})
@@ -210,14 +210,14 @@ func (s *FaceService) GetFaceDetection(image []byte) (*[]models.FaceDetection, e
 //	3. 조회된 사진이 있으면 중복된 사진이 있다는 에러를 반환합니다.
 //
 // */
-func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, groupId int32, albumId int32, faceDetections []models.FaceDetection) error {
+func (s *FaceService) CheckImageDuplicateByFaceDetection(ctx context.Context, familyId int32, albumId int32, faceDetections []models.FaceDetection) error {
 
 	embeddings := make([]interface{}, len(faceDetections))
 	for i, faceDetection := range faceDetections {
 		embeddings[i] = utils.Float64SliceToVectorString(faceDetection.Embedding)
 	}
 	mediaItem, err := s.mediaItemStore.GetMediaItemByFaceDetection(ctx, db.GetMediaItemByFaceDetectionParams{
-		GroupID:    groupId,
+		FamilyID:   familyId,
 		Embeddings: embeddings,
 	})
 	if err == sql.ErrNoRows {

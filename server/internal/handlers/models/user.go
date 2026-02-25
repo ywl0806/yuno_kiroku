@@ -9,11 +9,11 @@ import (
 )
 
 type CreateUserRequest struct {
-	Name        string `json:"name" validate:"required"`
-	Username    string `json:"username" validate:"required"`
-	Password    string `json:"password" validate:"required,min=6"`
-	GroupID     int32  `json:"group_id" validate:"required"`
-	ClanGroupID int32  `json:"clan_group_id" validate:"required"`
+	Name      string `json:"name" validate:"required"`
+	Username  string `json:"username" validate:"required"`
+	Password  string `json:"password" validate:"required,min=6"`
+	FamilyID  int32  `json:"family_id" validate:"required"`
+	GroupID   int32  `json:"group_id" validate:"required"`
 }
 
 func (CreateUserRequest) Bind(c echo.Context, params *db.CreateUserParams) error {
@@ -31,7 +31,7 @@ func (CreateUserRequest) Bind(c echo.Context, params *db.CreateUserParams) error
 	params.Name = sql.NullString{String: req.Name, Valid: true}
 	params.Username = req.Username
 	params.Password = hashPassword
+	params.FamilyID = req.FamilyID
 	params.GroupID = req.GroupID
-	params.ClanGroupID = req.ClanGroupID
 	return nil
 }

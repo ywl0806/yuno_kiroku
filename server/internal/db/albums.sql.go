@@ -11,24 +11,24 @@ import (
 
 const findAlbumsForWrite = `-- name: FindAlbumsForWrite :many
 SELECT
-    a.id, a.group_id, a.name, a.created_at, a.updated_at
+    a.id, a.family_id, a.name, a.created_at, a.updated_at
 FROM
     albums as a
-    inner join album_clan_groups_permissions as acgp on a.id = acgp.album_id
-    inner join clan_groups as cg on acgp.clan_group_id = cg.id
+    inner join album_groups_permissions as agp on a.id = agp.album_id
+    inner join groups as g on agp.group_id = g.id
 WHERE
-    a.group_id = $1::int
-    AND cg.id = $2::int
-    AND acgp.permission = 'W'
+    a.family_id = $1::int
+    AND g.id = $2::int
+    AND agp.permission = 'W'
 `
 
 type FindAlbumsForWriteParams struct {
-	GroupID     int32
-	ClanGroupID int32
+	FamilyID int32
+	GroupID  int32
 }
 
 func (q *Queries) FindAlbumsForWrite(ctx context.Context, arg FindAlbumsForWriteParams) ([]Album, error) {
-	rows, err := q.db.QueryContext(ctx, findAlbumsForWrite, arg.GroupID, arg.ClanGroupID)
+	rows, err := q.db.QueryContext(ctx, findAlbumsForWrite, arg.FamilyID, arg.GroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (q *Queries) FindAlbumsForWrite(ctx context.Context, arg FindAlbumsForWrite
 		var i Album
 		if err := rows.Scan(
 			&i.ID,
-			&i.GroupID,
+			&i.FamilyID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.UpdatedAt,

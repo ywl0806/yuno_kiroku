@@ -43,8 +43,8 @@ func Init(e *echo.Echo) {
 	storageService := storageProvider.StorageService()
 
 	// service (store 계층을 통해 데이터 접근)
-	userService := services.NewUserService(st.User, st.Group)
-	inviteService := services.NewInviteService(st.InviteToken, st.Group)
+	userService := services.NewUserService(st.User, st.Family, st.Group)
+	inviteService := services.NewInviteService(st.InviteToken, st.Family, st.Group)
 	authService := services.NewAuthService(
 		userService,
 		inviteService,

@@ -69,13 +69,13 @@ const findMostSimilarFace = `-- name: FindMostSimilarFace :one
 SELECT
     fd.identity_id,
     i.name,
-    i.group_id,
+    i.family_id,
     fd.embedding <=> $1::vector AS distance
 FROM
     face_detections AS fd
     INNER JOIN identities AS i ON fd.identity_id = i.id
 WHERE
-    i.group_id = $2::int
+    i.family_id = $2::int
     AND fd.embedding <=> $1::vector < $3::float
 ORDER BY
     fd.embedding <=> $1::vector ASC
@@ -85,24 +85,24 @@ LIMIT
 
 type FindMostSimilarFaceParams struct {
 	Embedding           interface{}
-	GroupID             int32
+	FamilyID            int32
 	SimilarityThreshold float64
 }
 
 type FindMostSimilarFaceRow struct {
 	IdentityID int32
 	Name       sql.NullString
-	GroupID    int32
+	FamilyID   int32
 	Distance   interface{}
 }
 
 func (q *Queries) FindMostSimilarFace(ctx context.Context, arg FindMostSimilarFaceParams) (FindMostSimilarFaceRow, error) {
-	row := q.db.QueryRowContext(ctx, findMostSimilarFace, arg.Embedding, arg.GroupID, arg.SimilarityThreshold)
+	row := q.db.QueryRowContext(ctx, findMostSimilarFace, arg.Embedding, arg.FamilyID, arg.SimilarityThreshold)
 	var i FindMostSimilarFaceRow
 	err := row.Scan(
 		&i.IdentityID,
 		&i.Name,
-		&i.GroupID,
+		&i.FamilyID,
 		&i.Distance,
 	)
 	return i, err
@@ -115,19 +115,19 @@ FROM
     face_detections AS fd
     JOIN media_items AS mi ON fd.media_item_id = mi.id
 WHERE
-    mi.group_id = $1::int
+    mi.family_id = $1::int
     AND mi.album_id = $2::int
     AND fd.embedding = ANY($3::vector[])
 `
 
 type GetFaceDetectionsByEmbeddingsParams struct {
-	GroupID    int32
+	FamilyID   int32
 	AlbumID    int32
 	Embeddings []interface{}
 }
 
 func (q *Queries) GetFaceDetectionsByEmbeddings(ctx context.Context, arg GetFaceDetectionsByEmbeddingsParams) (interface{}, error) {
-	row := q.db.QueryRowContext(ctx, getFaceDetectionsByEmbeddings, arg.GroupID, arg.AlbumID, pq.Array(arg.Embeddings))
+	row := q.db.QueryRowContext(ctx, getFaceDetectionsByEmbeddings, arg.FamilyID, arg.AlbumID, pq.Array(arg.Embeddings))
 	var embedding interface{}
 	err := row.Scan(&embedding)
 	return embedding, err

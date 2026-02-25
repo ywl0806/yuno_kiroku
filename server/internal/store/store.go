@@ -7,6 +7,7 @@ import (
 // Store 모든 도메인 Store를 묶은 컨테이너
 type Store struct {
 	User        UserStore
+	Family      FamilyStore
 	Group       GroupStore
 	Album       AlbumStore
 	Identity    IdentityStore
@@ -19,6 +20,7 @@ type Store struct {
 func New(queries *db.Queries) *Store {
 	return &Store{
 		User:        NewUserStore(queries),
+		Family:      NewFamilyStore(queries),
 		Group:       NewGroupStore(queries),
 		Album:       NewAlbumStore(queries),
 		Identity:    NewIdentityStore(queries),

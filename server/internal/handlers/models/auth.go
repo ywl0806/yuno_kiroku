@@ -2,10 +2,10 @@ package models
 
 // LoginUserResponse 로그인 성공 시 사용자 정보
 type LoginUserResponse struct {
-	ID          int32  `json:"id"`
-	Username    string `json:"username"`
-	GroupID     int32  `json:"group_id"`
-	ClanGroupID int32  `json:"clan_group_id"`
+	ID        int32  `json:"id"`
+	Username  string `json:"username"`
+	FamilyID  int32  `json:"family_id"`
+	GroupID   int32  `json:"group_id"`
 }
 
 // RedirectURLResponse OAuth 로그인용 리다이렉트 URL 응답

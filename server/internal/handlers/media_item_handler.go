@@ -42,15 +42,12 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.album_id"})
 	}
 
-	// 그룹 ID 가져오기
 	authUser := middlewares.GetAuthUser(c)
-	groupId := authUser.GroupId
+	familyId := authUser.FamilyId
 
-	// 컨텍스트 가져오기
 	ctx := c.Request().Context()
 
-	// 업로드 배치 생성
-	uploadBatch, err := con.mediaItemService.CreateUploadBatch(ctx, groupId, albumId)
+	uploadBatch, err := con.mediaItemService.CreateUploadBatch(ctx, familyId, albumId)
 	if err != nil {
 		return err
 	}
@@ -90,10 +87,10 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 	retry, _ := utils.ConvertToBool(c.QueryParam("retry"))
 
 	authUser := middlewares.GetAuthUser(c)
-	groupId := authUser.GroupId
+	familyId := authUser.FamilyId
 	ctx := c.Request().Context()
 
-	result, err := con.mediaItemService.UploadImage(ctx, file, groupId, albumId, uploadBatchID, retry)
+	result, err := con.mediaItemService.UploadImage(ctx, file, familyId, albumId, uploadBatchID, retry)
 	if err != nil {
 		log.Println("upload image error: ", err)
 		return err
@@ -113,7 +110,7 @@ func (con *MediaItemHandler) UploadImage(c echo.Context) error {
 func (con *MediaItemHandler) GetMediaItemRange(c echo.Context) error {
 
 	authUser := middlewares.GetAuthUser(c)
-	ranges, err := con.mediaItemService.GetMediaItemRange(c.Request().Context(), authUser.ClanGroupId)
+	ranges, err := con.mediaItemService.GetMediaItemRange(c.Request().Context(), authUser.GroupId)
 	if err != nil {
 		return err
 	}
@@ -138,7 +135,7 @@ func (GetMediaItemsRequest) bind(c echo.Context, p *db.GetMediaItemsByTakenAtPar
 
 	p.TakenAtFrom = *reqParams.From
 	p.TakenAtTo = *reqParams.To
-	p.ClanGroupID = authUser.ClanGroupId
+	p.GroupID = authUser.GroupId
 	return nil
 }
 

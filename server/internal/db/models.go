@@ -11,27 +11,18 @@ import (
 
 type Album struct {
 	ID        int32
-	GroupID   int32
+	FamilyID  int32
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-type AlbumClanGroupsPermission struct {
-	AlbumID     int32
-	ClanGroupID int32
-	Permission  string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-type ClanGroup struct {
-	ID        int32
-	GroupID   int32
-	IsAdmin   bool
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+type AlbumGroupsPermission struct {
+	AlbumID    int32
+	GroupID    int32
+	Permission string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type FaceDetection struct {
@@ -47,8 +38,17 @@ type FaceDetection struct {
 	UpdatedAt      time.Time
 }
 
+type Family struct {
+	ID        int32
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Group struct {
 	ID        int32
+	FamilyID  int32
+	IsAdmin   bool
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -57,7 +57,7 @@ type Group struct {
 type Identity struct {
 	ID        int32
 	Name      sql.NullString
-	GroupID   int32
+	FamilyID  int32
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -74,8 +74,8 @@ type IdentityFaceImg struct {
 type InviteToken struct {
 	ID              int32
 	Token           string
+	FamilyID        int32
 	GroupID         int32
-	ClanGroupID     int32
 	CreatedByUserID int32
 	ExpiresAt       time.Time
 	UsedAt          sql.NullTime
@@ -97,7 +97,7 @@ type MediaFile struct {
 
 type MediaItem struct {
 	ID            int32
-	GroupID       int32
+	FamilyID      int32
 	AlbumID       int32
 	UploadBatchID int32
 	UploadStatus  string
@@ -128,8 +128,8 @@ type User struct {
 	Name           sql.NullString
 	Username       string
 	Password       string
+	FamilyID       int32
 	GroupID        int32
-	ClanGroupID    int32
 	Provider       sql.NullString
 	ProviderUserID sql.NullString
 	CreatedAt      time.Time

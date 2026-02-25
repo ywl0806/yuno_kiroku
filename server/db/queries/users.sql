@@ -3,8 +3,8 @@ SELECT
     id,
     name,
     username,
-    group_id,
-    clan_group_id
+    family_id,
+    group_id
 FROM
     users;
 
@@ -27,7 +27,7 @@ WHERE
 
 -- name: CreateUser :one
 INSERT INTO
-    users (name, username, password, group_id, clan_group_id)
+    users (name, username, password, family_id, group_id)
 VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
@@ -35,7 +35,7 @@ RETURNING
 
 -- name: CreateUserOAuth :one
 INSERT INTO
-    users (name, username, password, group_id, clan_group_id, provider, provider_user_id)
+    users (name, username, password, family_id, group_id, provider, provider_user_id)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 RETURNING

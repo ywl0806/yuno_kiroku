@@ -11,9 +11,9 @@ type CreateInviteResponse struct {
 
 // ValidateInviteResponse 초대 토큰 검증 응답
 type ValidateInviteResponse struct {
-	Valid         bool   `json:"valid"`
-	GroupName     string `json:"group_name"`
-	ClanGroupName string `json:"clan_group_name"`
-	GroupID       int32  `json:"group_id"`
-	ClanGroupID   int32  `json:"clan_group_id"`
+	Valid       bool   `json:"valid"`
+	FamilyName  string `json:"family_name"`
+	GroupName   string `json:"group_name"`
+	FamilyID    int32  `json:"family_id"`
+	GroupID     int32  `json:"group_id"`
 }

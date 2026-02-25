@@ -1,36 +1,36 @@
 -- name: CreateIdentity :one
 INSERT INTO
-    identities (name, group_id)
+    identities (name, family_id)
 VALUES
     ($1, $2)
 RETURNING
     *;
 
--- name: FindIdentityByIdAndGroupId :one
+-- name: FindIdentityByIdAndFamilyId :one
 SELECT
     *
 FROM
     identities
 WHERE
     id = sqlc.arg (id)::int
-    AND group_id = sqlc.arg (group_id)::int;
+    AND family_id = sqlc.arg (family_id)::int;
 
--- name: FindIdentitiesByGroupId :many
+-- name: FindIdentitiesByFamilyId :many
 SELECT
     *
 FROM
     identities
 WHERE
-    group_id = sqlc.arg (group_id)::int;
+    family_id = sqlc.arg (family_id)::int;
 
 
--- name: UpdateIdentityByIdAndGroupId :one
+-- name: UpdateIdentityByIdAndFamilyId :one
 UPDATE
     identities
 SET
     name = sqlc.arg (name)
 WHERE
     id = sqlc.arg (id)::int
-    AND group_id = sqlc.arg (group_id)::int
+    AND family_id = sqlc.arg (family_id)::int
 RETURNING
     *;

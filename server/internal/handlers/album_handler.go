@@ -22,10 +22,10 @@ func NewAlbumHandler(albumService *services.AlbumService) *AlbumHandler {
 // @Success 200 {object} []models.AlbumResponse
 func (con *AlbumHandler) GetAlbumsForWrite(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
+	familyId := authUser.FamilyId
 	groupId := authUser.GroupId
-	clanGroupId := authUser.ClanGroupId
 
-	albums, err := con.albumService.GetAlbumsForWrite(c.Request().Context(), groupId, clanGroupId)
+	albums, err := con.albumService.GetAlbumsForWrite(c.Request().Context(), familyId, groupId)
 	if err != nil {
 		return err
 	}

@@ -34,9 +34,19 @@
       "login-invited-user-only": "초대 받은 유저만 로그인 가능합니다"
     }
   },
-  "message-item": {
+  "field": {
+    "family": "가족",
     "group": "그룹",
-    "clan_group": "클랜 그룹",
+    "user": "사용자",
+    "identity": "신원",
+    "resource": "리소스",
+    "file": "파일",
+    "upload_batch_id": "업로드 배치 ID",
+    "invite_token": "초대 토큰"
+  },
+  "message-item": {
+    "family": "가족",
+    "group": "그룹",
     "user": "사용자",
     "identity": "신원",
     "resource": "리소스",

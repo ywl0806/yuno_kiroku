@@ -11,18 +11,26 @@ import (
 
 const createGroup = `-- name: CreateGroup :one
 INSERT INTO
-    groups (name)
+    groups (family_id, is_admin, name)
 VALUES
-    ($1)
+    ($1, $2, $3)
 RETURNING
-    id, name, created_at, updated_at
+    id, family_id, is_admin, name, created_at, updated_at
 `
 
-func (q *Queries) CreateGroup(ctx context.Context, name string) (Group, error) {
-	row := q.db.QueryRowContext(ctx, createGroup, name)
+type CreateGroupParams struct {
+	FamilyID int32
+	IsAdmin  bool
+	Name     string
+}
+
+func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error) {
+	row := q.db.QueryRowContext(ctx, createGroup, arg.FamilyID, arg.IsAdmin, arg.Name)
 	var i Group
 	err := row.Scan(
 		&i.ID,
+		&i.FamilyID,
+		&i.IsAdmin,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -33,6 +41,8 @@ func (q *Queries) CreateGroup(ctx context.Context, name string) (Group, error) {
 const findGroupByID = `-- name: FindGroupByID :one
 SELECT
     id,
+    family_id,
+    is_admin,
     name
 FROM
     groups
@@ -41,13 +51,20 @@ WHERE
 `
 
 type FindGroupByIDRow struct {
-	ID   int32
-	Name string
+	ID       int32
+	FamilyID int32
+	IsAdmin  bool
+	Name     string
 }
 
 func (q *Queries) FindGroupByID(ctx context.Context, id int32) (FindGroupByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, findGroupByID, id)
 	var i FindGroupByIDRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.IsAdmin,
+		&i.Name,
+	)
 	return i, err
 }

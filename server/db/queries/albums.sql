@@ -3,9 +3,9 @@ SELECT
     a.*
 FROM
     albums as a
-    inner join album_clan_groups_permissions as acgp on a.id = acgp.album_id
-    inner join clan_groups as cg on acgp.clan_group_id = cg.id
+    inner join album_groups_permissions as agp on a.id = agp.album_id
+    inner join groups as g on agp.group_id = g.id
 WHERE
-    a.group_id = sqlc.arg(group_id)::int
-    AND cg.id = sqlc.arg(clan_group_id)::int
-    AND acgp.permission = 'W';
+    a.family_id = sqlc.arg(family_id)::int
+    AND g.id = sqlc.arg(group_id)::int
+    AND agp.permission = 'W';

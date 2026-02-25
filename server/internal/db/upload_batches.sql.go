@@ -39,15 +39,15 @@ SELECT
     item_counts.count
 FROM upload_batches AS ub
 INNER JOIN albums AS a ON a.id = ub.album_id
-INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
 INNER JOIN (
     SELECT upload_batch_id, COUNT(*) AS count
     FROM media_items
     GROUP BY upload_batch_id
 ) AS item_counts ON item_counts.upload_batch_id = ub.id
 WHERE 
-    acgp.clan_group_id = $1::int
-    AND acgp.permission = 'R'
+    agp.group_id = $1::int
+    AND agp.permission = 'R'
     
 ORDER BY ub.upload_at DESC
 `
@@ -59,8 +59,8 @@ type GetUploadBatchesAndMediaItemCountsRow struct {
 	Count    int64
 }
 
-func (q *Queries) GetUploadBatchesAndMediaItemCounts(ctx context.Context, clanGroupID int32) ([]GetUploadBatchesAndMediaItemCountsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getUploadBatchesAndMediaItemCounts, clanGroupID)
+func (q *Queries) GetUploadBatchesAndMediaItemCounts(ctx context.Context, groupID int32) ([]GetUploadBatchesAndMediaItemCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUploadBatchesAndMediaItemCounts, groupID)
 	if err != nil {
 		return nil, err
 	}

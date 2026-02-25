@@ -10,12 +10,13 @@ import (
 )
 
 type UserService struct {
-	userStore  store.UserStore
-	groupStore store.GroupStore
+	userStore   store.UserStore
+	familyStore store.FamilyStore
+	groupStore  store.GroupStore
 }
 
-func NewUserService(userStore store.UserStore, groupStore store.GroupStore) *UserService {
-	return &UserService{userStore: userStore, groupStore: groupStore}
+func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, groupStore store.GroupStore) *UserService {
+	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
 }
 
 // 유저 생성
@@ -42,25 +43,25 @@ func (s *UserService) FindUserByProvider(ctx context.Context, provider, provider
 	return s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 }
 
-// FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. groupID/clanGroupID로 가입할 그룹을 지정한다 (미지정 시 1,1).
-func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, groupID, clanGroupID int32) (db.User, error) {
+// FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. familyID/groupID로 가입할 가족·그룹을 지정한다 (미지정 시 1,1).
+func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32) (db.User, error) {
 	user, err := s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 	if err == nil && user.ID != 0 {
 		return user, nil
 	}
+	if familyID == 0 {
+		familyID = 1
+	}
 	if groupID == 0 {
 		groupID = 1
-	}
-	if clanGroupID == 0 {
-		clanGroupID = 1
 	}
 	username := provider + "_" + providerUserID
 	params := db.CreateUserOAuthParams{
 		Name:           sql.NullString{String: displayName, Valid: displayName != ""},
 		Username:       username,
 		Password:       "",
+		FamilyID:       familyID,
 		GroupID:        groupID,
-		ClanGroupID:    clanGroupID,
 		Provider:       sql.NullString{String: provider, Valid: true},
 		ProviderUserID: sql.NullString{String: providerUserID, Valid: true},
 	}
@@ -69,25 +70,32 @@ func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, provi
 
 // 유저 생성 파라미터 검증
 func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.CreateUserParams) error {
-	// Username 중복체크
 	err := s.validateDuplicateUsername(ctx, params.Username)
 	if err != nil {
 		return err
 	}
-	// group 존재 체크
-	err = s.validateGroupExists(ctx, params.GroupID)
+	err = s.validateFamilyExists(ctx, params.FamilyID)
 	if err != nil {
 		return err
 	}
-	// clan group 존재 체크
-	err = s.validateClanGroupExists(ctx, params.ClanGroupID)
+	err = s.validateGroupExists(ctx, params.GroupID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// group 존재 체크
+func (s *UserService) validateFamilyExists(ctx context.Context, familyID int32) error {
+	family, err := s.familyStore.FindFamilyByID(ctx, familyID)
+	if err != nil {
+		return err
+	}
+	if family.ID == 0 {
+		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.family"})
+	}
+	return nil
+}
+
 func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) error {
 	group, err := s.groupStore.FindGroupByID(ctx, groupID)
 	if err != nil {
@@ -95,18 +103,6 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 	}
 	if group.ID == 0 {
 		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.group"})
-	}
-	return nil
-}
-
-// clan group 존재 체크
-func (s *UserService) validateClanGroupExists(ctx context.Context, clanGroupID int32) error {
-	clanGroup, err := s.groupStore.FindClanGroupByID(ctx, clanGroupID)
-	if err != nil {
-		return err
-	}
-	if clanGroup.ID == 0 {
-		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.clan_group"})
 	}
 	return nil
 }

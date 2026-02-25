@@ -6,11 +6,10 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
-// GroupStore 그룹/클랜그룹 데이터 접근 인터페이스
+// GroupStore 그룹(가족 내 쪽) 데이터 접근 인터페이스
 type GroupStore interface {
 	FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error)
-	FindClanGroupByID(ctx context.Context, id int32) (db.FindClanGroupByIDRow, error)
-	CreateGroup(ctx context.Context, name string) (db.Group, error)
+	CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error)
 }
 
 type groupStore struct {
@@ -27,11 +26,6 @@ func (s *groupStore) FindGroupByID(ctx context.Context, id int32) (db.FindGroupB
 	return wrapErr(row, err, "field.group")
 }
 
-func (s *groupStore) FindClanGroupByID(ctx context.Context, id int32) (db.FindClanGroupByIDRow, error) {
-	row, err := s.queries.FindClanGroupByID(ctx, id)
-	return wrapErr(row, err, "field.clan_group")
-}
-
-func (s *groupStore) CreateGroup(ctx context.Context, name string) (db.Group, error) {
-	return wrapErr(s.queries.CreateGroup(ctx, name))
+func (s *groupStore) CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error) {
+	return wrapErr(s.queries.CreateGroup(ctx, arg))
 }

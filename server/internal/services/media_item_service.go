@@ -47,7 +47,7 @@ type CreateMediaItemParams struct {
 	OriginalStorageKey  string
 	ViewStorageKey      string
 	ImageHandler        *imageHelper.ImageHelper
-	GroupId             int32
+	FamilyId            int32
 	AlbumId             int32
 	OriginalFilename    string
 	UploadBatchID       int32
@@ -55,7 +55,7 @@ type CreateMediaItemParams struct {
 
 // 이미지 처리 백그라운드 처리 파라미터
 type ProcessImageParams struct {
-	GroupId       int32
+	FamilyId      int32
 	AlbumId       int32
 	UploadBatchID int32
 	MediaItemID   int32
@@ -72,7 +72,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
-		GroupID:       params.GroupId,
+		FamilyID:      params.FamilyId,
 		AlbumID:       params.AlbumId,
 		UploadBatchID: params.UploadBatchID,
 		TakenAt:       params.ImageHandler.GetTakenAt(),
@@ -136,7 +136,7 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
-		GroupID:       params.GroupId,
+		FamilyID:      params.FamilyId,
 		AlbumID:       params.AlbumId,
 		UploadBatchID: params.UploadBatchID,
 		TakenAt:       params.ImageHandler.GetTakenAt(),
@@ -170,7 +170,7 @@ func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, 
 func (s *MediaItemService) UploadImage(
 	ctx context.Context,
 	file *multipart.FileHeader,
-	groupId int32,
+	familyId int32,
 	albumId int32,
 	uploadBatchID int32,
 	retry bool,
@@ -180,7 +180,7 @@ func (s *MediaItemService) UploadImage(
 		return nil, err
 	}
 
-	uploadPath := s.CreateUploadPath(groupId, albumId)
+	uploadPath := s.CreateUploadPath(familyId, albumId)
 
 	originalStorageKey, err := s.UploadOriginalImage(imgHandler, uploadPath)
 	if err != nil {
@@ -190,7 +190,7 @@ func (s *MediaItemService) UploadImage(
 	createMediaItemParams := CreateMediaItemParams{
 		OriginalStorageKey: originalStorageKey,
 		ImageHandler:       imgHandler,
-		GroupId:            groupId,
+		FamilyId:           familyId,
 		AlbumId:            albumId,
 		OriginalFilename:   file.Filename,
 		UploadBatchID:      uploadBatchID,
@@ -204,7 +204,7 @@ func (s *MediaItemService) UploadImage(
 	go func() {
 		bgCtx := context.Background()
 		s.processImageInBackground(bgCtx, &ProcessImageParams{
-			GroupId:       groupId,
+			FamilyId:      familyId,
 			AlbumId:       albumId,
 			UploadBatchID: uploadBatchID,
 			MediaItemID:   mediaItem.ID,
@@ -239,7 +239,7 @@ func (s *MediaItemService) processImageInBackground(ctx context.Context, p *Proc
 	}
 
 	if !p.Retry && faceDetections != nil {
-		err = s.faceService.CheckImageDuplicateByFaceDetection(ctx, p.GroupId, p.AlbumId, *faceDetections)
+		err = s.faceService.CheckImageDuplicateByFaceDetection(ctx, p.FamilyId, p.AlbumId, *faceDetections)
 		if err != nil {
 			log.Println("중복 사진 발견: ", err)
 			s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusDuplicate)
@@ -262,7 +262,7 @@ func (s *MediaItemService) processImageInBackground(ctx context.Context, p *Proc
 	}
 
 	if faceDetections != nil {
-		_, err = s.faceService.SearchAndSaveFaceDetections(ctx, p.GroupId, p.MediaItemID, *faceDetections)
+		_, err = s.faceService.SearchAndSaveFaceDetections(ctx, p.FamilyId, p.MediaItemID, *faceDetections)
 		if err != nil {
 			log.Println("얼굴 인식 결과 저장 실패: ", err)
 		}
@@ -419,8 +419,8 @@ func (s *MediaItemService) UploadResizedImages(imageHandler *imageHelper.ImageHe
 }
 
 // 업로드 경로 생성
-func (s *MediaItemService) CreateUploadPath(groupId int32, albumId int32) string {
-	uploadPath := strconv.Itoa(int(groupId))
+func (s *MediaItemService) CreateUploadPath(familyId int32, albumId int32) string {
+	uploadPath := strconv.Itoa(int(familyId))
 	if albumId != 0 {
 		uploadPath += "/" + strconv.Itoa(int(albumId))
 	}
@@ -444,9 +444,9 @@ type MediaItemRange struct {
 }
 
 // 미디어 아이템 범위 조회
-func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId int32) ([]MediaItemRange, error) {
+func (s *MediaItemService) GetMediaItemRange(ctx context.Context, groupId int32) ([]MediaItemRange, error) {
 	// 사진들을 년도와 월로 그룹화
-	ranges, err := s.mediaItemStore.GetMediaItemRange(ctx, clanGroupId)
+	ranges, err := s.mediaItemStore.GetMediaItemRange(ctx, groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -472,7 +472,7 @@ func (s *MediaItemService) GetMediaItemRange(ctx context.Context, clanGroupId in
 }
 
 // 업로드 배치 생성
-func (s *MediaItemService) CreateUploadBatch(ctx context.Context, groupId int32, albumId int32) (*db.UploadBatch, error) {
+func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId int32, albumId int32) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)
 	if err != nil {
 		return nil, err

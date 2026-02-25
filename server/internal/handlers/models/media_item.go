@@ -34,7 +34,7 @@ type MediaFileResponse struct {
 
 type MediaItemResponse struct {
 	ID              int32     `json:"id"`
-	GroupID         int32     `json:"group_id"`
+	FamilyID        int32     `json:"family_id"`
 	AlbumID         int32     `json:"album_id"`
 	TakenAt         time.Time `json:"taken_at"`
 	FileName        string    `json:"file_name"`
@@ -56,7 +56,7 @@ func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemRes
 
 	return &MediaItemResponse{
 		ID:              mediaItem.ID,
-		GroupID:         mediaItem.GroupID,
+		FamilyID:        mediaItem.FamilyID,
 		AlbumID:         mediaItem.AlbumID,
 		TakenAt:         mediaItem.TakenAt,
 		FileName:        mediaItem.FileName.String,

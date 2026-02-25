@@ -26,7 +26,7 @@ func NewInviteHandler(inviteService *services.InviteService) *InviteHandler {
 
 // CreateInviteRequest 초대 토큰 생성 요청
 type CreateInviteRequest struct {
-	ClanGroupID int32 `json:"clan_group_id" validate:"required"`
+	GroupID int32 `json:"group_id" validate:"required"`
 }
 
 // @Description 초대 토큰 생성
@@ -48,7 +48,7 @@ func (h *InviteHandler) CreateInvite(c echo.Context) error {
 	}
 	authUser := middlewares.GetAuthUser(c)
 
-	invite, err := h.inviteService.CreateInviteToken(c.Request().Context(), authUser.GroupId, req.ClanGroupID, authUser.ID)
+	invite, err := h.inviteService.CreateInviteToken(c.Request().Context(), authUser.FamilyId, req.GroupID, authUser.ID)
 	if err != nil {
 		return err
 	}
@@ -74,15 +74,15 @@ func (h *InviteHandler) ValidateInvite(c echo.Context) error {
 	if token == "" {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "field.token"})
 	}
-	groupName, clanGroupName, groupID, clanGroupID, err := h.inviteService.ValidateInviteToken(c.Request().Context(), token)
+	familyName, groupName, familyID, groupID, err := h.inviteService.ValidateInviteToken(c.Request().Context(), token)
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, models.ValidateInviteResponse{
-		Valid:         true,
-		GroupName:     groupName,
-		ClanGroupName: clanGroupName,
-		GroupID:       groupID,
-		ClanGroupID:   clanGroupID,
+		Valid:       true,
+		FamilyName:  familyName,
+		GroupName:   groupName,
+		FamilyID:    familyID,
+		GroupID:     groupID,
 	})
 }

@@ -15,10 +15,10 @@ func NewAlbumService(albumStore store.AlbumStore) *AlbumService {
 	return &AlbumService{albumStore: albumStore}
 }
 
-func (s *AlbumService) GetAlbumsForWrite(ctx context.Context, groupId int32, clanGroupId int32) ([]db.Album, error) {
+func (s *AlbumService) GetAlbumsForWrite(ctx context.Context, familyId int32, groupId int32) ([]db.Album, error) {
 	albums, err := s.albumStore.FindAlbumsForWrite(ctx, db.FindAlbumsForWriteParams{
-		GroupID:     groupId,
-		ClanGroupID: clanGroupId,
+		FamilyID: familyId,
+		GroupID:  groupId,
 	})
 	if err != nil {
 		return nil, err

@@ -1,7 +1,7 @@
 -- name: CreateMediaItem :one
 INSERT INTO
     media_items (
-        group_id,
+        family_id,
         album_id,
         upload_batch_id,
         taken_at,
@@ -11,7 +11,7 @@ VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
     id,
-    group_id,
+    family_id,
     album_id,
     upload_batch_id,
     upload_status,
@@ -35,7 +35,7 @@ SELECT
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
-    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+    INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
     LEFT JOIN LATERAL (
         SELECT storage_key, width, height, media_item_id
         FROM media_files 
@@ -52,8 +52,8 @@ FROM
         WHERE role = '03' 
     ) AS view_media_file ON view_media_file.media_item_id = mi.id
 WHERE
-    acgp.clan_group_id = sqlc.arg (clan_group_id)::int
-    AND acgp.permission = 'R'
+    agp.group_id = sqlc.arg (group_id)::int
+    AND agp.permission = 'R'
     AND mi.taken_at >= sqlc.arg (taken_at_from)::timestamp
     AND mi.taken_at <= sqlc.arg (taken_at_to)::timestamp
     AND mi.upload_status = '03' -- 03: completed
@@ -75,38 +75,16 @@ SELECT
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
-    INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
+    INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
 WHERE
-    acgp.clan_group_id = sqlc.arg (clan_group_id)::int
-    AND acgp.permission = 'R'
+    agp.group_id = sqlc.arg (group_id)::int
+    AND agp.permission = 'R'
 GROUP BY
     year,
     month
 ORDER BY
     year DESC,
     month DESC;
-
--- -- name: GetIdentityRandomPhoto :one
--- SELECT
---     p.*,
---     fd.location_top,
---     fd.location_right,
---     fd.location_bottom,
---     fd.location_left
--- FROM
---     (
---         SELECT photo_id, location_top, location_right, location_bottom, location_left
---         FROM face_detections 
---         WHERE identity_id = sqlc.arg(identity_id)::int
---         ORDER BY RANDOM()
---         LIMIT 1
---     ) AS fd
---     INNER JOIN photos AS p ON fd.photo_id = p.id
---     INNER JOIN albums AS a ON p.album_id = a.id
---     INNER JOIN album_clan_groups_permissions AS acgp ON a.id = acgp.album_id
--- WHERE
---     acgp.clan_group_id = sqlc.arg (clan_group_id)::int
---     AND acgp.permission = 'R';
 
 -- name: GetMediaItemByFaceDetection :one
 SELECT
@@ -115,7 +93,7 @@ FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
 WHERE
-    mi.group_id = sqlc.arg(group_id)::int
+    mi.family_id = sqlc.arg(family_id)::int
     AND fd.embedding = ANY(sqlc.arg(embeddings)::vector[])
 GROUP BY
     mi.id
@@ -133,4 +111,4 @@ SELECT
     mi.upload_status
 FROM media_items AS mi
 WHERE mi.upload_batch_id = $1
-ORDER BY mi.id ASC; 
+ORDER BY mi.id ASC;

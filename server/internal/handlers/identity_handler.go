@@ -29,13 +29,13 @@ func (h *IdentityHandler) UpdateIdentity(c echo.Context) error {
 		return err
 	}
 
-	groupId := middlewares.GetAuthUser(c).GroupId
+	familyId := middlewares.GetAuthUser(c).FamilyId
 
-	err := h.identityService.ValidateUpdateIdentityByIdAndGroupId(c.Request().Context(), updateIdentityRequest.ID, groupId, updateIdentityRequest.Name)
+	err := h.identityService.ValidateUpdateIdentityByIdAndFamilyId(c.Request().Context(), updateIdentityRequest.ID, familyId, updateIdentityRequest.Name)
 	if err != nil {
 		return err
 	}
-	identity, err := h.identityService.UpdateIdentityByIdAndGroupId(c.Request().Context(), updateIdentityRequest.ID, groupId, updateIdentityRequest.Name)
+	identity, err := h.identityService.UpdateIdentityByIdAndFamilyId(c.Request().Context(), updateIdentityRequest.ID, familyId, updateIdentityRequest.Name)
 	if err != nil {
 		return err
 	}
@@ -56,8 +56,8 @@ func (h *IdentityHandler) FindIdentityByIdAndGroupId(c echo.Context) error {
 	if err := c.Validate(findIdentityByIdAndGroupIdRequest); err != nil {
 		return err
 	}
-	groupId := middlewares.GetAuthUser(c).GroupId
-	identity, err := h.identityService.FindIdentityByIdAndGroupId(c.Request().Context(), findIdentityByIdAndGroupIdRequest.ID, groupId)
+	familyId := middlewares.GetAuthUser(c).FamilyId
+	identity, err := h.identityService.FindIdentityByIdAndFamilyId(c.Request().Context(), findIdentityByIdAndGroupIdRequest.ID, familyId)
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,8 @@ func (h *IdentityHandler) FindIdentityByIdAndGroupId(c echo.Context) error {
 // @Router /identities [get]
 // @Success 200 {object} models.IdentityListResponse
 func (h *IdentityHandler) FindIdentities(c echo.Context) error {
-	groupId := middlewares.GetAuthUser(c).GroupId
-	identities, err := h.identityService.FindIdentitiesByGroupId(c.Request().Context(), groupId)
+	familyId := middlewares.GetAuthUser(c).FamilyId
+	identities, err := h.identityService.FindIdentitiesByFamilyId(c.Request().Context(), familyId)
 	if err != nil {
 		return err
 	}

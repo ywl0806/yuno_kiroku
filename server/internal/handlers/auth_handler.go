@@ -82,8 +82,8 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		User: models.LoginUserResponse{
 			ID:          result.User.ID,
 			Username:    result.User.Username,
+			FamilyID:    result.User.FamilyID,
 			GroupID:     result.User.GroupID,
-			ClanGroupID: result.User.ClanGroupID,
 		},
 		Token: result.AccessToken,
 	})

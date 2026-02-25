@@ -16,10 +16,10 @@ func NewIdentityService(identityStore store.IdentityStore) *IdentityService {
 	return &IdentityService{identityStore: identityStore}
 }
 
-func (s *IdentityService) CreateIdentity(ctx context.Context, name string, groupId int32) (db.Identity, error) {
+func (s *IdentityService) CreateIdentity(ctx context.Context, name string, familyId int32) (db.Identity, error) {
 	identity, err := s.identityStore.CreateIdentity(ctx, db.CreateIdentityParams{
-		Name:    sql.NullString{String: name, Valid: true},
-		GroupID: groupId,
+		Name:     sql.NullString{String: name, Valid: true},
+		FamilyID: familyId,
 	})
 	if err != nil {
 		return db.Identity{}, err
@@ -27,10 +27,10 @@ func (s *IdentityService) CreateIdentity(ctx context.Context, name string, group
 	return identity, nil
 }
 
-func (s *IdentityService) FindIdentityByIdAndGroupId(ctx context.Context, id int32, groupId int32) (db.Identity, error) {
-	identity, err := s.identityStore.FindIdentityByIdAndGroupId(ctx, db.FindIdentityByIdAndGroupIdParams{
-		ID:      id,
-		GroupID: groupId,
+func (s *IdentityService) FindIdentityByIdAndFamilyId(ctx context.Context, id int32, familyId int32) (db.Identity, error) {
+	identity, err := s.identityStore.FindIdentityByIdAndFamilyId(ctx, db.FindIdentityByIdAndFamilyIdParams{
+		ID:       id,
+		FamilyID: familyId,
 	})
 	if err != nil {
 		return db.Identity{}, err
@@ -38,8 +38,8 @@ func (s *IdentityService) FindIdentityByIdAndGroupId(ctx context.Context, id int
 	return identity, nil
 }
 
-func (s *IdentityService) FindIdentitiesByGroupId(ctx context.Context, groupId int32) ([]db.Identity, error) {
-	identities, err := s.identityStore.FindIdentitiesByGroupId(ctx, groupId)
+func (s *IdentityService) FindIdentitiesByFamilyId(ctx context.Context, familyId int32) ([]db.Identity, error) {
+	identities, err := s.identityStore.FindIdentitiesByFamilyId(ctx, familyId)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +49,12 @@ func (s *IdentityService) FindIdentitiesByGroupId(ctx context.Context, groupId i
 	return identities, nil
 }
 
-func (s *IdentityService) UpdateIdentityByIdAndGroupId(ctx context.Context, id int32, groupId int32, name string) (db.Identity, error) {
+func (s *IdentityService) UpdateIdentityByIdAndFamilyId(ctx context.Context, id int32, familyId int32, name string) (db.Identity, error) {
 
-	identity, err := s.identityStore.UpdateIdentityByIdAndGroupId(ctx, db.UpdateIdentityByIdAndGroupIdParams{
-		ID:      id,
-		GroupID: groupId,
-		Name:    sql.NullString{String: name, Valid: true},
+	identity, err := s.identityStore.UpdateIdentityByIdAndFamilyId(ctx, db.UpdateIdentityByIdAndFamilyIdParams{
+		ID:       id,
+		FamilyID: familyId,
+		Name:     sql.NullString{String: name, Valid: true},
 	})
 	if err != nil {
 		return db.Identity{}, err
@@ -62,8 +62,8 @@ func (s *IdentityService) UpdateIdentityByIdAndGroupId(ctx context.Context, id i
 	return identity, nil
 }
 
-func (s *IdentityService) ValidateUpdateIdentityByIdAndGroupId(ctx context.Context, id int32, groupId int32, name string) error {
-	_, err := s.FindIdentityByIdAndGroupId(ctx, id, groupId)
+func (s *IdentityService) ValidateUpdateIdentityByIdAndFamilyId(ctx context.Context, id int32, familyId int32, name string) error {
+	_, err := s.FindIdentityByIdAndFamilyId(ctx, id, familyId)
 	if err != nil {
 		return err
 	}

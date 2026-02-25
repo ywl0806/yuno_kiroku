@@ -1,10 +1,10 @@
 INSERT INTO
-    groups (id, name)
+    families (id, name)
 VALUES
-    (1, 'group1');
+    (1, 'family1');
 
 INSERT INTO
-    clan_groups (id, group_id, name, is_admin)
+    groups (id, family_id, name, is_admin)
 VALUES
     (1, 1, 'admin', true),
     (2, 1, 'lee', false),
@@ -16,8 +16,8 @@ INSERT INTO
         name,
         username,
         password,
-        group_id,
-        clan_group_id
+        family_id,
+        group_id
     )
 VALUES
     (1, 'admin', 'admin', 'password', 1, 1),
@@ -25,7 +25,7 @@ VALUES
     (3, 'muraoka', 'muraoka', 'password', 1, 3);
 
 INSERT INTO
-    albums (id, group_id, name)
+    albums (id, family_id, name)
 VALUES
     (1, 1, 'album 공용'),
     (2, 1, 'album lee'),
@@ -33,7 +33,7 @@ VALUES
     (4, 1, 'album admin');
 
 INSERT INTO
-    album_clan_groups_permissions (album_id, clan_group_id, permission)
+    album_groups_permissions (album_id, group_id, permission)
 VALUES
     (1, 1, 'R'),
     (1, 1, 'W'),
