@@ -19,7 +19,7 @@ func NewUserHandler(userService *services.UserService) *UserHandler {
 // @Tags User
 // @Description create user
 // @Router /user [post]
-// @Param user body CreateUserRequest true "Create User Request"
+// @Param user body models.CreateUserRequest true "Create User Request"
 // @Success 200 {object} map[string]any
 func (con *UserHandler) CreateUser(c echo.Context) error {
 

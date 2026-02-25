@@ -9,6 +9,35 @@ import (
 	"context"
 )
 
+const createClanGroup = `-- name: CreateClanGroup :one
+INSERT INTO
+    clan_groups (group_id, is_admin, name)
+VALUES
+    ($1, $2, $3)
+RETURNING
+    id, group_id, is_admin, name, created_at, updated_at
+`
+
+type CreateClanGroupParams struct {
+	GroupID int32
+	IsAdmin bool
+	Name    string
+}
+
+func (q *Queries) CreateClanGroup(ctx context.Context, arg CreateClanGroupParams) (ClanGroup, error) {
+	row := q.db.QueryRowContext(ctx, createClanGroup, arg.GroupID, arg.IsAdmin, arg.Name)
+	var i ClanGroup
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.IsAdmin,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const findClanGroupByID = `-- name: FindClanGroupByID :one
 SELECT
     id,

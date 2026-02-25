@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/spf13/cast"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/oauth"
@@ -76,17 +77,16 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	}, nil
 }
 
-// ResolveInviteState state가 유효한 초대 토큰이면 해당 group_id, clan_group_id 반환; 아니면 1,1
-func (s *AuthService) ResolveInviteState(ctx context.Context, state string) (groupID, clanGroupID int32) {
-	groupID, clanGroupID = 1, 1
+// ResolveInviteState state가 유효한 초대 토큰이면 해당 group_id, clan_group_id 반환; 아니면 에러 반환
+func (s *AuthService) ResolveInviteState(ctx context.Context, state string) (groupID, clanGroupID int32, err error) {
 	if state == "" {
-		return groupID, clanGroupID
+		return 0, 0, apperr.NewBadRequestError("message.validate.required", map[string]string{"field": "message-item.invite_token"})
 	}
 	gid, cid, err := s.inviteService.GetValidInviteToken(ctx, state)
 	if err != nil {
-		return groupID, clanGroupID
+		return 0, 0, apperr.NewBadRequestError("message.invalid", map[string]string{"field": "message-item.invite_token"})
 	}
-	return gid, cid
+	return gid, cid, nil
 }
 
 // GetLineAuthURL LINE 로그인 URL 반환. 미설정 시 empty string, false
@@ -112,7 +112,11 @@ func (s *AuthService) ProcessLineCallback(ctx context.Context, code, state strin
 		log.Println("LINE profile error:", err)
 		return nil, err
 	}
-	groupID, clanGroupID := s.ResolveInviteState(ctx, state)
+	groupID, clanGroupID, err := s.ResolveInviteState(ctx, state)
+	if err != nil {
+		return nil, err
+	}
+
 	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, groupID, clanGroupID)
 	if err != nil {
 		log.Println("FindOrCreateUserOAuth LINE error:", err)
@@ -147,7 +151,11 @@ func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state stri
 		log.Println("Kakao profile error:", err)
 		return nil, err
 	}
-	groupID, clanGroupID := s.ResolveInviteState(ctx, state)
+	groupID, clanGroupID, err := s.ResolveInviteState(ctx, state)
+	if err != nil {
+		log.Println("ResolveInviteState Kakao error:", err)
+		return nil, err
+	}
 	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, groupID, clanGroupID)
 	if err != nil {
 		log.Println("FindOrCreateUserOAuth Kakao error:", err)

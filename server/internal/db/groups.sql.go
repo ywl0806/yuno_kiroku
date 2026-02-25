@@ -9,6 +9,27 @@ import (
 	"context"
 )
 
+const createGroup = `-- name: CreateGroup :one
+INSERT INTO
+    groups (name)
+VALUES
+    ($1)
+RETURNING
+    id, name, created_at, updated_at
+`
+
+func (q *Queries) CreateGroup(ctx context.Context, name string) (Group, error) {
+	row := q.db.QueryRowContext(ctx, createGroup, name)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const findGroupByID = `-- name: FindGroupByID :one
 SELECT
     id,

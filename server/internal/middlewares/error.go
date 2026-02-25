@@ -54,6 +54,8 @@ func (e *ErrorHandler) HandleServiceError(c echo.Context, err error) error {
 			return echo.NewHTTPError(http.StatusBadRequest, msg)
 		case apperr.NotFound:
 			return echo.NewHTTPError(http.StatusNotFound, msg)
+		case apperr.BadRequest:
+			return echo.NewHTTPError(http.StatusBadRequest, msg)
 		default:
 			return echo.NewHTTPError(http.StatusInternalServerError, msg)
 		}

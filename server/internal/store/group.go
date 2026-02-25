@@ -10,6 +10,7 @@ import (
 type GroupStore interface {
 	FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error)
 	FindClanGroupByID(ctx context.Context, id int32) (db.FindClanGroupByIDRow, error)
+	CreateGroup(ctx context.Context, name string) (db.Group, error)
 }
 
 type groupStore struct {
@@ -29,4 +30,8 @@ func (s *groupStore) FindGroupByID(ctx context.Context, id int32) (db.FindGroupB
 func (s *groupStore) FindClanGroupByID(ctx context.Context, id int32) (db.FindClanGroupByIDRow, error) {
 	row, err := s.queries.FindClanGroupByID(ctx, id)
 	return wrapErr(row, err, "field.clan_group")
+}
+
+func (s *groupStore) CreateGroup(ctx context.Context, name string) (db.Group, error) {
+	return wrapErr(s.queries.CreateGroup(ctx, name))
 }

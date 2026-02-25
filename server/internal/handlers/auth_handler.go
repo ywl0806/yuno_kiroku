@@ -38,9 +38,8 @@ type LoginRequest struct {
 
 // LoginResponse 로그인 성공 응답
 type LoginResponse struct {
-	Message string                  `json:"message"`
-	User    models.LoginUserResponse `json:"user"`
-	Token   string                  `json:"token"`
+	User  models.LoginUserResponse `json:"user"`
+	Token string                   `json:"token"`
 }
 
 // @Description 아이디/비밀번호 로그인. 성공 시 액세스 토큰과 리프레시 토큰(쿠키) 반환.
@@ -80,7 +79,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	})
 
 	return c.JSON(http.StatusOK, LoginResponse{
-		Message: "Login successful",
 		User: models.LoginUserResponse{
 			ID:          result.User.ID,
 			Username:    result.User.Username,
@@ -97,12 +95,15 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param invite_token query string false "Invite Token (optional)"
+// @Param invite_token query string true "Invite Token (required)"
 // @Success 302 "Redirect to LINE authorization page"
 // @Failure 503 "LINE login is not configured"
 // @Router /auth/line [get]
 func (h *AuthHandler) LineLoginRedirect(c echo.Context) error {
 	state := c.QueryParam("invite_token")
+	if state != "" {
+		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
+	}
 	url, configured := h.authService.GetLineAuthURL(state)
 	if !configured {
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "LINE login is not configured")
@@ -117,7 +118,7 @@ func (h *AuthHandler) LineLoginRedirect(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param code query string true "Authorization code from LINE"
-// @Param state query string false "State (invite_token if present)"
+// @Param state query string true "State (invite_token required)"
 // @Success 302 "Redirect to front login/callback with token"
 // @Failure 302 "Redirect to front /login with error query"
 // @Router /auth/line/callback [get]
@@ -127,7 +128,9 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=missing_code")
 	}
 	state := c.QueryParam("state")
-
+	if state != "" {
+		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
+	}
 	user, err := h.authService.ProcessLineCallback(c.Request().Context(), code, state)
 	if err != nil {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=line_token")
@@ -146,12 +149,16 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param invite_token query string false "Invite Token (optional)"
+// @Param invite_token query string true "Invite Token (required)"
 // @Success 302 "Redirect to Kakao authorization page"
 // @Failure 503 "Kakao login is not configured"
 // @Router /auth/kakao [get]
 func (h *AuthHandler) KakaoLoginRedirect(c echo.Context) error {
 	state := c.QueryParam("invite_token")
+
+	if state != "" {
+		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
+	}
 	url, configured := h.authService.GetKakaoAuthURL(state)
 	if !configured {
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "Kakao login is not configured")
@@ -166,7 +173,7 @@ func (h *AuthHandler) KakaoLoginRedirect(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param code query string true "Authorization code from Kakao"
-// @Param state query string false "State (invite_token if present)"
+// @Param state query string true "State (invite_token required)"
 // @Success 302 "Redirect to front login/callback with token"
 // @Failure 302 "Redirect to front /login with error query"
 // @Router /auth/kakao/callback [get]
@@ -176,7 +183,9 @@ func (h *AuthHandler) KakaoCallback(c echo.Context) error {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=missing_code")
 	}
 	state := c.QueryParam("state")
-
+	if state != "" {
+		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
+	}
 	user, err := h.authService.ProcessKakaoCallback(c.Request().Context(), code, state)
 	if err != nil {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=kakao_token")

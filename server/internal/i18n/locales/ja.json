@@ -8,6 +8,7 @@
     "unauthorized": "認証が必要です",
     "forbidden": "権限がありません",
     "authentication_failed": "認証に失敗しました。",
+    "invalid": "{{.field}}が無効です",
 
     "validate": {
       "required": "{{.field}}を入力してください。",
@@ -27,6 +28,10 @@
       "boolean": "{{.field}}の値が不正です。",
       "forbidden-characters": "{{.field}}にこのシステムで使用できない文字が含まれています。",
       "duplication": "{{.field}}が重複しているため、登録できません。"
+    },
+
+    "domain": {
+      "login-invited-user-only": "招待されたユーザーのみログイン可能です"
     }
   },
   "message-item": {
@@ -36,6 +41,7 @@
     "identity": "アイデンティティ",
     "resource": "リソース",
     "file": "ファイル",
-    "upload_batch_id": "アップロードバッチID"
+    "upload_batch_id": "アップロードバッチID",
+    "invite_token": "招待トークン"
   }
 }

@@ -12,6 +12,7 @@ const (
 	NotFound         ErrorCode = "NOT_FOUND"
 	Duplicate        ErrorCode = "DUPLICATE"
 	InvalidReference ErrorCode = "INVALID_REFERENCE"
+	BadRequest       ErrorCode = "BAD_REQUEST"
 )
 
 // 어플리케이션 에러 타입
@@ -68,6 +69,11 @@ func NewDuplicateError(message string, templateData map[string]string) error {
 // 참조 오류 생성
 func NewInvalidReferenceError(message string, templateData map[string]string) error {
 	return &AppErrors{Code: InvalidReference, Message: message, TemplateData: templateData}
+}
+
+// 잘못된 요청 에러 생성
+func NewBadRequestError(message string, templateData map[string]string) error {
+	return &AppErrors{Code: BadRequest, Message: message, TemplateData: templateData}
 }
 
 // i18n 메시지 키 + 템플릿 데이터로 에러 생성
