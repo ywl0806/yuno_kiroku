@@ -2,7 +2,7 @@ import { UploadStatus } from "@/enums"
 
 export interface MediaItem {
   id: string
-  group_id: string
+  family_id: string
   album_id: string
   thumbnail_url: string
   original_url: string
