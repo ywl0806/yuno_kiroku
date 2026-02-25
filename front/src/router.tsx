@@ -1,5 +1,6 @@
 import { DefaultLayout } from '@/components/layouts/default-layout'
 import { HomePage } from '@/page/home-page'
+import { LoginCallbackPage } from '@/page/login-callback-page'
 import { LoginPage } from '@/page/login-page'
 import { LogoutPage } from '@/page/logout-page'
 import { NotFoundPage } from '@/page/not-found-page'
@@ -12,6 +13,7 @@ export const router = createBrowserRouter(
     <Route>
       <Route>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/login/callback" element={<LoginCallbackPage />} />
       </Route>
       <Route path="/" element={<DefaultLayout />}>
         <Route index element={<HomePage />} />

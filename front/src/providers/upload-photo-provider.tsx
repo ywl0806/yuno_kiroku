@@ -1,5 +1,5 @@
 import { Progress } from '@/components/ui/progress'
-import { API_ROUTES } from '@/constants/api-route'
+import { API_ROUTES } from '@/consts/api-route'
 import { MyAxiosWithAuth } from '@/lib/my-axios'
 import {
   UPLOAD_MEDIA_ITEM_ERROR_CODE,

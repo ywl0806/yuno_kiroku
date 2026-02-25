@@ -6,6 +6,7 @@ import { UploadMediaItem } from '@/types'
 import { BrushCleaning, Check, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction, RefObject } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
+import { useTranslation } from 'react-i18next'
 
 interface ImageDimensions {
   width: number
@@ -49,7 +50,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions[]>([])
   const { reUploadPhoto, isUploaded, isUploading, progress, clearPhotos, mediaItems } = useUploadPhoto()
   const imgInputRef = inputRef ?? useRef<HTMLInputElement>(null)
-
+  const { t } = useTranslation()
   // 이미지 크기를 비동기로 로드
   useEffect(() => {
     const loadDimensions = async () => {
@@ -114,14 +115,14 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
             disabled={isUploaded}
           >
             <Plus />
-            <span>이미지를 추가하세요</span>
+            <span>{t('upload.addImage')}</span>
           </Button>
         </div>
         <div className="flex flex-1 items-center justify-end">
           {(!isUploading || progress === 100) && mediaItems.length > 0 && (
             <Button variant="outline" className="rounded-full" onClick={clearPhotos}>
               <BrushCleaning className="size-4" />
-              <span>クリア</span>
+              <span>{t('upload.clear')}</span>
             </Button>
           )}
         </div>
@@ -157,14 +158,14 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                     {images[props.layout.index].status === UPLOAD_STATUS.COMPLETED && <Check className="text-white" />}
                     {images[props.layout.index].status === UPLOAD_STATUS.DUPLICATE && (
                       <div className="flex flex-col items-center gap-2">
-                        <p className="rounded-md bg-white p-2 text-sm text-slate-500">すでに上げてるかも</p>
+                        <p className="rounded-md bg-white p-2 text-sm text-slate-500">{t('upload.alreadyUploaded')}</p>
                         <Button
                           variant="default"
                           className="rounded-full"
                           onClick={() => reUploadPhoto(props.layout.index, albumId)}
                         >
                           <RefreshCcw />
-                          <span>けれどアップロードする</span>
+                          <span>{t('upload.uploadAnyway')}</span>
                         </Button>
                       </div>
                     )}
@@ -172,7 +173,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                     {images[props.layout.index].status === UPLOAD_STATUS.FAILED && (
                       <div className="flex flex-col items-center gap-2">
                         <X className="text-red-500" />
-                        <p className="rounded-full bg-white p-2 text-sm text-red-500">アップロード失敗</p>
+                        <p className="rounded-full bg-white p-2 text-sm text-red-500">{t('upload.uploadFailed')}</p>
 
                         <Button
                           variant="ghost"
@@ -180,7 +181,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                           onClick={() => reUploadPhoto(props.layout.index, albumId)}
                         >
                           <RefreshCcw />
-                          <span>再アップロードする</span>
+                          <span>{t('upload.reUpload')}</span>
                         </Button>
                       </div>
                     )}

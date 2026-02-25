@@ -7,26 +7,32 @@
     "edit": "편집",
     "loading": "로딩 중..."
   },
-  "nav": {
-    "home": "홈",
-    "album": "앨범",
-    "upload": "업로드",
-    "settings": "설정",
-    "logout": "로그아웃"
-  },
+  "nav": { "home": "홈", "album": "앨범", "upload": "업로드", "settings": "설정", "logout": "로그아웃" },
   "auth": {
     "login": "로그인",
     "logout": "로그아웃",
     "username": "사용자명",
-    "password": "비밀번호"
+    "password": "비밀번호",
+    "loginWithLine": "LINE으로 로그인",
+    "loginWithKakao": "카카오로 로그인",
+    "loggingIn": "로그인 중...",
+    "error": {
+      "line_token": "LINE 로그인에 실패했습니다.",
+      "kakao_token": "카카오 로그인에 실패했습니다.",
+      "token": "토큰 발급에 실패했습니다.",
+      "missing_code": "인증 코드가 없습니다.",
+      "missing_token": "토큰이 없습니다."
+    }
   },
   "upload": {
     "back": "돌아가기",
-    "upload": "업로드"
+    "upload": "업로드",
+    "addImage": "이미지를 추가",
+    "clear": "클어",
+    "alreadyUploaded": "이미 업로드되었습니다",
+    "uploadAnyway": "다시 업로드",
+    "uploadFailed": "업로드 실패",
+    "reUpload": "다시 업로드"
   },
-  "page": {
-    "settings": "설정",
-    "logout": "로그아웃",
-    "notFound": "페이지를 찾을 수 없습니다"
-  }
+  "page": { "settings": "설정", "logout": "로그아웃", "notFound": "페이지를 찾을 수 없습니다" }
 }

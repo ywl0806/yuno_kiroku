@@ -2,6 +2,8 @@ export const API_ROUTES = {
   // Auth
   AUTH: {
     LOGIN: '/auth/login',
+    LINE_REDIRECT: '/auth/line',
+    KAKAO_REDIRECT: '/auth/kakao',
   },
 
   // User

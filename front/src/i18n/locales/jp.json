@@ -18,15 +18,27 @@
     "login": "ログイン",
     "logout": "ログアウト",
     "username": "ユーザー名",
-    "password": "パスワード"
+    "password": "パスワード",
+    "loginWithLine": "LINEでログイン",
+    "loginWithKakao": "カカオでログイン",
+    "loggingIn": "ログイン中...",
+    "error": {
+      "line_token": "LINEログインに失敗しました。",
+      "kakao_token": "カカオログインに失敗しました。",
+      "token": "トークン発行に失敗しました。",
+      "missing_code": "認証コードがありません。",
+      "missing_token": "トークンがありません。"
+    }
   },
   "upload": {
     "back": "戻る",
-    "upload": "アップロード"
+    "upload": "アップロード",
+    "addImage": "画像を追加",
+    "clear": "クリア",
+    "alreadyUploaded": "すでにアップロードされています",
+    "uploadAnyway": "再アップロードする",
+    "uploadFailed": "アップロード失敗",
+    "reUpload": "再アップロード"
   },
-  "page": {
-    "settings": "設定",
-    "logout": "ログアウト",
-    "notFound": "ページが見つかりません"
-  }
+  "page": { "settings": "設定", "logout": "ログアウト", "notFound": "ページが見つかりません" }
 }

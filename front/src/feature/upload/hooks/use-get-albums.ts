@@ -1,4 +1,4 @@
-import { API_ROUTES } from '@/constants/api-route'
+import { API_ROUTES } from '@/consts/api-route'
 import { MyAxiosWithAuth } from '@/lib/my-axios'
 import { Album } from '@/types'
 import { useQuery } from '@tanstack/react-query'

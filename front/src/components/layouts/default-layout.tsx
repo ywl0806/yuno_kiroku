@@ -16,7 +16,7 @@ const NavItem = ({
   isActive: boolean
 }) => {
   return (
-    <Button asChild variant="ghost" className={cn('h-full', isActive && 'bg-accent text-accent-foreground')}>
+    <Button asChild variant="ghost" className={cn('h-full', isActive && 'bg-accent text-accent-foreground')} draggable={false}>
       <Link to={path}>
         <div className="flex flex-col items-center">
           {icon}
