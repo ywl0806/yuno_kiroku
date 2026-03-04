@@ -27,6 +27,12 @@ export const API_ROUTES = {
     UPDATE: '/identity',
   },
 
+  // Family
+  FAMILY: {
+    LIST: '/family',
+    INVITE: (familyId: number) => `/family/${familyId}/invite`,
+  },
+
   // Album
   ALBUM: {
     LIST_FOR_WRITE: '/album/write',

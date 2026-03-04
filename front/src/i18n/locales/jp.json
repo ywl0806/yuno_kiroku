@@ -40,5 +40,26 @@
     "uploadFailed": "アップロード失敗",
     "reUpload": "再アップロード"
   },
-  "page": { "settings": "設定", "logout": "ログアウト", "notFound": "ページが見つかりません" }
+  "page": { "settings": "設定", "logout": "ログアウト", "notFound": "ページが見つかりません" },
+  "settings": {
+    "menu": {
+      "app": "アプリ設定",
+      "account": "アカウント"
+    },
+    "family": {
+      "title": "ファミリー",
+      "add": "ファミリーを追加",
+      "invite": {
+        "title": "招待リンク",
+        "description": "リンクを共有するとファミリーに参加できます。",
+        "copy": "リンクをコピー",
+        "copied": "コピーしました",
+        "error": "招待リンクを読み込めませんでした。"
+      }
+    },
+    "album": {
+      "title": "アルバム",
+      "add": "アルバムを追加"
+    }
+  }
 }
