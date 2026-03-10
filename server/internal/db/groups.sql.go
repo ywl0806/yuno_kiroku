@@ -68,3 +68,44 @@ func (q *Queries) FindGroupByID(ctx context.Context, id int32) (FindGroupByIDRow
 	)
 	return i, err
 }
+
+const findGroupsByFamilyID = `-- name: FindGroupsByFamilyID :many
+SELECT
+    id, family_id, is_admin, name, created_at, updated_at
+FROM
+    groups
+WHERE
+    family_id = $1
+ORDER BY
+    id
+`
+
+func (q *Queries) FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]Group, error) {
+	rows, err := q.db.QueryContext(ctx, findGroupsByFamilyID, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Group
+	for rows.Next() {
+		var i Group
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.IsAdmin,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

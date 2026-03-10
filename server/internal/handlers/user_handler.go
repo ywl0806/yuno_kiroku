@@ -4,7 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
-
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 )
 
@@ -41,4 +41,25 @@ func (con *UserHandler) CreateUser(c echo.Context) error {
 
 	return c.JSON(200, user)
 
+}
+
+// @Tags User
+// @Description Get members in the same family
+// @Router /user/members [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200 {object} []models.MemberResponse
+func (con *UserHandler) GetMembers(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+
+	members, err := con.userService.GetMembers(c.Request().Context(), authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+
+	responses := make([]models.MemberResponse, len(members))
+	for i, m := range members {
+		responses[i] = *models.NewMemberResponse(&m)
+	}
+
+	return c.JSON(200, responses)
 }

@@ -13,6 +13,7 @@ type UserStore interface {
 	CreateUserOAuth(ctx context.Context, params db.CreateUserOAuthParams) (db.User, error)
 	FindUserByUsername(ctx context.Context, username string) (db.User, error)
 	FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error)
+	FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error)
 }
 
 type userStore struct {
@@ -34,6 +35,10 @@ func (s *userStore) CreateUserOAuth(ctx context.Context, params db.CreateUserOAu
 
 func (s *userStore) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
 	return wrapErr(s.queries.FindUserByUsername(ctx, username))
+}
+
+func (s *userStore) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error) {
+	return wrapErr(s.queries.FindMembersByFamilyID(ctx, familyID))
 }
 
 func (s *userStore) FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error) {

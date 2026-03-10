@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -9,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers"
 	"github.com/ywl0806/yuno_kiroku/internal/i18n"
@@ -64,6 +66,7 @@ func Init(e *echo.Echo) {
 	mediaItemService := services.NewMediaItemService(st.MediaItem, storageService, faceService)
 	identityService := services.NewIdentityService(st.Identity)
 	albumService := services.NewAlbumService(st.Album)
+	groupService := services.NewGroupService(st.Family, st.Group)
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
@@ -72,6 +75,8 @@ func Init(e *echo.Echo) {
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 	identityHandler := handlers.NewIdentityHandler(identityService)
 	albumHandler := handlers.NewAlbumHandler(albumService)
+	groupHandler := handlers.NewGroupHandler(groupService)
+	settingsHandler := handlers.NewSettingsHandler(groupService, userService, albumService)
 
 	// root router
 	root := e.Group("/api")
@@ -88,6 +93,8 @@ func Init(e *echo.Echo) {
 	inviteRouter := routers.NewInviteRouter(*inviteHandler)
 	identityRouter := routers.NewIdentityRouter(*identityHandler)
 	albumRouter := routers.NewAlbumRouter(*albumHandler)
+	groupRouter := routers.NewGroupRouter(*groupHandler)
+	settingsRouter := routers.NewSettingsRouter(*settingsHandler)
 
 	e.Validator = validator.NewCustomValidator()
 
@@ -96,6 +103,11 @@ func Init(e *echo.Echo) {
 	e.Use(middleware.RequestIDWithConfig(middleware.RequestIDConfig{
 		Skipper: func(c echo.Context) bool {
 			return c.Path() == "/api/health"
+		},
+		RequestIDHandler: func(c echo.Context, requestID string) {
+			req := c.Request()
+			ctx := context.WithValue(req.Context(), consts.RequestIDKey, requestID)
+			c.SetRequest(req.WithContext(ctx))
 		},
 	}))
 	// 2. Recover - 패닉 복구
@@ -116,5 +128,7 @@ func Init(e *echo.Echo) {
 	inviteRouter.Register(root)
 	identityRouter.Register(root)
 	albumRouter.Register(root)
+	groupRouter.Register(root)
+	settingsRouter.Register(root)
 
 }

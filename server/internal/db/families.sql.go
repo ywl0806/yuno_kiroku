@@ -51,3 +51,24 @@ func (q *Queries) FindFamilyByID(ctx context.Context, id int32) (FindFamilyByIDR
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }
+
+const getFamilyByID = `-- name: GetFamilyByID :one
+SELECT
+    id, name, created_at, updated_at
+FROM
+    families
+WHERE
+    id = $1
+`
+
+func (q *Queries) GetFamilyByID(ctx context.Context, id int32) (Family, error) {
+	row := q.db.QueryRowContext(ctx, getFamilyByID, id)
+	var i Family
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

@@ -1,10 +1,16 @@
 package utils
 
 import (
-	"github.com/labstack/echo/v4"
+	"context"
+
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
 )
 
 // echo context에서 request_id를 가져온다.
-func GetRequestID(c echo.Context) string {
-	return c.Response().Header().Get(echo.HeaderXRequestID)
+func GetRequestID(c context.Context) string {
+	v, ok := c.Value(consts.RequestIDKey).(string)
+	if !ok {
+		return ""
+	}
+	return v
 }

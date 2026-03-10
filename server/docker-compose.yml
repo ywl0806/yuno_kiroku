@@ -16,7 +16,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5433/yuno?sslmode=disable
       AI_API_URL: http://ai:8000
       STORAGE_TYPE: minio
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://minio:9001
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
       AWS_REGION: us-east-1
@@ -53,7 +53,7 @@ services:
     image: minio/minio:RELEASE.2025-04-08T15-41-24Z
     container_name: s3-minio
     ports:
-      - "9000:9000"
+      - "9001:9000"
       - "9090:9090"
     environment:
       MINIO_ROOT_USER: root
@@ -75,7 +75,7 @@ services:
       - app-net
     entrypoint: >
       /bin/sh -c "
-      mc alias set myminio http://minio:9000 root password;
+      mc alias set myminio http://minio:9001 root password;
       mc mb --ignore-existing myminio/my-bucket;
       echo 'Buckets created successfully';
       "

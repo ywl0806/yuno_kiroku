@@ -9,6 +9,7 @@ export const API_ROUTES = {
   // User
   USER: {
     CREATE: '/user',
+    MEMBERS: '/user/members',
   },
 
   // Photo
@@ -31,6 +32,21 @@ export const API_ROUTES = {
   FAMILY: {
     LIST: '/family',
     INVITE: (familyId: number) => `/family/${familyId}/invite`,
+  },
+
+  // Invite
+  INVITE: {
+    CREATE: '/invite',
+  },
+
+  // Group (앨범 그룹)
+  GROUP: {
+    LIST: '/group',
+  },
+
+  // Settings
+  SETTINGS: {
+    DATA: '/settings/data',
   },
 
   // Album

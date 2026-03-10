@@ -3,6 +3,7 @@ package routers
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
 )
 
 type UserRouter struct {
@@ -15,7 +16,8 @@ func NewUserRouter(userHandler handlers.UserHandler) *UserRouter {
 
 func (ur *UserRouter) Register(root *echo.Group) {
 	userRouter := root.Group("/user")
+	guard := middlewares.NewGuard()
 
 	userRouter.POST("", ur.userHandler.CreateUser)
-
+	userRouter.GET("/members", ur.userHandler.GetMembers, guard.Handler)
 }

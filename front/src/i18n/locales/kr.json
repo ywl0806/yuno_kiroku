@@ -51,6 +51,23 @@
         "error": "초대 링크를 불러오지 못했습니다."
       }
     },
+    "member": {
+      "title": "멤버",
+      "invite": "멤버 초대",
+      "inviteTitle": "멤버 초대",
+      "inviteNameLabel": "이름",
+      "inviteNamePlaceholder": "초대할 멤버 이름",
+      "inviteGroupLabel": "앨범 그룹",
+      "inviteGroupPlaceholder": "그룹 선택",
+      "inviteGenerate": "초대 링크 생성",
+      "inviteCopy": "링크 복사",
+      "inviteCopied": "복사됨",
+      "inviteError": "초대 링크 생성에 실패했습니다."
+    },
+    "group": {
+      "title": "앨범 그룹",
+      "add": "앨범 그룹 추가"
+    },
     "album": {
       "title": "앨범",
       "add": "앨범 추가"

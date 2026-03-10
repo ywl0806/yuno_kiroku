@@ -35,11 +35,34 @@ export interface Family {
   updated_at: string
 }
 
+export interface Member {
+  id: number
+  name: string
+  username: string
+  family_id: number
+  group_id: number
+}
+
+export interface Group {
+  id: number
+  family_id: number
+  is_admin: boolean
+  name: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Album {
   id: number
   name: string
   created_at: string
   updated_at: string
+}
+
+export interface SettingsData {
+  groups: Group[]
+  members: Member[]
+  albums: Album[]
 }
 
 export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {

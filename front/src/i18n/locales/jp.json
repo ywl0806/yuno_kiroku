@@ -57,6 +57,23 @@
         "error": "招待リンクを読み込めませんでした。"
       }
     },
+    "member": {
+      "title": "メンバー",
+      "invite": "メンバーを招待",
+      "inviteTitle": "メンバーを招待",
+      "inviteNameLabel": "名前",
+      "inviteNamePlaceholder": "招待するメンバーの名前",
+      "inviteGroupLabel": "アルバムグループ",
+      "inviteGroupPlaceholder": "グループを選択",
+      "inviteGenerate": "招待リンクを生成",
+      "inviteCopy": "リンクをコピー",
+      "inviteCopied": "コピーしました",
+      "inviteError": "招待リンクの作成に失敗しました。"
+    },
+    "group": {
+      "title": "アルバムグループ",
+      "add": "アルバムグループを追加"
+    },
     "album": {
       "title": "アルバム",
       "add": "アルバムを追加"

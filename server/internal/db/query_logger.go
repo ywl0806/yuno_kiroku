@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/ywl0806/yuno_kiroku/internal/utils"
 )
@@ -29,9 +28,9 @@ func NewQueryLogger(inner DBTX, enabled bool) DBTX {
 func (q *queryLogger) logQuery(ctx context.Context, query string, args ...interface{}) {
 	query = strings.TrimSpace(query)
 
-	requestId := "unknown"
-	if ec, ok := ctx.(echo.Context); ok {
-		requestId = utils.GetRequestID(ec)
+	requestId := utils.GetRequestID(ctx)
+	if requestId == "" {
+		requestId = "unknown"
 	}
 	argsString := strings.Join(cast.ToStringSlice(args), ", ")
 	log.Printf("[DB] request_id=%s \n query: %s \n args: %s", requestId, query, argsString)

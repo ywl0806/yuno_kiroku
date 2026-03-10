@@ -19,6 +19,10 @@ func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, gr
 	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
 }
 
+func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error) {
+	return s.userStore.FindMembersByFamilyID(ctx, familyID)
+}
+
 // 유저 생성
 func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 

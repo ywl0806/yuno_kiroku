@@ -1,3 +1,17 @@
+-- name: FindMembersByFamilyID :many
+SELECT
+    id,
+    name,
+    username,
+    family_id,
+    group_id
+FROM
+    users
+WHERE
+    family_id = $1
+ORDER BY
+    id;
+
 -- name: FindUsers :many
 SELECT
     id,

@@ -8,6 +8,24 @@ import (
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
+type MemberResponse struct {
+	ID       int32  `json:"id"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	FamilyID int32  `json:"family_id"`
+	GroupID  int32  `json:"group_id"`
+}
+
+func NewMemberResponse(row *db.FindMembersByFamilyIDRow) *MemberResponse {
+	return &MemberResponse{
+		ID:       row.ID,
+		Name:     row.Name.String,
+		Username: row.Username,
+		FamilyID: row.FamilyID,
+		GroupID:  row.GroupID,
+	}
+}
+
 type CreateUserRequest struct {
 	Name      string `json:"name" validate:"required"`
 	Username  string `json:"username" validate:"required"`

@@ -96,6 +96,58 @@ func (q *Queries) CreateUserOAuth(ctx context.Context, arg CreateUserOAuthParams
 	return i, err
 }
 
+const findMembersByFamilyID = `-- name: FindMembersByFamilyID :many
+SELECT
+    id,
+    name,
+    username,
+    family_id,
+    group_id
+FROM
+    users
+WHERE
+    family_id = $1
+ORDER BY
+    id
+`
+
+type FindMembersByFamilyIDRow struct {
+	ID       int32
+	Name     sql.NullString
+	Username string
+	FamilyID int32
+	GroupID  int32
+}
+
+func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]FindMembersByFamilyIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, findMembersByFamilyID, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindMembersByFamilyIDRow
+	for rows.Next() {
+		var i FindMembersByFamilyIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Username,
+			&i.FamilyID,
+			&i.GroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findUserByProvider = `-- name: FindUserByProvider :one
 SELECT
     id, name, username, password, family_id, group_id, provider, provider_user_id, created_at, updated_at

@@ -9,6 +9,16 @@ FROM
 WHERE
     id = $1;
 
+-- name: FindGroupsByFamilyID :many
+SELECT
+    *
+FROM
+    groups
+WHERE
+    family_id = $1
+ORDER BY
+    id;
+
 -- name: CreateGroup :one
 INSERT INTO
     groups (family_id, is_admin, name)

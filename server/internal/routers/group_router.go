@@ -1,0 +1,22 @@
+package routers
+
+import (
+	"github.com/labstack/echo/v4"
+	"github.com/ywl0806/yuno_kiroku/internal/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
+)
+
+type GroupRouter struct {
+	groupHandler handlers.GroupHandler
+}
+
+func NewGroupRouter(groupHandler handlers.GroupHandler) *GroupRouter {
+	return &GroupRouter{groupHandler: groupHandler}
+}
+
+func (r *GroupRouter) Register(root *echo.Group) {
+	group := root.Group("/group")
+	guard := middlewares.NewGuard()
+
+	group.GET("", r.groupHandler.GetGroups, guard.Handler)
+}

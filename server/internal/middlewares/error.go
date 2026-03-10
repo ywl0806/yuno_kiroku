@@ -64,7 +64,10 @@ func (e *ErrorHandler) HandleServiceError(c echo.Context, err error) error {
 	// 내부 에러 처리
 	var internalError *errs.InternalError
 	if errors.As(err, &internalError) {
-		requestId := utils.GetRequestID(c)
+		requestId := utils.GetRequestID(c.Request().Context())
+		if requestId == "" {
+			requestId = "unknown"
+		}
 		log.Printf("request_id=%s | %s:%d: %s\n", requestId, internalError.File, internalError.Line, internalError.Message)
 		return echo.NewHTTPError(http.StatusInternalServerError, internalError.Message)
 	}

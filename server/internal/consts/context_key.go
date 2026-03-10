@@ -1,5 +1,6 @@
 package consts
 
 const (
-	AuthUserKey = "authUser"
+	AuthUserKey  = "authUser"
+	RequestIDKey = "requestID"
 )
