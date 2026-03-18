@@ -18,7 +18,6 @@ func (ir *IdentityRouter) Register(root *echo.Group) {
 	identityRouter := root.Group("/identity")
 	guard := middlewares.NewGuard()
 
-	identityRouter.PUT("", ir.identityHandler.UpdateIdentity, guard.Handler)
 	identityRouter.GET("/:id", ir.identityHandler.FindIdentityByIdAndGroupId, guard.Handler)
 	identityRouter.GET("", ir.identityHandler.FindIdentities, guard.Handler)
 }

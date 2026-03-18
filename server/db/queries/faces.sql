@@ -17,7 +17,6 @@ RETURNING
 -- name: FindMostSimilarFace :one
 SELECT
     fd.identity_id,
-    i.name,
     i.family_id,
     fd.embedding <=> sqlc.arg (embedding)::vector AS distance
 FROM

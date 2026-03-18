@@ -16,7 +16,7 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
-    id, name, username, password, family_id, group_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -43,6 +43,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
+		&i.IdentityID,
 		&i.Provider,
 		&i.ProviderUserID,
 		&i.CreatedAt,
@@ -57,7 +58,7 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
-    id, name, username, password, family_id, group_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 `
 
 type CreateUserOAuthParams struct {
@@ -88,6 +89,7 @@ func (q *Queries) CreateUserOAuth(ctx context.Context, arg CreateUserOAuthParams
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
+		&i.IdentityID,
 		&i.Provider,
 		&i.ProviderUserID,
 		&i.CreatedAt,
@@ -150,7 +152,7 @@ func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]
 
 const findUserByProvider = `-- name: FindUserByProvider :one
 SELECT
-    id, name, username, password, family_id, group_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
@@ -173,6 +175,7 @@ func (q *Queries) FindUserByProvider(ctx context.Context, arg FindUserByProvider
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
+		&i.IdentityID,
 		&i.Provider,
 		&i.ProviderUserID,
 		&i.CreatedAt,
@@ -183,7 +186,7 @@ func (q *Queries) FindUserByProvider(ctx context.Context, arg FindUserByProvider
 
 const findUserByUsername = `-- name: FindUserByUsername :one
 SELECT
-    id, name, username, password, family_id, group_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
@@ -200,6 +203,7 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
+		&i.IdentityID,
 		&i.Provider,
 		&i.ProviderUserID,
 		&i.CreatedAt,

@@ -14,6 +14,7 @@ type Store struct {
 	Face        FaceStore
 	MediaItem   MediaItemStore
 	InviteToken InviteTokenStore
+	Kid         KidStore
 }
 
 // New Store 컨테이너 생성 (각 도메인 Store 구현체 주입)
@@ -27,5 +28,6 @@ func New(queries *db.Queries) *Store {
 		Face:        NewFaceStore(queries),
 		MediaItem:   NewMediaItemStore(queries),
 		InviteToken: NewInviteTokenStore(queries),
+		Kid:         NewKidStore(queries),
 	}
 }

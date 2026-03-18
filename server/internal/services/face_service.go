@@ -79,10 +79,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, familyId 
 			faceDetectionParams.IdentityID = similarFace.IdentityID
 		} else {
 			// 유사 얼굴 검색 결과가 없으면 새로운 사람 생성
-			newIdentity, err := s.identityStore.CreateIdentity(ctx, db.CreateIdentityParams{
-				Name:     sql.NullString{String: "", Valid: false},
-				FamilyID: familyId,
-			})
+			newIdentity, err := s.identityStore.CreateIdentity(ctx, familyId)
 			if err != nil {
 				log.Println("CreateIdentity error: ", err)
 				continue

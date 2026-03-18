@@ -33,8 +33,10 @@ type ImageHelper struct {
 
 	resizedFiles map[int]ResizedFile
 
-	Ext     string
-	takenAt time.Time
+	Ext       string
+	takenAt   time.Time
+	latitude  *float64
+	longitude *float64
 }
 
 func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
@@ -77,6 +79,13 @@ func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
 		} else {
 			handler.takenAt = takenAt
 		}
+
+		lat, lon, err := exifData.LatLong()
+		if err == nil {
+			handler.latitude = &lat
+			handler.longitude = &lon
+		}
+
 	}
 
 	return handler, nil
@@ -177,6 +186,10 @@ func (ih *ImageHelper) GetOriginalImageSize() (int, int) {
 
 func (ih *ImageHelper) GetTakenAt() time.Time {
 	return ih.takenAt
+}
+
+func (ih *ImageHelper) GetLocation() (*float64, *float64) {
+	return ih.latitude, ih.longitude
 }
 
 // 긴변을 MaxLength로 고정하고 짧은변을 계산

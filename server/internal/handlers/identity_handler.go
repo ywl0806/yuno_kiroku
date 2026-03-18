@@ -16,34 +16,6 @@ func NewIdentityHandler(identityService *services.IdentityService) *IdentityHand
 }
 
 // @Tags Identity
-// @Description identity를 수정
-// @Router /identity [put]
-// @Param updateIdentityRequest body models.UpdateIdentityByIdAndGroupIdRequest true "Update Identity Request"
-// @Success 200 {object} models.IdentityResponse
-func (h *IdentityHandler) UpdateIdentity(c echo.Context) error {
-	updateIdentityRequest := new(models.UpdateIdentityByIdAndGroupIdRequest)
-	if err := c.Bind(updateIdentityRequest); err != nil {
-		return err
-	}
-	if err := c.Validate(updateIdentityRequest); err != nil {
-		return err
-	}
-
-	familyId := middlewares.GetAuthUser(c).FamilyId
-
-	err := h.identityService.ValidateUpdateIdentityByIdAndFamilyId(c.Request().Context(), updateIdentityRequest.ID, familyId, updateIdentityRequest.Name)
-	if err != nil {
-		return err
-	}
-	identity, err := h.identityService.UpdateIdentityByIdAndFamilyId(c.Request().Context(), updateIdentityRequest.ID, familyId, updateIdentityRequest.Name)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(200, models.NewIdentityResponse(&identity))
-}
-
-// @Tags Identity
 // @Description identity를 조회
 // @Router /identity/{id} [get]
 // @Param id path string true "Identity ID"

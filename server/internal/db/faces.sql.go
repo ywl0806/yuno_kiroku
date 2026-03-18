@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/lib/pq"
 )
@@ -68,7 +67,6 @@ func (q *Queries) CreateFaceDetection(ctx context.Context, arg CreateFaceDetecti
 const findMostSimilarFace = `-- name: FindMostSimilarFace :one
 SELECT
     fd.identity_id,
-    i.name,
     i.family_id,
     fd.embedding <=> $1::vector AS distance
 FROM
@@ -91,7 +89,6 @@ type FindMostSimilarFaceParams struct {
 
 type FindMostSimilarFaceRow struct {
 	IdentityID int32
-	Name       sql.NullString
 	FamilyID   int32
 	Distance   interface{}
 }
@@ -99,12 +96,7 @@ type FindMostSimilarFaceRow struct {
 func (q *Queries) FindMostSimilarFace(ctx context.Context, arg FindMostSimilarFaceParams) (FindMostSimilarFaceRow, error) {
 	row := q.db.QueryRowContext(ctx, findMostSimilarFace, arg.Embedding, arg.FamilyID, arg.SimilarityThreshold)
 	var i FindMostSimilarFaceRow
-	err := row.Scan(
-		&i.IdentityID,
-		&i.Name,
-		&i.FamilyID,
-		&i.Distance,
-	)
+	err := row.Scan(&i.IdentityID, &i.FamilyID, &i.Distance)
 	return i, err
 }
 

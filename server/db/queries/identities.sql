@@ -1,8 +1,8 @@
 -- name: CreateIdentity :one
 INSERT INTO
-    identities (name, family_id)
+    identities (family_id)
 VALUES
-    ($1, $2)
+    ($1)
 RETURNING
     *;
 
@@ -22,15 +22,3 @@ FROM
     identities
 WHERE
     family_id = sqlc.arg (family_id)::int;
-
-
--- name: UpdateIdentityByIdAndFamilyId :one
-UPDATE
-    identities
-SET
-    name = sqlc.arg (name)
-WHERE
-    id = sqlc.arg (id)::int
-    AND family_id = sqlc.arg (family_id)::int
-RETURNING
-    *;

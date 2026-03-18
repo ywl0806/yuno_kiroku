@@ -13,6 +13,8 @@ import { SettingsFamilyInvitePage } from '@/page/setting/family/invite'
 import { SettingsAlbumNewPage } from '@/page/setting/album/new'
 import { SettingsAlbumEditPage } from '@/page/setting/album/edit'
 import { SettingsMemberInvitePage } from '@/page/setting/member/invite'
+import { SettingsKidNewPage } from '@/page/setting/kid/new'
+import { SettingsKidEditPage } from '@/page/setting/kid/edit'
 import { UploadPage } from '@/page/upload/upload'
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 
@@ -48,6 +50,11 @@ export const router = createBrowserRouter(
 
           <Route path="member">
             <Route path="invite" element={<SettingsMemberInvitePage />} />
+          </Route>
+
+          <Route path="kid">
+            <Route path="new" element={<SettingsKidNewPage />} />
+            <Route path=":kidId/edit" element={<SettingsKidEditPage />} />
           </Route>
         </Route>
 

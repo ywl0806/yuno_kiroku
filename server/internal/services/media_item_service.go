@@ -70,13 +70,25 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 	thumbnailFile, _ := params.ImageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
 	viewFile, _ := params.ImageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
 
+	// 위치 데이터 추출
+	lat, lon := params.ImageHandler.GetLocation()
+	var nullLat, nullLon sql.NullFloat64
+	if lat != nil {
+		nullLat = sql.NullFloat64{Float64: *lat, Valid: true}
+	}
+	if lon != nil {
+		nullLon = sql.NullFloat64{Float64: *lon, Valid: true}
+	}
+
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
-		FamilyID:      params.FamilyId,
-		AlbumID:       params.AlbumId,
-		UploadBatchID: params.UploadBatchID,
-		TakenAt:       params.ImageHandler.GetTakenAt(),
-		FileName:      sql.NullString{String: params.OriginalFilename, Valid: true},
+		FamilyID:               params.FamilyId,
+		AlbumID:                params.AlbumId,
+		UploadBatchID:          params.UploadBatchID,
+		TakenAt:                params.ImageHandler.GetTakenAt(),
+		FileName:               sql.NullString{String: params.OriginalFilename, Valid: true},
+		TakenLocationLatitude:  nullLat,
+		TakenLocationLongitude: nullLon,
 	}
 
 	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, createMediaItemParams)
@@ -134,13 +146,25 @@ func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMe
 
 // 미디어 아이템 생성 (원본 파일만 저장)
 func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
+	// 위치 데이터 추출
+	lat, lon := params.ImageHandler.GetLocation()
+	var nullLat, nullLon sql.NullFloat64
+	if lat != nil {
+		nullLat = sql.NullFloat64{Float64: *lat, Valid: true}
+	}
+	if lon != nil {
+		nullLon = sql.NullFloat64{Float64: *lon, Valid: true}
+	}
+
 	// 사진 저장 파라미터 생성
 	createMediaItemParams := db.CreateMediaItemParams{
-		FamilyID:      params.FamilyId,
-		AlbumID:       params.AlbumId,
-		UploadBatchID: params.UploadBatchID,
-		TakenAt:       params.ImageHandler.GetTakenAt(),
-		FileName:      sql.NullString{String: params.OriginalFilename, Valid: true},
+		FamilyID:               params.FamilyId,
+		AlbumID:                params.AlbumId,
+		UploadBatchID:          params.UploadBatchID,
+		TakenAt:                params.ImageHandler.GetTakenAt(),
+		FileName:               sql.NullString{String: params.OriginalFilename, Valid: true},
+		TakenLocationLatitude:  nullLat,
+		TakenLocationLongitude: nullLon,
 	}
 
 	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, createMediaItemParams)

@@ -11,13 +11,15 @@ type SettingsHandler struct {
 	groupService *services.GroupService
 	userService  *services.UserService
 	albumService *services.AlbumService
+	kidService   *services.KidService
 }
 
-func NewSettingsHandler(groupService *services.GroupService, userService *services.UserService, albumService *services.AlbumService) *SettingsHandler {
+func NewSettingsHandler(groupService *services.GroupService, userService *services.UserService, albumService *services.AlbumService, kidService *services.KidService) *SettingsHandler {
 	return &SettingsHandler{
 		groupService: groupService,
 		userService:  userService,
 		albumService: albumService,
+		kidService:   kidService,
 	}
 }
 
@@ -45,6 +47,11 @@ func (h *SettingsHandler) GetSettingsData(c echo.Context) error {
 		return err
 	}
 
+	kids, err := h.kidService.GetKids(ctx, authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+
 	groupResponses := make([]models.GroupResponse, len(groups))
 	for i, g := range groups {
 		groupResponses[i] = *models.NewGroupResponse(&g)
@@ -60,9 +67,15 @@ func (h *SettingsHandler) GetSettingsData(c echo.Context) error {
 		albumResponses[i] = *models.NewAlbumResponse(&a)
 	}
 
+	kidResponses := make([]models.KidResponse, len(kids))
+	for i, k := range kids {
+		kidResponses[i] = *models.NewKidResponse(&k)
+	}
+
 	return c.JSON(200, models.SettingsDataResponse{
 		Groups:  groupResponses,
 		Members: memberResponses,
 		Albums:  albumResponses,
+		Kids:    kidResponses,
 	})
 }

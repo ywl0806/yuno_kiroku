@@ -59,10 +59,21 @@ export interface Album {
   updated_at: string
 }
 
+export interface Kid {
+  id: number
+  family_id: number
+  name: string | null
+  birth_date: string | null
+  identity_id: number | null
+  created_at: string
+  updated_at: string
+}
+
 export interface SettingsData {
   groups: Group[]
   members: Member[]
   albums: Album[]
+  kids: Kid[]
 }
 
 export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {

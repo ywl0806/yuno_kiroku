@@ -5,16 +5,20 @@ INSERT INTO
         album_id,
         upload_batch_id,
         taken_at,
-        file_name
+        file_name,
+        taken_location_latitude,
+        taken_location_longitude
     )
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
     id,
     family_id,
     album_id,
     upload_batch_id,
     upload_status,
+    taken_location_latitude,
+    taken_location_longitude,
     taken_at,
     file_name,
     created_at,

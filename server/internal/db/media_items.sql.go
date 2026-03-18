@@ -20,16 +20,20 @@ INSERT INTO
         album_id,
         upload_batch_id,
         taken_at,
-        file_name
+        file_name,
+        taken_location_latitude,
+        taken_location_longitude
     )
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
     id,
     family_id,
     album_id,
     upload_batch_id,
     upload_status,
+    taken_location_latitude,
+    taken_location_longitude,
     taken_at,
     file_name,
     created_at,
@@ -37,11 +41,13 @@ RETURNING
 `
 
 type CreateMediaItemParams struct {
-	FamilyID      int32
-	AlbumID       int32
-	UploadBatchID int32
-	TakenAt       time.Time
-	FileName      sql.NullString
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	TakenAt                time.Time
+	FileName               sql.NullString
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
 }
 
 func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams) (MediaItem, error) {
@@ -51,6 +57,8 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 		arg.UploadBatchID,
 		arg.TakenAt,
 		arg.FileName,
+		arg.TakenLocationLatitude,
+		arg.TakenLocationLongitude,
 	)
 	var i MediaItem
 	err := row.Scan(
@@ -59,6 +67,8 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
+		&i.TakenLocationLatitude,
+		&i.TakenLocationLongitude,
 		&i.TakenAt,
 		&i.FileName,
 		&i.CreatedAt,
@@ -69,7 +79,7 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 
 const getMediaItemByFaceDetection = `-- name: GetMediaItemByFaceDetection :one
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
 FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
@@ -95,6 +105,8 @@ func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaI
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
+		&i.TakenLocationLatitude,
+		&i.TakenLocationLongitude,
 		&i.TakenAt,
 		&i.FileName,
 		&i.CreatedAt,
@@ -160,7 +172,7 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, groupID int32) ([]GetMe
 
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     COALESCE(original_media_file.storage_key, '') AS original_storage_key,
     COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
     COALESCE(view_media_file.storage_key, '') AS view_storage_key,
@@ -206,24 +218,26 @@ type GetMediaItemsByTakenAtParams struct {
 }
 
 type GetMediaItemsByTakenAtRow struct {
-	ID                  int32
-	FamilyID            int32
-	AlbumID             int32
-	UploadBatchID       int32
-	UploadStatus        string
-	TakenAt             time.Time
-	FileName            sql.NullString
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-	OriginalStorageKey  string
-	ThumbnailStorageKey string
-	ViewStorageKey      string
-	OriginalWidth       int32
-	OriginalHeight      int32
-	ThumbnailWidth      int32
-	ThumbnailHeight     int32
-	ViewWidth           int32
-	ViewHeight          int32
+	ID                     int32
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	UploadStatus           string
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+	TakenAt                time.Time
+	FileName               sql.NullString
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	OriginalStorageKey     string
+	ThumbnailStorageKey    string
+	ViewStorageKey         string
+	OriginalWidth          int32
+	OriginalHeight         int32
+	ThumbnailWidth         int32
+	ThumbnailHeight        int32
+	ViewWidth              int32
+	ViewHeight             int32
 }
 
 func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsByTakenAtParams) ([]GetMediaItemsByTakenAtRow, error) {
@@ -241,6 +255,8 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.AlbumID,
 			&i.UploadBatchID,
 			&i.UploadStatus,
+			&i.TakenLocationLatitude,
+			&i.TakenLocationLongitude,
 			&i.TakenAt,
 			&i.FileName,
 			&i.CreatedAt,

@@ -67,6 +67,7 @@ func Init(e *echo.Echo) {
 	identityService := services.NewIdentityService(st.Identity)
 	albumService := services.NewAlbumService(st.Album)
 	groupService := services.NewGroupService(st.Family, st.Group)
+	kidService := services.NewKidService(st.Kid)
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
@@ -76,7 +77,7 @@ func Init(e *echo.Echo) {
 	identityHandler := handlers.NewIdentityHandler(identityService)
 	albumHandler := handlers.NewAlbumHandler(albumService)
 	groupHandler := handlers.NewGroupHandler(groupService)
-	settingsHandler := handlers.NewSettingsHandler(groupService, userService, albumService)
+	settingsHandler := handlers.NewSettingsHandler(groupService, userService, albumService, kidService)
 
 	// root router
 	root := e.Group("/api")

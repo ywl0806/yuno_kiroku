@@ -7,29 +7,22 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 const createIdentity = `-- name: CreateIdentity :one
 INSERT INTO
-    identities (name, family_id)
+    identities (family_id)
 VALUES
-    ($1, $2)
+    ($1)
 RETURNING
-    id, name, family_id, created_at, updated_at
+    id, family_id, created_at, updated_at
 `
 
-type CreateIdentityParams struct {
-	Name     sql.NullString
-	FamilyID int32
-}
-
-func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) (Identity, error) {
-	row := q.db.QueryRowContext(ctx, createIdentity, arg.Name, arg.FamilyID)
+func (q *Queries) CreateIdentity(ctx context.Context, familyID int32) (Identity, error) {
+	row := q.db.QueryRowContext(ctx, createIdentity, familyID)
 	var i Identity
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
 		&i.FamilyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -39,7 +32,7 @@ func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) 
 
 const findIdentitiesByFamilyId = `-- name: FindIdentitiesByFamilyId :many
 SELECT
-    id, name, family_id, created_at, updated_at
+    id, family_id, created_at, updated_at
 FROM
     identities
 WHERE
@@ -57,7 +50,6 @@ func (q *Queries) FindIdentitiesByFamilyId(ctx context.Context, familyID int32) 
 		var i Identity
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
 			&i.FamilyID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -77,7 +69,7 @@ func (q *Queries) FindIdentitiesByFamilyId(ctx context.Context, familyID int32) 
 
 const findIdentityByIdAndFamilyId = `-- name: FindIdentityByIdAndFamilyId :one
 SELECT
-    id, name, family_id, created_at, updated_at
+    id, family_id, created_at, updated_at
 FROM
     identities
 WHERE
@@ -95,38 +87,6 @@ func (q *Queries) FindIdentityByIdAndFamilyId(ctx context.Context, arg FindIdent
 	var i Identity
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
-		&i.FamilyID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateIdentityByIdAndFamilyId = `-- name: UpdateIdentityByIdAndFamilyId :one
-UPDATE
-    identities
-SET
-    name = $1
-WHERE
-    id = $2::int
-    AND family_id = $3::int
-RETURNING
-    id, name, family_id, created_at, updated_at
-`
-
-type UpdateIdentityByIdAndFamilyIdParams struct {
-	Name     sql.NullString
-	ID       int32
-	FamilyID int32
-}
-
-func (q *Queries) UpdateIdentityByIdAndFamilyId(ctx context.Context, arg UpdateIdentityByIdAndFamilyIdParams) (Identity, error) {
-	row := q.db.QueryRowContext(ctx, updateIdentityByIdAndFamilyId, arg.Name, arg.ID, arg.FamilyID)
-	var i Identity
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
 		&i.FamilyID,
 		&i.CreatedAt,
 		&i.UpdatedAt,

@@ -3,152 +3,165 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- 가족 테이블 (전체 가족 단위)
 CREATE TABLE IF NOT EXISTS families (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 가족 ID
+    name VARCHAR(255) NOT NULL, -- 가족 이름
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 그룹 테이블 (가족 내 쪽 단위: 아빠 쪽, 엄마 쪽 등)
 CREATE TABLE IF NOT EXISTS groups (
-    id SERIAL PRIMARY KEY,
-    family_id INTEGER NOT NULL REFERENCES families (id),
-    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- 소속 가족 ID
+    id SERIAL PRIMARY KEY, -- 그룹 ID
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE, -- 관리자 여부
+    name VARCHAR(255) NOT NULL, -- 그룹 이름
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
+);
+
+-- 신원 테이블
+CREATE TABLE IF NOT EXISTS identities (
+    id SERIAL PRIMARY KEY, -- 신원 ID
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 사용자 테이블
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
-    username VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    family_id INTEGER NOT NULL REFERENCES families (id),
-    group_id INTEGER NOT NULL REFERENCES groups (id),
-    provider VARCHAR(50) DEFAULT NULL,
-    provider_user_id VARCHAR(255) DEFAULT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 사용자 ID
+    name VARCHAR(255), -- 표시 이름
+    username VARCHAR(255) NOT NULL UNIQUE, -- 로그인 아이디
+    password VARCHAR(255) NOT NULL, -- 비밀번호(해시)
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
+    group_id INTEGER NOT NULL REFERENCES groups (id), -- 소속 그룹 ID
+    identity_id INTEGER REFERENCES identities (id), -- 연결된 신원 ID
+    provider VARCHAR(50) DEFAULT NULL, -- OAuth 제공자 (line/kakao)
+    provider_user_id VARCHAR(255) DEFAULT NULL, -- OAuth 제공자 측 사용자 ID
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider_user ON users (provider, provider_user_id) WHERE provider IS NOT NULL AND provider_user_id IS NOT NULL;
 
+-- 아이 테이블
+CREATE TABLE IF NOT EXISTS kids (
+    id SERIAL PRIMARY KEY, -- 아이 ID
+    name VARCHAR(255), -- 아이 이름
+    birth_date DATE, -- 생년월일
+    identity_id INTEGER REFERENCES identities (id), -- 연결된 신원 ID
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
+);
+
 -- 초대 토큰 테이블 (초대 링크로 가족/그룹 가입용)
 CREATE TABLE IF NOT EXISTS invite_tokens (
-    id SERIAL PRIMARY KEY,
-    token VARCHAR(64) NOT NULL UNIQUE,
-    family_id INTEGER NOT NULL REFERENCES families (id),
-    group_id INTEGER NOT NULL REFERENCES groups (id),
-    created_by_user_id INTEGER NOT NULL REFERENCES users (id),
-    expires_at TIMESTAMP NOT NULL,
-    used_at TIMESTAMP DEFAULT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 초대 토큰 ID
+    token VARCHAR(64) NOT NULL UNIQUE, -- 초대 토큰 값
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 초대 대상 가족 ID
+    group_id INTEGER NOT NULL REFERENCES groups (id), -- 초대 대상 그룹 ID
+    created_by_user_id INTEGER NOT NULL REFERENCES users (id), -- 초대 생성 사용자 ID
+    expires_at TIMESTAMP NOT NULL, -- 만료일시
+    used_at TIMESTAMP DEFAULT NULL, -- 사용일시
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 생성일시
 );
 CREATE INDEX IF NOT EXISTS idx_invite_tokens_token ON invite_tokens (token);
 CREATE INDEX IF NOT EXISTS idx_invite_tokens_expires_at ON invite_tokens (expires_at);
 
 -- 리프레시 토큰 테이블
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id SERIAL PRIMARY KEY,
-    token VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    user_id INTEGER NOT NULL REFERENCES users (id),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 리프레시 토큰 ID
+    token VARCHAR(255) NOT NULL, -- 토큰 값
+    expires_at TIMESTAMP NOT NULL, -- 만료일시
+    user_id INTEGER NOT NULL REFERENCES users (id), -- 소유 사용자 ID
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 생성일시
 );
 
 -- 앨범 테이블
 CREATE TABLE IF NOT EXISTS albums (
-    id SERIAL PRIMARY KEY,
-    family_id INTEGER NOT NULL REFERENCES families (id),
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 앨범 ID
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
+    name VARCHAR(255) NOT NULL, -- 앨범 이름
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 앨범 그룹 권한 테이블
 CREATE TABLE IF NOT EXISTS album_groups_permissions (
-    album_id INTEGER NOT NULL REFERENCES albums (id),
-    group_id INTEGER NOT NULL REFERENCES groups (id),
-    permission VARCHAR(1) NOT NULL, -- R: 읽기, W: 쓰기
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    album_id INTEGER NOT NULL REFERENCES albums (id), -- 앨범 ID
+    group_id INTEGER NOT NULL REFERENCES groups (id), -- 그룹 ID
+    permission VARCHAR(1) NOT NULL, -- 권한 (R: 읽기, W: 쓰기)
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 업로드 배치 테이블
 CREATE TABLE IF NOT EXISTS upload_batches (
-    id SERIAL PRIMARY KEY,
-    album_id INTEGER NOT NULL REFERENCES albums (id),
-    upload_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id SERIAL PRIMARY KEY, -- 업로드 배치 ID
+    album_id INTEGER NOT NULL REFERENCES albums (id), -- 대상 앨범 ID
+    upload_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 업로드 일시
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 미디어 아이템 테이블
 CREATE TABLE IF NOT EXISTS media_items (
-    id SERIAL PRIMARY KEY,
-    family_id INTEGER NOT NULL REFERENCES families (id),
-    album_id INTEGER NOT NULL REFERENCES albums (id),
-    upload_batch_id INTEGER NOT NULL REFERENCES upload_batches (id),
-    upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 01: pending | 02: processing | 03: completed | 04: failed | 05: duplicate
-
-    taken_at TIMESTAMP NOT NULL,
-    file_name VARCHAR(255),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 미디어 아이템 ID
+    family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
+    album_id INTEGER NOT NULL REFERENCES albums (id), -- 소속 앨범 ID
+    upload_batch_id INTEGER NOT NULL REFERENCES upload_batches (id), -- 업로드 배치 ID
+    upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 업로드 상태 (01: pending | 02: processing | 03: completed | 04: failed | 05: duplicate)
+    taken_location_latitude DOUBLE PRECISION, -- 촬영 위치 위도
+    taken_location_longitude DOUBLE PRECISION, -- 촬영 위치 경도
+    taken_at TIMESTAMP NOT NULL, -- 촬영 일시
+    file_name VARCHAR(255), -- 원본 파일명
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 
 -- 미디어 파일 테이블
 CREATE TABLE IF NOT EXISTS media_files (
-    id SERIAL PRIMARY KEY,
-    media_item_id INTEGER NOT NULL REFERENCES media_items (id) ON DELETE CASCADE,
+    id SERIAL PRIMARY KEY, -- 미디어 파일 ID
+    media_item_id INTEGER NOT NULL REFERENCES media_items (id) ON DELETE CASCADE, -- 소속 미디어 아이템 ID
 
-    role VARCHAR(2) NOT NULL, -- 01: original | 02: thumbnail | 03: view | 04: live
-    storage_key VARCHAR(512) NOT NULL,
-    mime_type VARCHAR(50), -- image/jpeg, image/png, video/mp4, video/quicktime, video/mov, video/avi, video/wmv, video/flv, video/webm, video/mkv
+    role VARCHAR(2) NOT NULL, -- 파일 역할 (01: original | 02: thumbnail | 03: view | 04: live)
+    storage_key VARCHAR(512) NOT NULL, -- 스토리지 저장 경로
+    mime_type VARCHAR(50), -- MIME 타입 (image/jpeg, image/png, video/mp4, ...)
 
-    width INTEGER,
-    height INTEGER,
-    file_size BIGINT,
+    width INTEGER, -- 가로 크기(px)
+    height INTEGER, -- 세로 크기(px)
+    file_size BIGINT, -- 파일 크기(bytes)
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- 신원 테이블
-CREATE TABLE IF NOT EXISTS identities (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
-    family_id INTEGER NOT NULL REFERENCES families (id),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 신원 얼굴 이미지 테이블
 CREATE TABLE IF NOT EXISTS identity_face_imgs (
-    id SERIAL PRIMARY KEY,
-    identity_id INTEGER NOT NULL REFERENCES identities (id),
-    media_item_id INTEGER NOT NULL REFERENCES media_items (id),
-    img_url VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 얼굴 이미지 ID
+    identity_id INTEGER NOT NULL REFERENCES identities (id), -- 연결된 신원 ID
+    media_item_id INTEGER NOT NULL REFERENCES media_items (id), -- 소속 미디어 아이템 ID
+    img_url VARCHAR(255) NOT NULL, -- 이미지 URL
+    taken_at TIMESTAMP, -- 촬영 일시
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 -- 얼굴 감지 테이블
 CREATE TABLE IF NOT EXISTS face_detections (
-    id SERIAL PRIMARY KEY,
-    media_item_id INTEGER NOT NULL REFERENCES media_items (id),
-    identity_id INTEGER NOT NULL REFERENCES identities (id),
-    location_top INTEGER NOT NULL,
-    location_right INTEGER NOT NULL,
-    location_bottom INTEGER NOT NULL,
-    location_left INTEGER NOT NULL,
-    embedding vector (512),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, -- 얼굴 감지 ID
+    media_item_id INTEGER NOT NULL REFERENCES media_items (id), -- 소속 미디어 아이템 ID
+    identity_id INTEGER NOT NULL REFERENCES identities (id), -- 감지된 신원 ID
+    location_top INTEGER NOT NULL, -- 얼굴 위치 상단(px)
+    location_right INTEGER NOT NULL, -- 얼굴 위치 우측(px)
+    location_bottom INTEGER NOT NULL, -- 얼굴 위치 하단(px)
+    location_left INTEGER NOT NULL, -- 얼굴 위치 좌측(px)
+    embedding vector (512), -- 얼굴 특징 벡터(512차원)
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
 CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING ivfflat (embedding vector_cosine_ops);

@@ -1,5 +1,6 @@
 import { SettingsAlbumList } from '@/feature/settings/components/settings-album-list'
 import { SettingsGroupList } from '@/feature/settings/components/settings-group-list'
+import { SettingsKidsList } from '@/feature/settings/components/settings-kids-list'
 import { SettingsMemberList } from '@/feature/settings/components/settings-member-list'
 import { useGetSettingsData } from '@/feature/settings/hooks/use-get-settings-data'
 import { ChevronRight } from 'lucide-react'
@@ -47,6 +48,13 @@ export const SettingsPage = () => {
       {/* 앨범 목록 */}
       <section>
         <SettingsAlbumList albums={data?.albums} />
+      </section>
+
+      <div className="mx-4 border-t" />
+
+      {/* 아이 목록 */}
+      <section>
+        <SettingsKidsList kids={data?.kids} />
       </section>
     </div>
   )

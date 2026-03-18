@@ -56,7 +56,6 @@ type Group struct {
 
 type Identity struct {
 	ID        int32
-	Name      sql.NullString
 	FamilyID  int32
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -67,6 +66,7 @@ type IdentityFaceImg struct {
 	IdentityID  int32
 	MediaItemID int32
 	ImgUrl      string
+	TakenAt     sql.NullTime
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -80,6 +80,16 @@ type InviteToken struct {
 	ExpiresAt       time.Time
 	UsedAt          sql.NullTime
 	CreatedAt       time.Time
+}
+
+type Kid struct {
+	ID         int32
+	Name       sql.NullString
+	BirthDate  sql.NullTime
+	IdentityID sql.NullInt32
+	FamilyID   int32
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type MediaFile struct {
@@ -96,15 +106,17 @@ type MediaFile struct {
 }
 
 type MediaItem struct {
-	ID            int32
-	FamilyID      int32
-	AlbumID       int32
-	UploadBatchID int32
-	UploadStatus  string
-	TakenAt       time.Time
-	FileName      sql.NullString
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                     int32
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	UploadStatus           string
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+	TakenAt                time.Time
+	FileName               sql.NullString
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 type RefreshToken struct {
@@ -130,6 +142,7 @@ type User struct {
 	Password       string
 	FamilyID       int32
 	GroupID        int32
+	IdentityID     sql.NullInt32
 	Provider       sql.NullString
 	ProviderUserID sql.NullString
 	CreatedAt      time.Time
