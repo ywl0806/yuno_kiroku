@@ -144,8 +144,7 @@ CREATE TABLE IF NOT EXISTS identity_face_imgs (
     id SERIAL PRIMARY KEY, -- 얼굴 이미지 ID
     identity_id INTEGER NOT NULL REFERENCES identities (id), -- 연결된 신원 ID
     media_item_id INTEGER NOT NULL REFERENCES media_items (id), -- 소속 미디어 아이템 ID
-    img_url VARCHAR(255) NOT NULL, -- 이미지 URL
-    taken_at TIMESTAMP, -- 촬영 일시
+    storage_key VARCHAR(255) NOT NULL, -- 스토리지 저장 경로
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );

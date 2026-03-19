@@ -65,8 +65,7 @@ type IdentityFaceImg struct {
 	ID          int32
 	IdentityID  int32
 	MediaItemID int32
-	ImgUrl      string
-	TakenAt     sql.NullTime
+	StorageKey  string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

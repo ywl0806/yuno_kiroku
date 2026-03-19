@@ -36,6 +36,14 @@ func (e *AppErrors) Is(target error) bool {
 	return ok
 }
 
+func IsAppError(err error, code ErrorCode) bool {
+	appErr := &AppErrors{Code: code}
+	if appErr.Is(err) {
+		return appErr.Code == err.(*AppErrors).Code
+	}
+	return false
+}
+
 // 인증 에러 생성
 func NewUnauthorizedError(message string, templateData map[string]string) error {
 	return &AppErrors{Code: Unauthorized, Message: message}

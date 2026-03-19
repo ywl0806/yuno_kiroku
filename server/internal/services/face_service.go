@@ -64,7 +64,7 @@ func (s *FaceService) SearchAndSaveFaceDetections(ctx context.Context, familyId 
 		similarFace, err := s.FindMostSimilarFace(ctx, familyId, faceDetection.Embedding)
 
 		// 검색 에러 시 로깅, 다음 얼굴인식 결과 처리
-		if err != nil {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			log.Println("FindMostSimilarFace error: ", err)
 			continue
 		}
@@ -116,7 +116,7 @@ func (s *FaceService) FindMostSimilarFace(ctx context.Context, familyId int32, e
 		SimilarityThreshold: FACE_SEARCH_THRESHOLD,
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || apperr.IsAppError(err, apperr.NotFound) {
 			return nil, nil
 		}
 		return nil, err

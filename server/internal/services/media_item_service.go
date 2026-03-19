@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"mime/multipart"
 	"strconv"
@@ -18,20 +19,23 @@ import (
 )
 
 type MediaItemService struct {
-	mediaItemStore store.MediaItemStore
-	storageService storage.StorageService
-	faceService    *FaceService
+	mediaItemStore       store.MediaItemStore
+	storageService       storage.StorageService
+	faceService          *FaceService
+	identityFaceImgStore store.IdentityFaceImgStore
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
 	storageService storage.StorageService,
 	faceService *FaceService,
+	identityFaceImgStore store.IdentityFaceImgStore,
 ) *MediaItemService {
 	return &MediaItemService{
-		mediaItemStore: mediaItemStore,
-		storageService: storageService,
-		faceService:    faceService,
+		mediaItemStore:       mediaItemStore,
+		storageService:       storageService,
+		faceService:          faceService,
+		identityFaceImgStore: identityFaceImgStore,
 	}
 }
 
@@ -286,13 +290,50 @@ func (s *MediaItemService) processImageInBackground(ctx context.Context, p *Proc
 	}
 
 	if faceDetections != nil {
-		_, err = s.faceService.SearchAndSaveFaceDetections(ctx, p.FamilyId, p.MediaItemID, *faceDetections)
+		createdDetections, err := s.faceService.SearchAndSaveFaceDetections(ctx, p.FamilyId, p.MediaItemID, *faceDetections)
 		if err != nil {
 			log.Println("얼굴 인식 결과 저장 실패: ", err)
+		} else {
+			// 리사이즈된 이미지의 얼굴을 크롭하여 저장
+			s.cropAndSaveFaceImgs(ctx, createdDetections, viewImageFile.File, p.MediaItemID)
 		}
 	}
 
 	s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusCompleted)
+}
+
+// 얼굴 크롭 이미지를 storage에 저장하고 identity_face_imgs에 기록
+// identity당 1개만 저장 (이미 있으면 스킵)
+func (s *MediaItemService) cropAndSaveFaceImgs(ctx context.Context, detections []db.FaceDetection, viewImgBytes []byte, mediaItemID int32) {
+	for _, fd := range detections {
+		croppedBytes, err := imageHelper.CropFaceFromBytes(viewImgBytes,
+			int(fd.LocationTop), int(fd.LocationRight),
+			int(fd.LocationBottom), int(fd.LocationLeft), 0.3)
+		if err != nil {
+			log.Println("얼굴 크롭 실패: ", err)
+			continue
+		}
+
+		storageKey, err := s.storageService.SaveFile(
+			croppedBytes,
+			fmt.Sprintf("identities/%d", fd.IdentityID),
+			fmt.Sprintf("face_%d.webp", mediaItemID),
+		)
+		croppedBytes = nil
+		if err != nil {
+			log.Println("얼굴 크롭 이미지 업로드 실패: ", err)
+			continue
+		}
+
+		_, err = s.identityFaceImgStore.CreateIdentityFaceImg(ctx, db.CreateIdentityFaceImgParams{
+			IdentityID:  fd.IdentityID,
+			MediaItemID: mediaItemID,
+			StorageKey:  storageKey,
+		})
+		if err != nil {
+			log.Println("identity_face_imgs 저장 실패: ", err)
+		}
+	}
 }
 
 // 미디어 아이템 업데이트 (썸네일 파일과 뷰 파일 추가)

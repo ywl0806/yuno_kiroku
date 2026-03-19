@@ -32,11 +32,10 @@ type ImageHelper struct {
 	OriginalHeight int
 
 	resizedFiles map[int]ResizedFile
-
-	Ext       string
-	takenAt   time.Time
-	latitude  *float64
-	longitude *float64
+	Ext          string
+	takenAt      time.Time
+	latitude     *float64
+	longitude    *float64
 }
 
 func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
@@ -85,7 +84,8 @@ func NewImageHandler(originalFile io.Reader, ext string) (*ImageHelper, error) {
 			handler.latitude = &lat
 			handler.longitude = &lon
 		}
-
+	} else {
+		handler.takenAt = time.Now()
 	}
 
 	return handler, nil
@@ -190,6 +190,77 @@ func (ih *ImageHelper) GetTakenAt() time.Time {
 
 func (ih *ImageHelper) GetLocation() (*float64, *float64) {
 	return ih.latitude, ih.longitude
+}
+
+// CropFaceFromBytes: view 이미지 bytes에서 bbox 좌표로 얼굴 영역을 크롭 후 WebP bytes 반환
+// padding: 얼굴 주변 여백 비율 (0.2 = 20%)
+func CropFaceFromBytes(imageBytes []byte, top, right, bottom, left int, padding float64) ([]byte, error) {
+	img, err := vips.NewImageFromBuffer(imageBytes)
+	if err != nil {
+		return nil, err
+	}
+	defer img.Close()
+
+	imgWidth := img.Width()
+	imgHeight := img.Height()
+
+	faceWidth := right - left
+	faceHeight := bottom - top
+
+	padX := int(float64(faceWidth) * padding)
+	padY := int(float64(faceHeight) * padding)
+
+	if faceWidth > faceHeight {
+		padY = padY + int((float64(faceWidth-faceHeight) * padding)) + (faceWidth-faceHeight)/2
+	} else {
+		padX = padX + int((float64(faceHeight-faceWidth) * padding)) + (faceHeight-faceWidth)/2
+	}
+
+	cropLeft := left - padX
+	cropTop := top - padY
+	cropRight := right + padX
+	cropBottom := bottom + padY
+
+	// 이미지 경계 클램핑
+	if cropLeft < 0 {
+		cropLeft = 0
+	}
+	if cropTop < 0 {
+		cropTop = 0
+	}
+	if cropRight > imgWidth {
+		cropRight = imgWidth
+	}
+	if cropBottom > imgHeight {
+		cropBottom = imgHeight
+	}
+
+	cropWidth := cropRight - cropLeft
+	cropHeight := cropBottom - cropTop
+
+	err = img.ExtractArea(cropLeft, cropTop, cropWidth, cropHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	// 512x512로 리사이즈
+	const targetSize = 512
+	scale := float64(targetSize) / float64(img.Width())
+	err = img.Resize(scale, vips.KernelLanczos3)
+	if err != nil {
+		return nil, err
+	}
+
+	exportParams := vips.NewWebpExportParams()
+	exportParams.Quality = 85
+	exportParams.StripMetadata = true
+
+	croppedBytes, _, err := img.ExportWebp(exportParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return croppedBytes, nil
 }
 
 // 긴변을 MaxLength로 고정하고 짧은변을 계산
