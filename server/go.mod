@@ -16,7 +16,6 @@ require (
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/lib/pq v1.11.1
 	github.com/nicksnyder/go-i18n/v2 v2.4.0
-	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.2
 )
