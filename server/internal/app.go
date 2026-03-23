@@ -21,6 +21,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/internal/validator"
+	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 )
 
 // Initialize the root router on the app
@@ -62,8 +63,10 @@ func Init(e *echo.Echo) {
 			RedirectURI:  viper.GetString("KAKAO_REDIRECT_URI"),
 		},
 	)
+	cropper := imagepkg.NewCropper()
+	imageUploader := services.NewImageUploader(storageService, cropper)
 	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
-	mediaItemService := services.NewMediaItemService(st.MediaItem, storageService, faceService, st.IdentityFaceImg)
+	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader, faceService, st.IdentityFaceImg)
 	identityService := services.NewIdentityService(st.Identity)
 	albumService := services.NewAlbumService(st.Album)
 	groupService := services.NewGroupService(st.Family, st.Group)

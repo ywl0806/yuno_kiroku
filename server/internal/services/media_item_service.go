@@ -3,325 +3,287 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"io"
 	"log"
 	"mime/multipart"
+	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
-	imageHelper "github.com/ywl0806/yuno_kiroku/pkg/image"
-	"github.com/ywl0806/yuno_kiroku/pkg/storage"
+	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 )
 
 type MediaItemService struct {
 	mediaItemStore       store.MediaItemStore
-	storageService       storage.StorageService
+	imageUploader        *ImageUploader
 	faceService          *FaceService
 	identityFaceImgStore store.IdentityFaceImgStore
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
-	storageService storage.StorageService,
+	imageUploader *ImageUploader,
 	faceService *FaceService,
 	identityFaceImgStore store.IdentityFaceImgStore,
 ) *MediaItemService {
 	return &MediaItemService{
 		mediaItemStore:       mediaItemStore,
-		storageService:       storageService,
+		imageUploader:        imageUploader,
 		faceService:          faceService,
 		identityFaceImgStore: identityFaceImgStore,
 	}
 }
 
-// 이미지 업로드 결과
+// UploadImageResult는 이미지 업로드 시작 후 반환하는 응답입니다.
 type UploadImageResult struct {
 	MediaItemID int32
 	Status      string
 }
 
-// 미디어 아이템 생성 파라미터
-type CreateMediaItemParams struct {
-	ThumbnailStorageKey string
-	OriginalStorageKey  string
-	ViewStorageKey      string
-	ImageHandler        *imageHelper.ImageHelper
-	FamilyId            int32
-	AlbumId             int32
-	OriginalFilename    string
-	UploadBatchID       int32
+// bgParams는 백그라운드 이미지 처리에 필요한 파라미터입니다.
+type bgParams struct {
+	data        []byte
+	meta        imagepkg.Meta
+	uploadPath  string
+	mediaItemID int32
+	familyId    int32
+	albumId     int32
+	retry       bool
 }
 
-// 이미지 처리 백그라운드 처리 파라미터
-type ProcessImageParams struct {
-	FamilyId      int32
-	AlbumId       int32
-	UploadBatchID int32
-	MediaItemID   int32
-	ImageHandler  *imageHelper.ImageHelper
-	UploadPath    string
-	Retry         bool
-}
-
-// 미디어 아이템 생성
-func (s *MediaItemService) CreateMediaItem(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
-
-	thumbnailFile, _ := params.ImageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
-	viewFile, _ := params.ImageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
-
-	// 위치 데이터 추출
-	lat, lon := params.ImageHandler.GetLocation()
-	var nullLat, nullLon sql.NullFloat64
-	if lat != nil {
-		nullLat = sql.NullFloat64{Float64: *lat, Valid: true}
-	}
-	if lon != nil {
-		nullLon = sql.NullFloat64{Float64: *lon, Valid: true}
-	}
-
-	// 사진 저장 파라미터 생성
-	createMediaItemParams := db.CreateMediaItemParams{
-		FamilyID:               params.FamilyId,
-		AlbumID:                params.AlbumId,
-		UploadBatchID:          params.UploadBatchID,
-		TakenAt:                params.ImageHandler.GetTakenAt(),
-		FileName:               sql.NullString{String: params.OriginalFilename, Valid: true},
-		TakenLocationLatitude:  nullLat,
-		TakenLocationLongitude: nullLon,
-	}
-
-	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, createMediaItemParams)
-	if err != nil {
-		return nil, err
-	}
-
-	createOriginalMediaFileParams := db.CreateMediaFileParams{
-		MediaItemID: mediaItem.ID,
-		Role:        string(enums.MediaItemRoleOriginal),
-		StorageKey:  params.OriginalStorageKey,
-		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
-		Width:    sql.NullInt32{Int32: int32(params.ImageHandler.OriginalWidth), Valid: true},
-		Height:   sql.NullInt32{Int32: int32(params.ImageHandler.OriginalHeight), Valid: true},
-		FileSize: sql.NullInt64{Int64: int64(len(params.ImageHandler.OriginalFile)), Valid: true},
-	}
-
-	_, err = s.mediaItemStore.CreateMediaFile(ctx, createOriginalMediaFileParams)
-	if err != nil {
-		return nil, err
-	}
-
-	createThumbnailMediaFileParams := db.CreateMediaFileParams{
-		MediaItemID: mediaItem.ID,
-		Role:        string(enums.MediaItemRoleThumbnail),
-		StorageKey:  params.ThumbnailStorageKey,
-		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
-		Width:    sql.NullInt32{Int32: int32(thumbnailFile.Width), Valid: true},
-		Height:   sql.NullInt32{Int32: int32(thumbnailFile.Height), Valid: true},
-		FileSize: sql.NullInt64{Int64: int64(len(thumbnailFile.File)), Valid: true},
-	}
-
-	_, err = s.mediaItemStore.CreateMediaFile(ctx, createThumbnailMediaFileParams)
-	if err != nil {
-		return nil, err
-	}
-
-	createViewMediaFileParams := db.CreateMediaFileParams{
-		MediaItemID: mediaItem.ID,
-		Role:        string(enums.MediaItemRoleView),
-		StorageKey:  params.ViewStorageKey,
-		// MimeType:    sql.NullString{String: params.ImageHandler.Ext, Valid: true},
-		Width:    sql.NullInt32{Int32: int32(viewFile.Width), Valid: true},
-		Height:   sql.NullInt32{Int32: int32(viewFile.Height), Valid: true},
-		FileSize: sql.NullInt64{Int64: int64(len(viewFile.File)), Valid: true},
-	}
-
-	_, err = s.mediaItemStore.CreateMediaFile(ctx, createViewMediaFileParams)
-	if err != nil {
-		return nil, err
-	}
-
-	return &mediaItem, nil
-}
-
-// 미디어 아이템 생성 (원본 파일만 저장)
-func (s *MediaItemService) CreateMediaItemWithOriginalOnly(ctx context.Context, params *CreateMediaItemParams) (*db.MediaItem, error) {
-	// 위치 데이터 추출
-	lat, lon := params.ImageHandler.GetLocation()
-	var nullLat, nullLon sql.NullFloat64
-	if lat != nil {
-		nullLat = sql.NullFloat64{Float64: *lat, Valid: true}
-	}
-	if lon != nil {
-		nullLon = sql.NullFloat64{Float64: *lon, Valid: true}
-	}
-
-	// 사진 저장 파라미터 생성
-	createMediaItemParams := db.CreateMediaItemParams{
-		FamilyID:               params.FamilyId,
-		AlbumID:                params.AlbumId,
-		UploadBatchID:          params.UploadBatchID,
-		TakenAt:                params.ImageHandler.GetTakenAt(),
-		FileName:               sql.NullString{String: params.OriginalFilename, Valid: true},
-		TakenLocationLatitude:  nullLat,
-		TakenLocationLongitude: nullLon,
-	}
-
-	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, createMediaItemParams)
-	if err != nil {
-		return nil, err
-	}
-
-	// 원본 파일만 저장
-	createOriginalMediaFileParams := db.CreateMediaFileParams{
-		MediaItemID: mediaItem.ID,
-		Role:        string(enums.MediaItemRoleOriginal),
-		StorageKey:  params.OriginalStorageKey,
-		Width:       sql.NullInt32{Int32: int32(params.ImageHandler.OriginalWidth), Valid: true},
-		Height:      sql.NullInt32{Int32: int32(params.ImageHandler.OriginalHeight), Valid: true},
-		FileSize:    sql.NullInt64{Int64: int64(len(params.ImageHandler.OriginalFile)), Valid: true},
-	}
-
-	_, err = s.mediaItemStore.CreateMediaFile(ctx, createOriginalMediaFileParams)
-	if err != nil {
-		return nil, err
-	}
-
-	return &mediaItem, nil
-}
-
-// 이미지 업로드
+// multipart 파일을 읽어 원본을 업로드하고 DB 레코드를 생성한 후,
+// 리사이즈 이미지와 얼굴 인식을 백그라운드에서 처리
 func (s *MediaItemService) UploadImage(
 	ctx context.Context,
 	file *multipart.FileHeader,
-	familyId int32,
-	albumId int32,
-	uploadBatchID int32,
+	familyId, albumId, uploadBatchID int32,
 	retry bool,
 ) (*UploadImageResult, error) {
-	imgHandler, err := s.HandleImage(file)
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(file.Filename), "."))
+
+	f, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	originalData, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
 
-	uploadPath := s.CreateUploadPath(familyId, albumId)
+	meta, err := imagepkg.Parse(originalData, ext)
+	if err != nil {
+		log.Println("이미지 파싱 실패:", err)
+		return nil, err
+	}
 
-	originalStorageKey, err := s.UploadOriginalImage(imgHandler, uploadPath)
+	uploadPath := s.imageUploader.BuildUploadPath(familyId, albumId)
+
+	// 원본 이미지 업로드
+	originalKey, err := s.imageUploader.UploadOriginal(originalData, uploadPath, meta)
 	if err != nil {
 		return nil, err
 	}
 
-	createMediaItemParams := CreateMediaItemParams{
-		OriginalStorageKey: originalStorageKey,
-		ImageHandler:       imgHandler,
-		FamilyId:           familyId,
-		AlbumId:            albumId,
-		OriginalFilename:   file.Filename,
-		UploadBatchID:      uploadBatchID,
-	}
-
-	mediaItem, err := s.CreateMediaItemWithOriginalOnly(ctx, &createMediaItemParams)
+	// media_item과 원본 media_file 레코드 생성
+	mediaItem, err := s.createMediaItemWithOriginal(ctx, meta, originalKey, file.Filename, familyId, albumId, uploadBatchID)
 	if err != nil {
 		return nil, err
 	}
 
+	// 리사이즈, 얼굴 인식, 업로드를 백그라운드에서 처리
 	go func() {
-		bgCtx := context.Background()
-		s.processImageInBackground(bgCtx, &ProcessImageParams{
-			FamilyId:      familyId,
-			AlbumId:       albumId,
-			UploadBatchID: uploadBatchID,
-			MediaItemID:   mediaItem.ID,
-			ImageHandler:  imgHandler,
-			UploadPath:    uploadPath,
-			Retry:         retry,
+		s.processImageInBackground(context.Background(), &bgParams{
+			data:        originalData,
+			meta:        meta,
+			uploadPath:  uploadPath,
+			mediaItemID: mediaItem.ID,
+			familyId:    familyId,
+			albumId:     albumId,
+			retry:       retry,
 		})
 	}()
 
 	return &UploadImageResult{MediaItemID: mediaItem.ID, Status: "uploaded"}, nil
 }
 
-// 이미지 처리 백그라운드 처리
-func (s *MediaItemService) processImageInBackground(ctx context.Context, p *ProcessImageParams) {
+// 리사이즈, 얼굴 인식, 업로드 백그라운드에서 처리
+func (s *MediaItemService) processImageInBackground(ctx context.Context, p *bgParams) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("백그라운드 처리 중 패닉 발생: ", r)
-			s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
+			log.Println("백그라운드 처리 중 패닉 발생:", r)
+			s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusFailed)
 		}
 	}()
 
-	viewImageFile, err := p.ImageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
+	// 1. 리사이즈 (원본 데이터가 필요한 모든 작업을 먼저 수행)
+	viewImg, err := imagepkg.Resize(p.data, consts.VIEW_MAX_LENGTH)
 	if err != nil {
-		log.Println("뷰 이미지 생성 실패: ", err)
-		s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
+		log.Println("뷰 이미지 생성 실패:", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusFailed)
 		return
 	}
 
-	faceDetections, err := s.faceService.GetFaceDetection(viewImageFile.File)
+	thumbImg, err := imagepkg.Resize(p.data, consts.THUMBNAIL_MAX_LENGTH)
 	if err != nil {
-		log.Println("얼굴 인식 실패: ", err)
+		log.Println("썸네일 이미지 생성 실패:", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusFailed)
+		return
 	}
 
-	if !p.Retry && faceDetections != nil {
-		err = s.faceService.CheckImageDuplicateByFaceDetection(ctx, p.FamilyId, p.AlbumId, *faceDetections)
-		if err != nil {
-			log.Println("중복 사진 발견: ", err)
-			s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusDuplicate)
+	p.data = nil // 원본 bytes 즉시 해제 (GC 대상)
+
+	// 2. 얼굴 인식
+	faceDetections, err := s.faceService.GetFaceDetection(viewImg.Data)
+	if err != nil {
+		log.Println("얼굴 인식 실패:", err)
+	}
+
+	// 3. 중복 검사
+	if !p.retry && faceDetections != nil {
+		if err = s.faceService.CheckImageDuplicateByFaceDetection(ctx, p.familyId, p.albumId, *faceDetections); err != nil {
+			log.Println("중복 사진 발견:", err)
+			s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusDuplicate)
 			return
 		}
 	}
 
-	thumbnailStorageKey, viewStorageKey, err := s.UploadResizedImages(p.ImageHandler, p.UploadPath)
-	if err != nil {
-		log.Println("리사이즈 이미지 업로드 실패: ", err)
-		s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
-		return
-	}
-
-	err = s.UpdateMediaItemWithResizedImages(ctx, p.MediaItemID, thumbnailStorageKey, viewStorageKey, p.ImageHandler)
-	if err != nil {
-		log.Println("미디어 파일 업데이트 실패: ", err)
-		s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusFailed)
-		return
-	}
-
+	// 4. 얼굴 크롭 + 저장 (view bytes가 유효한 동안 처리)
 	if faceDetections != nil {
-		createdDetections, err := s.faceService.SearchAndSaveFaceDetections(ctx, p.FamilyId, p.MediaItemID, *faceDetections)
+		createdDetections, err := s.faceService.SearchAndSaveFaceDetections(ctx, p.familyId, p.mediaItemID, *faceDetections)
 		if err != nil {
-			log.Println("얼굴 인식 결과 저장 실패: ", err)
+			log.Println("얼굴 인식 결과 저장 실패:", err)
 		} else {
-			// 리사이즈된 이미지의 얼굴을 크롭하여 저장
-			s.cropAndSaveFaceImgs(ctx, createdDetections, viewImageFile.File, p.MediaItemID)
+			s.saveFaceCropImages(ctx, viewImg.Data, viewImg.Width, viewImg.Height, createdDetections, p.mediaItemID)
 		}
 	}
 
-	s.UpdateMediaItemUploadStatus(ctx, p.MediaItemID, enums.UploadStatusCompleted)
+	// 5. view 업로드 후 bytes 해제
+	viewResult, err := s.imageUploader.UploadResized(viewImg, p.uploadPath, consts.VIEW_STORAGE_PREFIX, p.meta.TakenAt)
+	viewImg.Data = nil
+	if err != nil {
+		log.Println("뷰 이미지 업로드 실패:", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusFailed)
+		return
+	}
+
+	// 6. thumbnail 업로드 후 bytes 해제
+	thumbResult, err := s.imageUploader.UploadResized(thumbImg, p.uploadPath, consts.THUMBNAIL_STORAGE_PREFIX, p.meta.TakenAt)
+	thumbImg.Data = nil
+	if err != nil {
+		log.Println("썸네일 이미지 업로드 실패:", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusFailed)
+		return
+	}
+
+	// 7. DB에 리사이즈 파일 레코드 생성
+	if err = s.saveResizedMediaFiles(ctx, p.mediaItemID, thumbResult, viewResult); err != nil {
+		log.Println("미디어 파일 저장 실패:", err)
+		s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusFailed)
+		return
+	}
+
+	s.UpdateMediaItemUploadStatus(ctx, p.mediaItemID, enums.UploadStatusCompleted)
 }
 
-// 얼굴 크롭 이미지를 storage에 저장하고 identity_face_imgs에 기록
-// identity당 1개만 저장 (이미 있으면 스킵)
-func (s *MediaItemService) cropAndSaveFaceImgs(ctx context.Context, detections []db.FaceDetection, viewImgBytes []byte, mediaItemID int32) {
+// media_item과 원본 media_file 레코드를 생성
+func (s *MediaItemService) createMediaItemWithOriginal(
+	ctx context.Context,
+	meta imagepkg.Meta,
+	originalKey, filename string,
+	familyId, albumId, uploadBatchID int32,
+) (*db.MediaItem, error) {
+	var nullLat, nullLon sql.NullFloat64
+	if meta.Lat != nil {
+		nullLat = sql.NullFloat64{Float64: *meta.Lat, Valid: true}
+	}
+	if meta.Lon != nil {
+		nullLon = sql.NullFloat64{Float64: *meta.Lon, Valid: true}
+	}
+
+	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, db.CreateMediaItemParams{
+		FamilyID:               familyId,
+		AlbumID:                albumId,
+		UploadBatchID:          uploadBatchID,
+		TakenAt:                meta.TakenAt,
+		FileName:               sql.NullString{String: filename, Valid: true},
+		TakenLocationLatitude:  nullLat,
+		TakenLocationLongitude: nullLon,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
+		MediaItemID: mediaItem.ID,
+		Role:        string(enums.MediaItemRoleOriginal),
+		StorageKey:  originalKey,
+		Width:       sql.NullInt32{Int32: int32(meta.Width), Valid: true},
+		Height:      sql.NullInt32{Int32: int32(meta.Height), Valid: true},
+		FileSize:    sql.NullInt64{Int64: meta.FileSize, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &mediaItem, nil
+}
+
+// 썸네일과 뷰 media_file 레코드를 생성
+func (s *MediaItemService) saveResizedMediaFiles(
+	ctx context.Context,
+	mediaItemID int32,
+	thumb, view UploadResult,
+) error {
+	_, err := s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
+		MediaItemID: mediaItemID,
+		Role:        string(enums.MediaItemRoleThumbnail),
+		StorageKey:  thumb.StorageKey,
+		Width:       sql.NullInt32{Int32: int32(thumb.Width), Valid: true},
+		Height:      sql.NullInt32{Int32: int32(thumb.Height), Valid: true},
+		FileSize:    sql.NullInt64{Int64: thumb.FileSize, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
+		MediaItemID: mediaItemID,
+		Role:        string(enums.MediaItemRoleView),
+		StorageKey:  view.StorageKey,
+		Width:       sql.NullInt32{Int32: int32(view.Width), Valid: true},
+		Height:      sql.NullInt32{Int32: int32(view.Height), Valid: true},
+		FileSize:    sql.NullInt64{Int64: view.FileSize, Valid: true},
+	})
+	return err
+}
+
+// 감지된 각 얼굴을 뷰 이미지에서 크롭하여 저장
+// 이미 얼굴 이미지가 있는 identity는 건너뜀
+func (s *MediaItemService) saveFaceCropImages(
+	ctx context.Context,
+	viewData []byte, imgWidth, imgHeight int,
+	detections []db.FaceDetection,
+	mediaItemID int32,
+) {
 	for _, fd := range detections {
-		croppedBytes, err := imageHelper.CropFaceFromBytes(viewImgBytes,
-			int(fd.LocationTop), int(fd.LocationRight),
-			int(fd.LocationBottom), int(fd.LocationLeft), 0.3)
-		if err != nil {
-			log.Println("얼굴 크롭 실패: ", err)
+		hasImg, err := s.identityFaceImgStore.HasIdentityFaceImg(ctx, fd.IdentityID)
+		if err != nil || hasImg {
 			continue
 		}
 
-		storageKey, err := s.storageService.SaveFile(
-			croppedBytes,
-			fmt.Sprintf("identities/%d", fd.IdentityID),
-			fmt.Sprintf("face_%d.webp", mediaItemID),
+		storageKey, err := s.imageUploader.CropFaceAndUpload(
+			viewData, imgWidth, imgHeight,
+			fd.LocationTop, fd.LocationRight, fd.LocationBottom, fd.LocationLeft,
+			0.3, fd.IdentityID, mediaItemID,
 		)
-		croppedBytes = nil
 		if err != nil {
-			log.Println("얼굴 크롭 이미지 업로드 실패: ", err)
+			log.Println("얼굴 크롭 이미지 업로드 실패:", err)
 			continue
 		}
 
@@ -331,193 +293,44 @@ func (s *MediaItemService) cropAndSaveFaceImgs(ctx context.Context, detections [
 			StorageKey:  storageKey,
 		})
 		if err != nil {
-			log.Println("identity_face_imgs 저장 실패: ", err)
+			log.Println("identity_face_imgs 저장 실패:", err)
 		}
 	}
 }
 
-// 미디어 아이템 업데이트 (썸네일 파일과 뷰 파일 추가)
-func (s *MediaItemService) UpdateMediaItemWithResizedImages(
-	ctx context.Context,
-	mediaItemID int32,
-	thumbnailStorageKey string,
-	viewStorageKey string,
-	imageHandler *imageHelper.ImageHelper,
-) error {
-	thumbnailFile, _ := imageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
-	viewFile, _ := imageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
-
-	// 썸네일 파일 저장
-	createThumbnailMediaFileParams := db.CreateMediaFileParams{
-		MediaItemID: mediaItemID,
-		Role:        string(enums.MediaItemRoleThumbnail),
-		StorageKey:  thumbnailStorageKey,
-		Width:       sql.NullInt32{Int32: int32(thumbnailFile.Width), Valid: true},
-		Height:      sql.NullInt32{Int32: int32(thumbnailFile.Height), Valid: true},
-		FileSize:    sql.NullInt64{Int64: int64(len(thumbnailFile.File)), Valid: true},
-	}
-
-	_, err := s.mediaItemStore.CreateMediaFile(ctx, createThumbnailMediaFileParams)
-	if err != nil {
-		return err
-	}
-
-	// 뷰 파일 저장
-	createViewMediaFileParams := db.CreateMediaFileParams{
-		MediaItemID: mediaItemID,
-		Role:        string(enums.MediaItemRoleView),
-		StorageKey:  viewStorageKey,
-		Width:       sql.NullInt32{Int32: int32(viewFile.Width), Valid: true},
-		Height:      sql.NullInt32{Int32: int32(viewFile.Height), Valid: true},
-		FileSize:    sql.NullInt64{Int64: int64(len(viewFile.File)), Valid: true},
-	}
-
-	_, err = s.mediaItemStore.CreateMediaFile(ctx, createViewMediaFileParams)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// 미디어 아이템의 업로드 상태를 업데이트
+func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
+	_, err := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
+		ID:           mediaItemID,
+		UploadStatus: string(uploadStatus),
+	})
+	return err
 }
 
-func (s *MediaItemService) HandleImage(file *multipart.FileHeader) (*imageHelper.ImageHelper, error) {
-	ext := strings.Split(file.Filename, ".")[1]
-	originalFile, err := file.Open()
-	if err != nil {
-		log.Println("file open error: ", err)
-		return nil, err
-	}
-	defer originalFile.Close()
-
-	imgHandler, err := imageHelper.NewImageHandler(originalFile, ext)
-	if err != nil {
-		log.Println("image handler error: ", err)
-		return nil, err
-	}
-
-	return imgHandler, nil
-}
-
-// UploadImageAll uploads thumbnail, view, and original images in one go (legacy helper).
-func (s *MediaItemService) UploadImageAll(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, string, error) {
-	takenAt := imageHandler.GetTakenAt()
-
-	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
-	filename := uuid.New().String()
-	thumbnailFile, err := imageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
-	if err != nil {
-		log.Println("Thumbnail File Error: ", err)
-		return "", "", "", err
-	}
-	thumbnailStorageKey, err := s.storageService.SaveFile(thumbnailFile.File, folderName, consts.THUMBNAIL_STORAGE_PREFIX+"/"+filename+thumbnailFile.Ext)
-	if err != nil {
-		log.Println("Thumbnail Storage Error: ", err)
-		return "", "", "", err
-	}
-
-	viewFile, err := imageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
-	if err != nil {
-		log.Println("View File Error: ", err)
-		return "", "", "", err
-	}
-
-	viewStorageKey, err := s.storageService.SaveFile(viewFile.File, folderName, consts.VIEW_STORAGE_PREFIX+"/"+filename+viewFile.Ext)
-	if err != nil {
-		log.Println("View Storage Error: ", err)
-		return "", "", "", err
-	}
-
-	originalStorageKey, err := s.storageService.SaveFile(imageHandler.OriginalFile, folderName, consts.ORIGINAL_STORAGE_PREFIX+"/"+filename+"."+imageHandler.Ext)
-	if err != nil {
-		log.Println("Original Storage Error: ", err)
-		return "", "", "", err
-	}
-
-	return thumbnailStorageKey, viewStorageKey, originalStorageKey, nil
-}
-
-// 원본 이미지 업로드
-func (s *MediaItemService) UploadOriginalImage(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, error) {
-	takenAt := imageHandler.GetTakenAt()
-	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
-	filename := uuid.New().String()
-
-	originalStorageKey, err := s.storageService.SaveFile(imageHandler.OriginalFile, folderName, consts.ORIGINAL_STORAGE_PREFIX+"/"+filename+"."+imageHandler.Ext)
-	if err != nil {
-		log.Println("Original Storage Error: ", err)
-		return "", err
-	}
-
-	return originalStorageKey, nil
-}
-
-// 리사이즈 이미지 업로드
-func (s *MediaItemService) UploadResizedImages(imageHandler *imageHelper.ImageHelper, uploadPath string) (string, string, error) {
-	takenAt := imageHandler.GetTakenAt()
-	folderName := uploadPath + "/" + takenAt.Format("2006-01-02")
-	filename := uuid.New().String()
-
-	thumbnailFile, err := imageHandler.GetResizedFile(consts.THUMBNAIL_MAX_LENGTH)
-	if err != nil {
-		log.Println("Thumbnail File Error: ", err)
-		return "", "", err
-	}
-	thumbnailStorageKey, err := s.storageService.SaveFile(thumbnailFile.File, folderName, consts.THUMBNAIL_STORAGE_PREFIX+"/"+filename+thumbnailFile.Ext)
-	if err != nil {
-		log.Println("Thumbnail Storage Error: ", err)
-		return "", "", err
-	}
-
-	viewFile, err := imageHandler.GetResizedFile(consts.VIEW_MAX_LENGTH)
-	if err != nil {
-		log.Println("View File Error: ", err)
-		return "", "", err
-	}
-
-	viewStorageKey, err := s.storageService.SaveFile(viewFile.File, folderName, consts.VIEW_STORAGE_PREFIX+"/"+filename+viewFile.Ext)
-	if err != nil {
-		log.Println("View Storage Error: ", err)
-		return "", "", err
-	}
-
-	return thumbnailStorageKey, viewStorageKey, nil
-}
-
-// 업로드 경로 생성
-func (s *MediaItemService) CreateUploadPath(familyId int32, albumId int32) string {
-	uploadPath := strconv.Itoa(int(familyId))
-	if albumId != 0 {
-		uploadPath += "/" + strconv.Itoa(int(albumId))
-	}
-	return uploadPath
-}
-
-// 미디어 아이템 조회
+// GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환합니다.
 func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, params *db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error) {
 	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, *params)
 	if err != nil {
-		log.Println("get media items by taken at error: ", err)
+		log.Println("get media items by taken at error:", err)
 		return nil, err
 	}
 	return mediaItems, nil
 }
 
-// 미디어 아이템 범위
+// MediaItemRange는 미디어 아이템이 존재하는 연/월 조합입니다.
 type MediaItemRange struct {
 	Year  int `json:"year"`
 	Month int `json:"month"`
 }
 
-// 미디어 아이템 범위 조회
+// GetMediaItemRange는 미디어 아이템이 있는 연/월 목록을 반환합니다.
 func (s *MediaItemService) GetMediaItemRange(ctx context.Context, groupId int32) ([]MediaItemRange, error) {
-	// 사진들을 년도와 월로 그룹화
 	ranges, err := s.mediaItemStore.GetMediaItemRange(ctx, groupId)
 	if err != nil {
 		return nil, err
 	}
 
 	mediaItemRanges := make([]MediaItemRange, len(ranges))
-
 	for i, r := range ranges {
 		year, err := strconv.Atoi(r.Year)
 		if err != nil {
@@ -527,17 +340,14 @@ func (s *MediaItemService) GetMediaItemRange(ctx context.Context, groupId int32)
 		if err != nil {
 			return nil, err
 		}
-		mediaItemRanges[i] = MediaItemRange{
-			Year:  year,
-			Month: month,
-		}
+		mediaItemRanges[i] = MediaItemRange{Year: year, Month: month}
 	}
 
 	return mediaItemRanges, nil
 }
 
-// 업로드 배치 생성
-func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId int32, albumId int32) (*db.UploadBatch, error) {
+// CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성합니다.
+func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)
 	if err != nil {
 		return nil, err
@@ -545,20 +355,7 @@ func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId int32
 	return &uploadBatch, nil
 }
 
-// 미디어 아이템 업로드 상태 업데이트
-func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
-	_, err := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
-		ID:           mediaItemID,
-		UploadStatus: string(uploadStatus),
-	})
-	return err
-}
-
-// 업로드 배치 상태 조회
+// GetUploadStatuses는 배치 내 모든 아이템의 업로드 상태를 반환합니다.
 func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
-	uploadStatuses, err := s.mediaItemStore.GetUploadStatuses(ctx, uploadBatchID)
-	if err != nil {
-		return nil, err
-	}
-	return uploadStatuses, nil
+	return s.mediaItemStore.GetUploadStatuses(ctx, uploadBatchID)
 }
