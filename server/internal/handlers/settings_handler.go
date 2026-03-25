@@ -8,18 +8,20 @@ import (
 )
 
 type SettingsHandler struct {
-	groupService *services.GroupService
-	userService  *services.UserService
-	albumService *services.AlbumService
-	kidService   *services.KidService
+	groupService    *services.GroupService
+	userService     *services.UserService
+	albumService    *services.AlbumService
+	kidService      *services.KidService
+	identityService *services.IdentityService
 }
 
-func NewSettingsHandler(groupService *services.GroupService, userService *services.UserService, albumService *services.AlbumService, kidService *services.KidService) *SettingsHandler {
+func NewSettingsHandler(groupService *services.GroupService, userService *services.UserService, albumService *services.AlbumService, kidService *services.KidService, identityService *services.IdentityService) *SettingsHandler {
 	return &SettingsHandler{
-		groupService: groupService,
-		userService:  userService,
-		albumService: albumService,
-		kidService:   kidService,
+		groupService:    groupService,
+		userService:     userService,
+		albumService:    albumService,
+		kidService:      kidService,
+		identityService: identityService,
 	}
 }
 
@@ -78,4 +80,30 @@ func (h *SettingsHandler) GetSettingsData(c echo.Context) error {
 		Albums:  albumResponses,
 		Kids:    kidResponses,
 	})
+}
+
+// @Tags Settings
+// @Description Get identity face options
+// @Router /settings/identity-face-options [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200 {object} []models.IdentityFaceOptionResponse
+func (h *SettingsHandler) GetIdentityFaceOptions(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	authUser := middlewares.GetAuthUser(c)
+
+	identityFaceOptionRequest := new(models.IdentityFaceOptionRequest)
+	if err := c.Bind(identityFaceOptionRequest); err != nil {
+		return err
+	}
+	if err := c.Validate(identityFaceOptionRequest); err != nil {
+		return err
+	}
+
+	identityFaceOptions, err := h.identityService.FindNewestIdentityFaceImgByFamilyId(ctx, authUser.FamilyId, identityFaceOptionRequest.OnlyNotLinked, identityFaceOptionRequest.WithKidIds, identityFaceOptionRequest.WithUserIds)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(200, models.NewIdentityFaceOptionResponses(identityFaceOptions))
 }

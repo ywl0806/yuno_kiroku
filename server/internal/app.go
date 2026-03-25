@@ -67,7 +67,7 @@ func Init(e *echo.Echo) {
 	imageUploader := services.NewImageUploader(storageService, cropper)
 	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
 	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader, faceService, st.IdentityFaceImg)
-	identityService := services.NewIdentityService(st.Identity)
+	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
 	albumService := services.NewAlbumService(st.Album)
 	groupService := services.NewGroupService(st.Family, st.Group)
 	kidService := services.NewKidService(st.Kid)
@@ -80,7 +80,8 @@ func Init(e *echo.Echo) {
 	identityHandler := handlers.NewIdentityHandler(identityService)
 	albumHandler := handlers.NewAlbumHandler(albumService)
 	groupHandler := handlers.NewGroupHandler(groupService)
-	settingsHandler := handlers.NewSettingsHandler(groupService, userService, albumService, kidService)
+	kidHandler := handlers.NewKidHandler(kidService)
+	settingsHandler := handlers.NewSettingsHandler(groupService, userService, albumService, kidService, identityService)
 
 	// root router
 	root := e.Group("/api")
@@ -98,6 +99,7 @@ func Init(e *echo.Echo) {
 	identityRouter := routers.NewIdentityRouter(*identityHandler)
 	albumRouter := routers.NewAlbumRouter(*albumHandler)
 	groupRouter := routers.NewGroupRouter(*groupHandler)
+	kidRouter := routers.NewKidRouter(*kidHandler)
 	settingsRouter := routers.NewSettingsRouter(*settingsHandler)
 
 	e.Validator = validator.NewCustomValidator()
@@ -133,6 +135,7 @@ func Init(e *echo.Echo) {
 	identityRouter.Register(root)
 	albumRouter.Register(root)
 	groupRouter.Register(root)
+	kidRouter.Register(root)
 	settingsRouter.Register(root)
 
 }

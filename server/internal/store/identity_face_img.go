@@ -10,6 +10,7 @@ import (
 type IdentityFaceImgStore interface {
 	CreateIdentityFaceImg(ctx context.Context, arg db.CreateIdentityFaceImgParams) (db.IdentityFaceImg, error)
 	HasIdentityFaceImg(ctx context.Context, identityID int32) (bool, error)
+	FindNewestIdentityFaceImgByFamilyId(ctx context.Context, arg db.FindNewestIdentityFaceImgByFamilyIdParams) ([]db.FindNewestIdentityFaceImgByFamilyIdRow, error)
 }
 
 type identityFaceImgStore struct {
@@ -27,4 +28,8 @@ func (s *identityFaceImgStore) CreateIdentityFaceImg(ctx context.Context, arg db
 
 func (s *identityFaceImgStore) HasIdentityFaceImg(ctx context.Context, identityID int32) (bool, error) {
 	return s.queries.HasIdentityFaceImg(ctx, identityID)
+}
+
+func (s *identityFaceImgStore) FindNewestIdentityFaceImgByFamilyId(ctx context.Context, arg db.FindNewestIdentityFaceImgByFamilyIdParams) ([]db.FindNewestIdentityFaceImgByFamilyIdRow, error) {
+	return wrapErr(s.queries.FindNewestIdentityFaceImgByFamilyId(ctx, arg))
 }

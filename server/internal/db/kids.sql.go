@@ -7,7 +7,48 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
+
+const createKid = `-- name: CreateKid :one
+INSERT INTO kids (name, birth_date, identity_id, family_id) VALUES ($1, $2, $3, $4) RETURNING id, name, birth_date, identity_id, family_id, created_at, updated_at
+`
+
+type CreateKidParams struct {
+	Name       sql.NullString
+	BirthDate  sql.NullTime
+	IdentityID sql.NullInt32
+	FamilyID   int32
+}
+
+func (q *Queries) CreateKid(ctx context.Context, arg CreateKidParams) (Kid, error) {
+	row := q.db.QueryRowContext(ctx, createKid,
+		arg.Name,
+		arg.BirthDate,
+		arg.IdentityID,
+		arg.FamilyID,
+	)
+	var i Kid
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.BirthDate,
+		&i.IdentityID,
+		&i.FamilyID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteKid = `-- name: DeleteKid :exec
+DELETE FROM kids WHERE id = $1
+`
+
+func (q *Queries) DeleteKid(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteKid, id)
+	return err
+}
 
 const findKidsByFamilyID = `-- name: FindKidsByFamilyID :many
 SELECT id, name, birth_date, identity_id, family_id, created_at, updated_at FROM kids WHERE family_id = $1 ORDER BY id
@@ -42,4 +83,54 @@ func (q *Queries) FindKidsByFamilyID(ctx context.Context, familyID int32) ([]Kid
 		return nil, err
 	}
 	return items, nil
+}
+
+const getKidByID = `-- name: GetKidByID :one
+SELECT id, name, birth_date, identity_id, family_id, created_at, updated_at FROM kids WHERE id = $1
+`
+
+func (q *Queries) GetKidByID(ctx context.Context, id int32) (Kid, error) {
+	row := q.db.QueryRowContext(ctx, getKidByID, id)
+	var i Kid
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.BirthDate,
+		&i.IdentityID,
+		&i.FamilyID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateKid = `-- name: UpdateKid :one
+UPDATE kids SET name = $2, birth_date = $3, identity_id = $4 WHERE id = $1 RETURNING id, name, birth_date, identity_id, family_id, created_at, updated_at
+`
+
+type UpdateKidParams struct {
+	ID         int32
+	Name       sql.NullString
+	BirthDate  sql.NullTime
+	IdentityID sql.NullInt32
+}
+
+func (q *Queries) UpdateKid(ctx context.Context, arg UpdateKidParams) (Kid, error) {
+	row := q.db.QueryRowContext(ctx, updateKid,
+		arg.ID,
+		arg.Name,
+		arg.BirthDate,
+		arg.IdentityID,
+	)
+	var i Kid
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.BirthDate,
+		&i.IdentityID,
+		&i.FamilyID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

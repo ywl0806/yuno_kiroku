@@ -2,15 +2,16 @@ from http import HTTPStatus
 import os
 import uuid
 import requests
-
+import logging
 from fastapi import FastAPI, File, Form, Response, UploadFile
 from fastapi.exceptions import HTTPException
-
+from fastapi.requests import Request
 from src.service.face import detect_face
 
 app = FastAPI()
 
 TMP_DIR = "tmp/files"
+logger = logging.getLogger(__name__)
 
 
 @app.get("/")
@@ -19,7 +20,7 @@ def read_root():
 
 
 @app.post("/face-detection/file")
-def detect_face_endpoint(file: UploadFile = File(...)):
+def detect_face_endpoint(request: Request, file: UploadFile = File(...)):
     """
     파일로 부터 얼굴 인식
 
@@ -32,7 +33,7 @@ def detect_face_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="File name is required")
     if not file.filename.split(".")[-1]:
         raise HTTPException(status_code=400, detail="File extension is required")
-
+    logger.info(f"request: {request.headers}")
     file_path = f"tmp/files/{uuid.uuid4()}.{file.filename.split('.')[-1]}"
     _check_tmp_dir()
     with open(file_path, "wb") as f:

@@ -18,29 +18,35 @@ SELECT
     ) AS exists;
 
 
--- name FindNewestIdentityFaceImgByFamilyId :one
-SELECT
-    identity_face_imgs.id,
-    identity_face_imgs.identity_id,
-    identity_face_imgs.media_item_id,
-    identity_face_imgs.storage_key,
-    i.id AS identity_id,
-    i.name AS identity_name,
+-- name: FindNewestIdentityFaceImgByFamilyId :many
+SELECT DISTINCT ON (ifi.identity_id)
+    ifi.id,
+    ifi.identity_id,
+    ifi.media_item_id,
+    ifi.storage_key,
     k.id AS kid_id,
     k.name AS kid_name,
     u.id AS user_id,
     u.name AS user_name
-
 FROM
     identity_face_imgs AS ifi
-    INNER JOIN media_items AS mi ON ifi.media_item_id = mi.id
-    INNER JOIN identities AS i ON ifi.identity_id = i.id
-    OUTER JOIN kids AS k ON i.id = k.identity_id
-    OUTER JOIN users AS u ON i.id = u.identity_id
+    JOIN media_items AS mi ON ifi.media_item_id = mi.id
+    JOIN identities AS i ON ifi.identity_id = i.id
+    LEFT JOIN kids AS k ON i.id = k.identity_id
+    LEFT JOIN users AS u ON i.id = u.identity_id
 WHERE
     i.family_id = $1
+    AND (
+        CASE WHEN sqlc.arg (only_not_linked)::boolean THEN
+            (k.id IS NULL AND u.id IS NULL)
+        END
+        OR CASE WHEN sqlc.arg (with_kid_ids)::int[] IS NOT NULL THEN
+            (k.id = ALL (sqlc.arg (with_kid_ids)::int[]))
+        END
+        OR CASE WHEN sqlc.arg (with_user_ids)::int[] IS NOT NULL THEN
+            (u.id = ALL (sqlc.arg (with_user_ids)::int[]))
+        END
+    )
 ORDER BY
-    mi.taken_at DESC
-GROUP BY
-    i.id
-LIMIT 1;
+    ifi.identity_id,
+    mi.taken_at DESC;

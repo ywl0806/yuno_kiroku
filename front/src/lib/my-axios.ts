@@ -2,12 +2,32 @@ import axios from 'axios'
 
 const baseURL = import.meta.env.VITE_API_URL as string
 
-export const MyAxios = axios.create({
-  baseURL: baseURL,
-})
+/** Echo `query` 바인딩: 배열은 `key=1&key=2` 반복. Axios 기본 `key[]=1`은 매칭되지 않음. */
+function serializeEchoQueryParams(params: Record<string, unknown>): string {
+  const parts: string[] = []
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue
+    const encKey = encodeURIComponent(key)
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        parts.push(`${encKey}=${encodeURIComponent(String(v))}`)
+      }
+    } else {
+      parts.push(`${encKey}=${encodeURIComponent(String(value))}`)
+    }
+  }
+  return parts.join('&')
+}
+
+const axiosDefaults = {
+  baseURL,
+  paramsSerializer: serializeEchoQueryParams,
+} as const
+
+export const MyAxios = axios.create(axiosDefaults)
 
 const MyAxiosWithAuth = axios.create({
-  baseURL: baseURL,
+  ...axiosDefaults,
   headers: {
     Authorization: localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : undefined,
   },

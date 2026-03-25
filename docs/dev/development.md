@@ -6,15 +6,15 @@
 
 以下のツールが事前にインストールされている必要があります。
 
-| ツール | バージョン | 用途 |
-|--------|-----------|------|
-| Docker + Docker Compose | 最新版 | ローカルインフラ |
-| Go | 1.24.0+ | バックエンド開発 |
-| Node.js | 18+ | フロントエンド・モバイル |
-| Python | 3.10+ | AIサービス |
-| air | 最新版 | Goホットリロード |
-| sqlc | 最新版 | SQLコード生成 |
-| golang-migrate | 最新版 | DBマイグレーション |
+| ツール                  | バージョン | 用途                     |
+| ----------------------- | ---------- | ------------------------ |
+| Docker + Docker Compose | 最新版     | ローカルインフラ         |
+| Go                      | 1.24.0+    | バックエンド開発         |
+| Node.js                 | 18+        | フロントエンド・モバイル |
+| Python                  | 3.10+      | AIサービス               |
+| air                     | 最新版     | Goホットリロード         |
+| sqlc                    | 最新版     | SQLコード生成            |
+| golang-migrate          | 最新版     | DBマイグレーション       |
 
 ---
 
@@ -29,14 +29,15 @@ docker-compose up -d
 
 ### 起動されるサービス
 
-| サービス | ポート | 説明 |
-|----------|--------|------|
-| `postgres` | 5433 | PostgreSQL 17 (pgvector) |
-| `minio` | 9000 / 9090 | S3互換オブジェクトストレージ |
-| `ai` | 8000 | Python顔認識サービス |
-| `app` | 1323 | Goバックエンドサーバー |
+| サービス   | ポート      | 説明                         |
+| ---------- | ----------- | ---------------------------- |
+| `postgres` | 5433        | PostgreSQL 17 (pgvector)     |
+| `minio`    | 9000 / 9090 | S3互換オブジェクトストレージ |
+| `ai`       | 8000        | Python顔認識サービス         |
+| `app`      | 1323        | Goバックエンドサーバー       |
 
 > **Note:** `app` と `ai` は個別に起動する場合は除外できます。
+>
 > ```bash
 > docker-compose up -d postgres minio
 > ```
@@ -131,10 +132,12 @@ uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 MinIOが起動したら、初回はバケットを作成する必要があります。
 
 **MinIOコンソール:** `http://localhost:9090`
+
 - ユーザー名: `minioadmin`
 - パスワード: `minioadmin`
 
 以下のバケットを作成してください:
+
 - `thumbnails`
 - `originals`
 
@@ -166,7 +169,7 @@ KAKAO_CLIENT_ID=your-kakao-client-id
 KAKAO_REDIRECT_URL=http://localhost:1323/auth/callback/kakao
 
 # ストレージ (MinIO)
-STORAGE_ENDPOINT=localhost:9000
+STORAGE_ENDPOINT=localhost:9001
 STORAGE_ACCESS_KEY=minioadmin
 STORAGE_SECRET_KEY=minioadmin
 STORAGE_USE_SSL=false

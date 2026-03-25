@@ -3,10 +3,10 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"strings"
 
-	"github.com/spf13/cast"
 	"github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
@@ -32,8 +32,12 @@ func (q *queryLogger) logQuery(ctx context.Context, query string, args ...interf
 	if requestId == "" {
 		requestId = "unknown"
 	}
-	argsString := strings.Join(cast.ToStringSlice(args), ", ")
-	log.Printf("[DB] request_id=%s \n query: %s \n args: %s", requestId, query, argsString)
+	argJson, err := json.Marshal(args)
+	if err != nil {
+		log.Printf("[DB] request_id=%s \n query: %s \n args: %s", requestId, query, "error marshalling args")
+	} else {
+		log.Printf("[DB] request_id=%s \n query: %s \n args: %s", requestId, query, string(argJson))
+	}
 }
 
 func (q *queryLogger) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {

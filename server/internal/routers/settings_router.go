@@ -19,4 +19,5 @@ func (r *SettingsRouter) Register(root *echo.Group) {
 	guard := middlewares.NewGuard()
 
 	group.GET("/data", r.settingsHandler.GetSettingsData, guard.Handler)
+	group.GET("/identity-face-options", r.settingsHandler.GetIdentityFaceOptions, guard.Handler)
 }

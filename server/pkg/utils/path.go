@@ -1,6 +1,8 @@
 package utils
 
-import "strings"
+import (
+	"strings"
+)
 
 func ParsePath(baseUrl string, paths ...string) string {
 	url := baseUrl

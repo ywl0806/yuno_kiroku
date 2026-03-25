@@ -5,7 +5,8 @@
     "confirm": "確認",
     "delete": "削除",
     "edit": "編集",
-    "loading": "読み込み中..."
+    "loading": "読み込み中...",
+    "none": "なし"
   },
   "nav": {
     "home": "ホーム",
@@ -80,7 +81,14 @@
     },
     "kid": {
       "title": "子ども",
-      "add": "子どもを追加"
+      "add": "子どもを追加",
+      "newTitle": "子どもを追加",
+      "editTitle": "子どもを編集",
+      "nameLabel": "名前",
+      "namePlaceholder": "名前を入力",
+      "birthDateLabel": "生年月日",
+      "faceLabel": "顔写真",
+      "deleteConfirm": "本当に削除しますか？"
     }
   }
 }

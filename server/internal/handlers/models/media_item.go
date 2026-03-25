@@ -3,10 +3,9 @@ package models
 import (
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
-	"github.com/ywl0806/yuno_kiroku/pkg/utils"
+	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
 // CreateUploadBatchResponse 업로드 배치 생성 응답
@@ -52,7 +51,6 @@ type MediaItemResponse struct {
 }
 
 func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemResponse {
-	storageUrl := viper.GetString("STORAGE_URL")
 
 	return &MediaItemResponse{
 		ID:              mediaItem.ID,
@@ -62,13 +60,13 @@ func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemRes
 		FileName:        mediaItem.FileName.String,
 		CreatedAt:       mediaItem.CreatedAt,
 		UpdatedAt:       mediaItem.UpdatedAt,
-		OriginalUrl:     utils.ParsePath(storageUrl, mediaItem.OriginalStorageKey),
+		OriginalUrl:     internalutils.ParseStoragePath(mediaItem.OriginalStorageKey),
 		OriginalWidth:   mediaItem.OriginalWidth,
 		OriginalHeight:  mediaItem.OriginalHeight,
-		ThumbnailUrl:    utils.ParsePath(storageUrl, mediaItem.ThumbnailStorageKey),
+		ThumbnailUrl:    internalutils.ParseStoragePath(mediaItem.ThumbnailStorageKey),
 		ThumbnailWidth:  mediaItem.ThumbnailWidth,
 		ThumbnailHeight: mediaItem.ThumbnailHeight,
-		ViewUrl:         utils.ParsePath(storageUrl, mediaItem.ViewStorageKey),
+		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey),
 		ViewWidth:       mediaItem.ViewWidth,
 		ViewHeight:      mediaItem.ViewHeight,
 	}

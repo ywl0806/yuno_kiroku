@@ -47,6 +47,14 @@ export const API_ROUTES = {
   // Settings
   SETTINGS: {
     DATA: '/settings/data',
+    IDENTITY_FACE_OPTIONS: '/settings/identity-face-options',
+  },
+
+  // Kid
+  KID: {
+    CREATE: '/kid',
+    UPDATE: (kidId: number) => `/kid/${kidId}`,
+    DELETE: (kidId: number) => `/kid/${kidId}`,
   },
 
   // Album

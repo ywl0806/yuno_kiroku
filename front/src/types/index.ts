@@ -69,6 +69,11 @@ export interface Kid {
   updated_at: string
 }
 
+export interface IdentityFaceOption {
+  identity_id: number
+  image_url: string
+}
+
 export interface SettingsData {
   groups: Group[]
   members: Member[]

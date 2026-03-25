@@ -16,6 +16,18 @@ type KidResponse struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
+type CreateKidRequest struct {
+	Name       *string `json:"name"`
+	BirthDate  *string `json:"birth_date"`
+	IdentityID *int32  `json:"identity_id"`
+}
+
+type UpdateKidRequest struct {
+	Name       *string `json:"name"`
+	BirthDate  *string `json:"birth_date"`
+	IdentityID *int32  `json:"identity_id"`
+}
+
 func NewKidResponse(k *db.Kid) *KidResponse {
 	var name *string
 	if k.Name.Valid {

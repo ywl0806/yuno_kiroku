@@ -5,7 +5,8 @@
     "confirm": "확인",
     "delete": "삭제",
     "edit": "편집",
-    "loading": "로딩 중..."
+    "loading": "로딩 중...",
+    "none": "없음"
   },
   "nav": { "home": "홈", "album": "앨범", "upload": "업로드", "settings": "설정", "logout": "로그아웃" },
   "auth": {
@@ -74,7 +75,14 @@
     },
     "kid": {
       "title": "아이",
-      "add": "아이 추가"
+      "add": "아이 추가",
+      "newTitle": "아이 추가",
+      "editTitle": "아이 편집",
+      "nameLabel": "이름",
+      "namePlaceholder": "이름 입력",
+      "birthDateLabel": "생년월일",
+      "faceLabel": "얼굴 사진",
+      "deleteConfirm": "정말 삭제하시겠습니까?"
     }
   }
 }

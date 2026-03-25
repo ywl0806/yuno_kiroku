@@ -7,6 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
+
+	"github.com/lib/pq"
 )
 
 const createIdentityFaceImg = `-- name: CreateIdentityFaceImg :one
@@ -36,6 +39,95 @@ func (q *Queries) CreateIdentityFaceImg(ctx context.Context, arg CreateIdentityF
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const findNewestIdentityFaceImgByFamilyId = `-- name: FindNewestIdentityFaceImgByFamilyId :many
+SELECT DISTINCT ON (ifi.identity_id)
+    ifi.id,
+    ifi.identity_id,
+    ifi.media_item_id,
+    ifi.storage_key,
+    k.id AS kid_id,
+    k.name AS kid_name,
+    u.id AS user_id,
+    u.name AS user_name
+FROM
+    identity_face_imgs AS ifi
+    JOIN media_items AS mi ON ifi.media_item_id = mi.id
+    JOIN identities AS i ON ifi.identity_id = i.id
+    LEFT JOIN kids AS k ON i.id = k.identity_id
+    LEFT JOIN users AS u ON i.id = u.identity_id
+WHERE
+    i.family_id = $1
+    AND (
+        CASE WHEN $2::boolean THEN
+            (k.id IS NULL AND u.id IS NULL)
+        END
+        OR CASE WHEN $3::int[] IS NOT NULL THEN
+            (k.id = ALL ($3::int[]))
+        END
+        OR CASE WHEN $4::int[] IS NOT NULL THEN
+            (u.id = ALL ($4::int[]))
+        END
+    )
+ORDER BY
+    ifi.identity_id,
+    mi.taken_at DESC
+`
+
+type FindNewestIdentityFaceImgByFamilyIdParams struct {
+	FamilyID      int32
+	OnlyNotLinked bool
+	WithKidIds    []int32
+	WithUserIds   []int32
+}
+
+type FindNewestIdentityFaceImgByFamilyIdRow struct {
+	ID          int32
+	IdentityID  int32
+	MediaItemID int32
+	StorageKey  string
+	KidID       sql.NullInt32
+	KidName     sql.NullString
+	UserID      sql.NullInt32
+	UserName    sql.NullString
+}
+
+func (q *Queries) FindNewestIdentityFaceImgByFamilyId(ctx context.Context, arg FindNewestIdentityFaceImgByFamilyIdParams) ([]FindNewestIdentityFaceImgByFamilyIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, findNewestIdentityFaceImgByFamilyId,
+		arg.FamilyID,
+		arg.OnlyNotLinked,
+		pq.Array(arg.WithKidIds),
+		pq.Array(arg.WithUserIds),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindNewestIdentityFaceImgByFamilyIdRow
+	for rows.Next() {
+		var i FindNewestIdentityFaceImgByFamilyIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.IdentityID,
+			&i.MediaItemID,
+			&i.StorageKey,
+			&i.KidID,
+			&i.KidName,
+			&i.UserID,
+			&i.UserName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const hasIdentityFaceImg = `-- name: HasIdentityFaceImg :one

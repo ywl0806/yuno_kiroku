@@ -1,5 +1,9 @@
 swag:
 	docker compose exec app swag i --output docs --generalInfo cmd/server/main.go
+
+reload:
+	docker compose restart app ai
+
 kill:
 	kill -9 $(shell lsof -t -i:1323)
 
