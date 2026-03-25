@@ -8,9 +8,10 @@ export type UseGetMediaItemsProps = {
   year: number
   month: number
   enabled?: boolean
+  identityIds?: number[]
 }
 
-export const useGetMediaItems = ({ year, month, enabled }: UseGetMediaItemsProps) => {
+export const useGetMediaItems = ({ year, month, enabled, identityIds }: UseGetMediaItemsProps) => {
   const fetchFunc = useCallback(async () => {
     const from = new Date(year, month - 1, 1)
     const to = new Date(year, month)
@@ -18,13 +19,14 @@ export const useGetMediaItems = ({ year, month, enabled }: UseGetMediaItemsProps
       params: {
         from: from.toISOString(),
         to: to.toISOString(),
+        ...(identityIds && identityIds.length > 0 ? { identity_ids: identityIds } : {}),
       },
     })
     return response.data
-  }, [year, month])
+  }, [year, month, identityIds])
 
   return useQuery({
-    queryKey: ['mediaItems', year, month],
+    queryKey: ['mediaItems', year, month, identityIds ?? null],
     queryFn: fetchFunc,
     enabled,
     staleTime: 1000 * 60 * 1,

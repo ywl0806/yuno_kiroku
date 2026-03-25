@@ -317,6 +317,16 @@ func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, params *d
 	return mediaItems, nil
 }
 
+// GetMediaItemsByTakenAtWithIdentity는 특정 identity들이 포함된 미디어 아이템을 반환합니다.
+func (s *MediaItemService) GetMediaItemsByTakenAtWithIdentity(ctx context.Context, params *db.GetMediaItemsByTakenAtWithIdentityParams) ([]db.GetMediaItemsByTakenAtWithIdentityRow, error) {
+	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAtWithIdentity(ctx, *params)
+	if err != nil {
+		log.Println("get media items by taken at with identity error:", err)
+		return nil, err
+	}
+	return mediaItems, nil
+}
+
 // MediaItemRange는 미디어 아이템이 존재하는 연/월 조합입니다.
 type MediaItemRange struct {
 	Year  int `json:"year"`

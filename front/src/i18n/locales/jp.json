@@ -41,6 +41,12 @@
     "uploadFailed": "アップロード失敗",
     "reUpload": "再アップロード"
   },
+  "home": {
+    "filter": "フィルター",
+    "filterAll": "すべて",
+    "filterAlbum": "アルバム",
+    "filterKid": "子ども"
+  },
   "page": { "settings": "設定", "logout": "ログアウト", "notFound": "ページが見つかりません" },
   "settings": {
     "menu": {

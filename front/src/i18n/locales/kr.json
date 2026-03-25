@@ -35,6 +35,12 @@
     "uploadFailed": "업로드 실패",
     "reUpload": "다시 업로드"
   },
+  "home": {
+    "filter": "필터",
+    "filterAll": "전체",
+    "filterAlbum": "앨범",
+    "filterKid": "아이"
+  },
   "page": { "settings": "설정", "logout": "로그아웃", "notFound": "페이지를 찾을 수 없습니다" },
   "settings": {
     "menu": {

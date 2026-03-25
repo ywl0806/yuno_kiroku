@@ -1,4 +1,5 @@
 import { PhotoGridContainer } from '@/components/blocks/photo-grid-container'
+import { HomeFilter } from '@/feature/home/components/home-filter-panel'
 import { MediaItemRange } from '@/types'
 import { FC, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12,8 +13,9 @@ SwiperCore.use([Controller])
 type Props = {
   date: string
   range: MediaItemRange[]
+  filter: HomeFilter
 }
-export const PhotoSwiper: FC<Props> = ({ date, range }) => {
+export const PhotoSwiper: FC<Props> = ({ date, range, filter }) => {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null)
 
   const nav = useNavigate()
@@ -42,7 +44,7 @@ export const PhotoSwiper: FC<Props> = ({ date, range }) => {
       {range.map((ran) => {
         return (
           <SwiperSlide key={`${ran.year}-${ran.month}`}>
-            <PhotoGridContainer year={ran.year} month={ran.month} date={date} />
+            <PhotoGridContainer year={ran.year} month={ran.month} date={date} filter={filter} />
           </SwiperSlide>
         )
       })}

@@ -1,5 +1,6 @@
 import { PhotoDetailSwipeDialog } from '@/components/blocks/photo-detail-swipe-dialog'
 import { PhotoGrid } from '@/components/blocks/photo-grid'
+import { HomeFilter } from '@/feature/home/components/home-filter-panel'
 import { useGetMediaItems } from '@/feature/home/hooks/use-get-media-items'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
@@ -8,10 +9,16 @@ type Props = {
   year: number
   month: number
   date: string
+  filter: HomeFilter
 }
 
-export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
-  const { data: photos, refetch, isFetched } = useGetMediaItems({ year, month, enabled: false })
+export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => {
+  const { data: photos, refetch, isFetched } = useGetMediaItems({
+    year,
+    month,
+    enabled: false,
+    identityIds: filter.selectedIdentityIds.length > 0 ? filter.selectedIdentityIds : undefined,
+  })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
 
@@ -21,12 +28,16 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
     if (parseInt(y) === year && parseInt(m) === month) {
       refetch()
     }
-  }, [date, year, month, refetch])
+  }, [date, year, month, refetch, filter])
+
+  const filteredPhotos = useMemo(() => {
+    if (!photos) return []
+    if (filter.selectedAlbumId === null) return photos
+    return photos.filter((p) => p.album_id === String(filter.selectedAlbumId))
+  }, [photos, filter.selectedAlbumId])
 
   const photoAlbum: AlbumPhoto[] = useMemo(() => {
-    if (!photos) return []
-
-    return photos.map((mediaItem) => {
+    return filteredPhotos.map((mediaItem) => {
       return {
         key: mediaItem.id,
         src: mediaItem.thumbnail_url,
@@ -35,7 +46,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
         alt: mediaItem.file_name,
       }
     })
-  }, [photos])
+  }, [filteredPhotos])
   return (
     <div className="scroll-container h-full w-full overflow-y-auto">
       <PhotoGrid
@@ -46,7 +57,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
         }}
       />
       <PhotoDetailSwipeDialog
-        photos={photos ?? []}
+        photos={filteredPhotos}
         index={detailViewIndex}
         setIndex={setDetailViewIndex}
         open={openDetailView}

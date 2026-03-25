@@ -118,25 +118,9 @@ func (con *MediaItemHandler) GetMediaItemRange(c echo.Context) error {
 }
 
 type GetMediaItemsRequest struct {
-	From *time.Time `query:"from" validate:"required"`
-	To   *time.Time `query:"to" validate:"required"`
-}
-
-func (GetMediaItemsRequest) bind(c echo.Context, p *db.GetMediaItemsByTakenAtParams) error {
-	reqParams := new(GetMediaItemsRequest)
-	if err := c.Bind(reqParams); err != nil {
-		return err
-	}
-	if err := c.Validate(reqParams); err != nil {
-		return err
-	}
-
-	authUser := middlewares.GetAuthUser(c)
-
-	p.TakenAtFrom = *reqParams.From
-	p.TakenAtTo = *reqParams.To
-	p.GroupID = authUser.GroupId
-	return nil
+	From        *time.Time `query:"from" validate:"required"`
+	To          *time.Time `query:"to" validate:"required"`
+	IdentityIDs []int32    `query:"identity_ids"`
 }
 
 // @Tags MediaItem
@@ -145,24 +129,47 @@ func (GetMediaItemsRequest) bind(c echo.Context, p *db.GetMediaItemsByTakenAtPar
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Param from query string true "From" example(2025-01-01)
 // @Param to query string true "To" example(2025-01-01)
+// @Param identity_ids query []int false "Identity IDs"
 // @Success 200
 func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	reqParams := new(GetMediaItemsRequest)
-
-	params := new(db.GetMediaItemsByTakenAtParams)
-
-	if err := reqParams.bind(c, params); err != nil {
+	if err := c.Bind(reqParams); err != nil {
 		log.Println("bind get media items request error: ", err)
 		return err
 	}
-	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(c.Request().Context(), params)
+	if err := c.Validate(reqParams); err != nil {
+		return err
+	}
+
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+
+	if len(reqParams.IdentityIDs) > 0 {
+		params := &db.GetMediaItemsByTakenAtWithIdentityParams{
+			GroupID:     authUser.GroupId,
+			TakenAtFrom: *reqParams.From,
+			TakenAtTo:   *reqParams.To,
+			IdentityIds: reqParams.IdentityIDs,
+		}
+		mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAtWithIdentity(ctx, params)
+		if err != nil {
+			log.Println("get media items by taken at with identity error: ", err)
+			return err
+		}
+		return c.JSON(200, models.NewMediaItemsResponseWithIdentity(mediaItems))
+	}
+
+	params := &db.GetMediaItemsByTakenAtParams{
+		GroupID:     authUser.GroupId,
+		TakenAtFrom: *reqParams.From,
+		TakenAtTo:   *reqParams.To,
+	}
+	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, params)
 	if err != nil {
 		log.Println("get media items by taken at error: ", err)
 		return err
 	}
-
 	return c.JSON(200, models.NewMediaItemsResponse(mediaItems))
-
 }
 
 // @Tags MediaItem

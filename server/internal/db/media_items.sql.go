@@ -284,6 +284,133 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 	return items, nil
 }
 
+const getMediaItemsByTakenAtWithIdentity = `-- name: GetMediaItemsByTakenAtWithIdentity :many
+SELECT
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    COALESCE(original_media_file.storage_key, '') AS original_storage_key,
+    COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(view_media_file.storage_key, '') AS view_storage_key,
+    COALESCE(original_media_file.width, 0) AS original_width,
+    COALESCE(original_media_file.height, 0) AS original_height,
+    COALESCE(thumbnail_media_file.width, 0) AS thumbnail_width,
+    COALESCE(thumbnail_media_file.height, 0) AS thumbnail_height,
+    COALESCE(view_media_file.width, 0) AS view_width,
+    COALESCE(view_media_file.height, 0) AS view_height
+FROM
+    media_items AS mi
+    INNER JOIN albums AS a ON mi.album_id = a.id
+    INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
+    INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
+    LEFT JOIN LATERAL (
+        SELECT storage_key, width, height, media_item_id
+        FROM media_files
+        WHERE role = '01'
+    ) AS original_media_file ON original_media_file.media_item_id = mi.id
+    LEFT JOIN LATERAL (
+        SELECT storage_key, width, height, media_item_id
+        FROM media_files
+        WHERE role = '02'
+    ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
+    LEFT JOIN LATERAL (
+        SELECT storage_key, width, height, media_item_id
+        FROM media_files
+        WHERE role = '03'
+    ) AS view_media_file ON view_media_file.media_item_id = mi.id
+WHERE
+    agp.group_id = $1::int
+    AND agp.permission = 'R'
+    AND mi.taken_at >= $2::timestamp
+    AND mi.taken_at <= $3::timestamp
+    AND mi.upload_status = '03' -- 03: completed
+    AND fd.identity_id = ANY($4::int[])
+GROUP BY
+    mi.id,
+    original_media_file.storage_key, original_media_file.width, original_media_file.height,
+    thumbnail_media_file.storage_key, thumbnail_media_file.width, thumbnail_media_file.height,
+    view_media_file.storage_key, view_media_file.width, view_media_file.height
+ORDER BY
+    mi.taken_at DESC
+`
+
+type GetMediaItemsByTakenAtWithIdentityParams struct {
+	GroupID     int32
+	TakenAtFrom time.Time
+	TakenAtTo   time.Time
+	IdentityIds []int32
+}
+
+type GetMediaItemsByTakenAtWithIdentityRow struct {
+	ID                     int32
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	UploadStatus           string
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+	TakenAt                time.Time
+	FileName               sql.NullString
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	OriginalStorageKey     string
+	ThumbnailStorageKey    string
+	ViewStorageKey         string
+	OriginalWidth          int32
+	OriginalHeight         int32
+	ThumbnailWidth         int32
+	ThumbnailHeight        int32
+	ViewWidth              int32
+	ViewHeight             int32
+}
+
+func (q *Queries) GetMediaItemsByTakenAtWithIdentity(ctx context.Context, arg GetMediaItemsByTakenAtWithIdentityParams) ([]GetMediaItemsByTakenAtWithIdentityRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMediaItemsByTakenAtWithIdentity,
+		arg.GroupID,
+		arg.TakenAtFrom,
+		arg.TakenAtTo,
+		pq.Array(arg.IdentityIds),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMediaItemsByTakenAtWithIdentityRow
+	for rows.Next() {
+		var i GetMediaItemsByTakenAtWithIdentityRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.AlbumID,
+			&i.UploadBatchID,
+			&i.UploadStatus,
+			&i.TakenLocationLatitude,
+			&i.TakenLocationLongitude,
+			&i.TakenAt,
+			&i.FileName,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OriginalStorageKey,
+			&i.ThumbnailStorageKey,
+			&i.ViewStorageKey,
+			&i.OriginalWidth,
+			&i.OriginalHeight,
+			&i.ThumbnailWidth,
+			&i.ThumbnailHeight,
+			&i.ViewWidth,
+			&i.ViewHeight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUploadStatuses = `-- name: GetUploadStatuses :many
 SELECT
     mi.id,
