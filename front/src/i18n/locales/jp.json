@@ -53,6 +53,19 @@
       "app": "アプリ設定",
       "account": "アカウント"
     },
+    "app": {
+      "title": "アプリ設定",
+      "language": "言語",
+      "korean": "한국어",
+      "japanese": "日本語"
+    },
+    "account": {
+      "title": "アカウント",
+      "nameLabel": "名前",
+      "namePlaceholder": "名前を入力",
+      "social": "ソーシャルアカウント",
+      "logout": "ログアウト"
+    },
     "family": {
       "title": "ファミリー",
       "add": "ファミリーを追加",
@@ -79,11 +92,24 @@
     },
     "group": {
       "title": "アルバムグループ",
-      "add": "アルバムグループを追加"
+      "add": "アルバムグループを追加",
+      "newTitle": "アルバムグループを追加",
+      "editTitle": "アルバムグループを編集",
+      "nameLabel": "グループ名",
+      "namePlaceholder": "名前を入力",
+      "deleteConfirm": "本当に削除しますか？"
     },
     "album": {
       "title": "アルバム",
-      "add": "アルバムを追加"
+      "add": "アルバムを追加",
+      "newTitle": "アルバムを追加",
+      "editTitle": "アルバムを編集",
+      "nameLabel": "アルバム名",
+      "namePlaceholder": "名前を入力",
+      "permissionsLabel": "グループ権限",
+      "permRead": "読み取り",
+      "permWrite": "書き込み",
+      "deleteConfirm": "本当に削除しますか？"
     },
     "kid": {
       "title": "子ども",

@@ -9,6 +9,7 @@ export const API_ROUTES = {
   // User
   USER: {
     CREATE: '/user',
+    ME: '/user/me',
     MEMBERS: '/user/members',
   },
 
@@ -43,6 +44,9 @@ export const API_ROUTES = {
   // Group (앨범 그룹)
   GROUP: {
     LIST: '/group',
+    CREATE: '/group',
+    UPDATE: (id: number) => `/group/${id}`,
+    DELETE: (id: number) => `/group/${id}`,
   },
 
   // Settings
@@ -62,6 +66,11 @@ export const API_ROUTES = {
   ALBUM: {
     LIST_FOR_WRITE: '/album/write',
     OPTIONS: '/album/options',
+    ALL: '/album',
+    CREATE: '/album',
+    BY_ID: (id: number) => `/album/${id}`,
+    UPDATE: (id: number) => `/album/${id}`,
+    DELETE: (id: number) => `/album/${id}`,
   },
 
   // MediaItem

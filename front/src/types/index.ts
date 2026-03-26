@@ -81,6 +81,22 @@ export interface SettingsData {
   kids: Kid[]
 }
 
+export interface Me {
+  id: number
+  name: string | null
+  username: string
+  provider: string | null
+}
+
+export interface AlbumGroupPermission {
+  group_id: number
+  permission: 'R' | 'W'
+}
+
+export interface AlbumWithPermissions extends Album {
+  permissions: AlbumGroupPermission[]
+}
+
 export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {
   DUPLICATE: 'duplicate',
   INTERNAL_SERVER_ERROR: 'internal_server_error',
