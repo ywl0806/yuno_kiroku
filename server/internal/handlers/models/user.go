@@ -36,6 +36,10 @@ type UpdateMeRequest struct {
 	Name string `json:"name"`
 }
 
+type UpdateMemberGroupRequest struct {
+	GroupID int32 `json:"group_id"`
+}
+
 type MemberResponse struct {
 	ID       int32  `json:"id"`
 	Name     string `json:"name"`

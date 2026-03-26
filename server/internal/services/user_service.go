@@ -34,6 +34,14 @@ func (s *UserService) UpdateMe(ctx context.Context, userID int32, name string) (
 	})
 }
 
+func (s *UserService) UpdateMemberGroup(ctx context.Context, memberID int32, groupID int32, familyID int32) (db.User, error) {
+	return s.userStore.UpdateUserGroup(ctx, db.UpdateUserGroupParams{
+		GroupID:  groupID,
+		ID:       memberID,
+		FamilyID: familyID,
+	})
+}
+
 // 유저 생성
 func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 

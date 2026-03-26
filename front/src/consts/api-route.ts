@@ -11,6 +11,7 @@ export const API_ROUTES = {
     CREATE: '/user',
     ME: '/user/me',
     MEMBERS: '/user/members',
+    UPDATE_GROUP: (id: number) => `/user/${id}/group`,
   },
 
   // Photo

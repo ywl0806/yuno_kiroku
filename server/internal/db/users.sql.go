@@ -288,6 +288,43 @@ func (q *Queries) FindUsers(ctx context.Context) ([]FindUsersRow, error) {
 	return items, nil
 }
 
+const updateUserGroup = `-- name: UpdateUserGroup :one
+UPDATE users
+SET
+    group_id = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+    AND family_id = $3
+RETURNING
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+`
+
+type UpdateUserGroupParams struct {
+	GroupID  int32
+	ID       int32
+	FamilyID int32
+}
+
+func (q *Queries) UpdateUserGroup(ctx context.Context, arg UpdateUserGroupParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserGroup, arg.GroupID, arg.ID, arg.FamilyID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.FamilyID,
+		&i.GroupID,
+		&i.IdentityID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUserName = `-- name: UpdateUserName :one
 UPDATE users
 SET

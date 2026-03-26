@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"net/http"
+	"strconv"
+
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
@@ -74,6 +77,36 @@ func (con *UserHandler) UpdateMe(c echo.Context) error {
 		return err
 	}
 	return c.JSON(200, models.NewMeResponse(&user))
+}
+
+// @Tags User
+// @Description Update a member's group
+// @Router /user/{id}/group [put]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param id path int true "Member User ID"
+// @Param body body models.UpdateMemberGroupRequest true "Update Member Group Request"
+// @Success 200 {object} models.MemberResponse
+func (con *UserHandler) UpdateMemberGroup(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	memberID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+	}
+	req := new(models.UpdateMemberGroupRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	user, err := con.userService.UpdateMemberGroup(c.Request().Context(), int32(memberID), req.GroupID, authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMemberResponse(&db.FindMembersByFamilyIDRow{
+		ID:       user.ID,
+		Name:     user.Name,
+		Username: user.Username,
+		FamilyID: user.FamilyID,
+		GroupID:  user.GroupID,
+	}))
 }
 
 // @Tags User

@@ -7,53 +7,67 @@ import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
+const MenuSubTitle = ({ title }: { title: string }) => {
+  return (
+    <div className="flex items-center justify-between px-4 pb-3 pt-7">
+      <span className="text-[0.8rem]">{title}</span>
+    </div>
+  )
+}
+
+
 export const SettingsPage = () => {
   const { t } = useTranslation()
   const { data } = useGetSettingsData()
 
   return (
-    <div className="mx-auto h-full max-w-[50rem] overflow-y-auto pt-10">
+    <div className="mx-auto h-full max-w-[50rem] overflow-y-auto bg-neutral-200 pb-[5rem]">
+      <div className="flex items-center justify-center gap-2 px-4 py-2 border-b bg-white">
+        <span className="text-lg font-bold">{t('settings.title')}</span>
+      </div>
       {/* 메뉴 */}
       <section>
+        <MenuSubTitle title={t('settings.app.title')} />
         <Link to="/settings/app">
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-accent">
-            <span className="text-sm">{t('settings.menu.app')}</span>
-            <ChevronRight className="size-4 text-muted-foreground" />
-          </div>
-        </Link>
-        <Link to="/settings/account">
-          <div className="flex items-center justify-between px-4 py-3 hover:bg-accent">
-            <span className="text-sm">{t('settings.menu.account')}</span>
+          <div className="flex items-center justify-between px-4 py-3 hover:bg-accent bg-white">
+            <span className="text-sm">{t('settings.app.language.title')}</span>
             <ChevronRight className="size-4 text-muted-foreground" />
           </div>
         </Link>
       </section>
 
-      <div className="mx-4 border-t" />
+      <section>
+        <MenuSubTitle title={t('settings.account.title')} />
+
+        <Link to="/settings/account">
+          <div className="flex items-center justify-between px-4 py-3 hover:bg-accent bg-white">
+            <span className="text-sm">{t('settings.account.account')}</span>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </div>
+        </Link>
+      </section>
 
       {/* 앨범 그룹 목록 */}
       <section>
+        <MenuSubTitle title={t('settings.group.title')} />
         <SettingsGroupList groups={data?.groups} />
       </section>
 
-      <div className="mx-4 border-t" />
-
-      {/* 멤버 목록 */}
+      {/* 가족 목록 */}
       <section>
+        <MenuSubTitle title={t('settings.member.title')} />
         <SettingsMemberList members={data?.members} />
       </section>
 
-      <div className="mx-4 border-t" />
-
       {/* 앨범 목록 */}
       <section>
+        <MenuSubTitle title={t('settings.album.title')} />
         <SettingsAlbumList albums={data?.albums} />
       </section>
 
-      <div className="mx-4 border-t" />
-
       {/* 아이 목록 */}
       <section>
+        <MenuSubTitle title={t('settings.kid.title')} />
         <SettingsKidsList kids={data?.kids} />
       </section>
     </div>

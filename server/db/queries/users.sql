@@ -72,3 +72,14 @@ WHERE
     id = $2
 RETURNING
     *;
+
+-- name: UpdateUserGroup :one
+UPDATE users
+SET
+    group_id = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+    AND family_id = $3
+RETURNING
+    *;

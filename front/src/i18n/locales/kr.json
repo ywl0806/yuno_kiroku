@@ -43,18 +43,22 @@
   },
   "page": { "settings": "설정", "logout": "로그아웃", "notFound": "페이지를 찾을 수 없습니다" },
   "settings": {
+    "title": "설정",
     "menu": {
       "app": "앱 설정",
       "account": "계정"
     },
     "app": {
       "title": "앱 설정",
-      "language": "언어",
-      "korean": "한국어",
-      "japanese": "日本語"
+      "language": {
+        "title": "언어설정",
+        "korean": "한국어",
+        "japanese": "日本語"
+      }
     },
     "account": {
-      "title": "계정",
+      "title": "계정설정",
+      "account": "계정",
       "nameLabel": "이름",
       "namePlaceholder": "이름 입력",
       "social": "소셜 계정",
@@ -72,20 +76,22 @@
       }
     },
     "member": {
-      "title": "멤버",
-      "invite": "멤버 초대",
-      "inviteTitle": "멤버 초대",
+      "title": "가족 목록",
+      "invite": "가족 초대",
+      "inviteTitle": "가족 초대",
       "inviteNameLabel": "이름",
-      "inviteNamePlaceholder": "초대할 멤버 이름",
+      "inviteNamePlaceholder": "초대할 가족 이름",
       "inviteGroupLabel": "앨범 그룹",
       "inviteGroupPlaceholder": "그룹 선택",
       "inviteGenerate": "초대 링크 생성",
       "inviteCopy": "링크 복사",
       "inviteCopied": "복사됨",
-      "inviteError": "초대 링크 생성에 실패했습니다."
+      "inviteError": "초대 링크 생성에 실패했습니다.",
+      "editTitle": "가족 편집",
+      "groupLabel": "소속 그룹"
     },
     "group": {
-      "title": "앨범 그룹",
+      "title": "앨범 그룹 목록",
       "add": "앨범 그룹 추가",
       "newTitle": "앨범 그룹 추가",
       "editTitle": "앨범 그룹 편집",
@@ -94,7 +100,7 @@
       "deleteConfirm": "정말 삭제하시겠습니까?"
     },
     "album": {
-      "title": "앨범",
+      "title": "앨범 목록",
       "add": "앨범 추가",
       "newTitle": "앨범 추가",
       "editTitle": "앨범 편집",

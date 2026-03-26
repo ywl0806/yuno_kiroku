@@ -16,6 +16,7 @@ type UserStore interface {
 	FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error)
 	FindUserByID(ctx context.Context, id int32) (db.User, error)
 	UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error)
+	UpdateUserGroup(ctx context.Context, arg db.UpdateUserGroupParams) (db.User, error)
 }
 
 type userStore struct {
@@ -56,4 +57,8 @@ func (s *userStore) FindUserByID(ctx context.Context, id int32) (db.User, error)
 
 func (s *userStore) UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error) {
 	return wrapErr(s.queries.UpdateUserName(ctx, arg))
+}
+
+func (s *userStore) UpdateUserGroup(ctx context.Context, arg db.UpdateUserGroupParams) (db.User, error) {
+	return wrapErr(s.queries.UpdateUserGroup(ctx, arg))
 }

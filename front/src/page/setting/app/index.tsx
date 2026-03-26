@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 const LANGUAGES = [
-  { code: 'kr', label: '한국어', key: 'settings.app.korean' },
-  { code: 'jp', label: '日本語', key: 'settings.app.japanese' },
+  { code: 'kr', label: '한국어', key: 'settings.app.language.korean' },
+  { code: 'jp', label: '日本語', key: 'settings.app.language.japanese' },
 ] as const
 
 export const SettingsAppPage = () => {
@@ -27,14 +27,13 @@ export const SettingsAppPage = () => {
       </div>
 
       <div className="space-y-1 px-4 pt-6">
-        <p className="mb-2 text-sm font-medium">{t('settings.app.language')}</p>
+        <p className="mb-2 text-sm font-medium">{t('settings.app.language.title')}</p>
         {LANGUAGES.map((lang) => (
           <button
             key={lang.code}
             onClick={() => handleChange(lang.code)}
-            className={`flex w-full items-center justify-between rounded-md px-3 py-3 text-sm transition-colors ${
-              currentLang === lang.code ? 'bg-accent font-medium' : 'hover:bg-accent/50'
-            }`}
+            className={`flex w-full items-center justify-between rounded-md px-3 py-3 text-sm transition-colors ${currentLang === lang.code ? 'bg-accent font-medium' : 'hover:bg-accent/50'
+              }`}
           >
             <span>{t(lang.key)}</span>
             {currentLang === lang.code && <span className="text-primary">✓</span>}

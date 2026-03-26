@@ -12,6 +12,7 @@ import { SettingsFamilyEditPage } from '@/page/setting/family/edit'
 import { SettingsFamilyInvitePage } from '@/page/setting/family/invite'
 import { SettingsAlbumNewPage } from '@/page/setting/album/new'
 import { SettingsAlbumEditPage } from '@/page/setting/album/edit'
+import { SettingsMemberEditPage } from '@/page/setting/member/edit'
 import { SettingsMemberInvitePage } from '@/page/setting/member/invite'
 import { SettingsKidNewPage } from '@/page/setting/kid/new'
 import { SettingsKidEditPage } from '@/page/setting/kid/edit'
@@ -50,6 +51,7 @@ export const router = createBrowserRouter(
 
           <Route path="member">
             <Route path="invite" element={<SettingsMemberInvitePage />} />
+            <Route path=":memberId/edit" element={<SettingsMemberEditPage />} />
           </Route>
 
           <Route path="kid">

@@ -49,18 +49,22 @@
   },
   "page": { "settings": "設定", "logout": "ログアウト", "notFound": "ページが見つかりません" },
   "settings": {
+    "title": "設定",
     "menu": {
       "app": "アプリ設定",
       "account": "アカウント"
     },
     "app": {
       "title": "アプリ設定",
-      "language": "言語",
-      "korean": "한국어",
-      "japanese": "日本語"
+      "language": {
+        "title": "言語設定",
+        "korean": "한국어",
+        "japanese": "日本語"
+      }
     },
     "account": {
-      "title": "アカウント",
+      "title": "アカウント設定",
+      "account": "アカウント",
       "nameLabel": "名前",
       "namePlaceholder": "名前を入力",
       "social": "ソーシャルアカウント",
@@ -78,20 +82,22 @@
       }
     },
     "member": {
-      "title": "メンバー",
-      "invite": "メンバーを招待",
-      "inviteTitle": "メンバーを招待",
+      "title": "家族 一覧",
+      "invite": "家族を招待",
+      "inviteTitle": "家族を招待",
       "inviteNameLabel": "名前",
-      "inviteNamePlaceholder": "招待するメンバーの名前",
+      "inviteNamePlaceholder": "招待する家族の名前",
       "inviteGroupLabel": "アルバムグループ",
       "inviteGroupPlaceholder": "グループを選択",
       "inviteGenerate": "招待リンクを生成",
       "inviteCopy": "リンクをコピー",
       "inviteCopied": "コピーしました",
-      "inviteError": "招待リンクの作成に失敗しました。"
+      "inviteError": "招待リンクの作成に失敗しました。",
+      "editTitle": "家族編集",
+      "groupLabel": "所属グループ"
     },
     "group": {
-      "title": "アルバムグループ",
+      "title": "アルバムグループ一覧",
       "add": "アルバムグループを追加",
       "newTitle": "アルバムグループを追加",
       "editTitle": "アルバムグループを編集",
@@ -100,7 +106,7 @@
       "deleteConfirm": "本当に削除しますか？"
     },
     "album": {
-      "title": "アルバム",
+      "title": "アルバム一覧",
       "add": "アルバムを追加",
       "newTitle": "アルバムを追加",
       "editTitle": "アルバムを編集",
@@ -112,7 +118,7 @@
       "deleteConfirm": "本当に削除しますか？"
     },
     "kid": {
-      "title": "子ども",
+      "title": "子ども一覧",
       "add": "子どもを追加",
       "newTitle": "子どもを追加",
       "editTitle": "子どもを編集",
