@@ -8,6 +8,34 @@ import (
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
+type MeResponse struct {
+	ID       int32   `json:"id"`
+	Name     *string `json:"name"`
+	Username string  `json:"username"`
+	Provider *string `json:"provider"`
+}
+
+func NewMeResponse(u *db.User) *MeResponse {
+	var name *string
+	if u.Name.Valid {
+		name = &u.Name.String
+	}
+	var provider *string
+	if u.Provider.Valid {
+		provider = &u.Provider.String
+	}
+	return &MeResponse{
+		ID:       u.ID,
+		Name:     name,
+		Username: u.Username,
+		Provider: provider,
+	}
+}
+
+type UpdateMeRequest struct {
+	Name string `json:"name"`
+}
+
 type MemberResponse struct {
 	ID       int32  `json:"id"`
 	Name     string `json:"name"`

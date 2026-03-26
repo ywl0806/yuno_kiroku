@@ -9,6 +9,106 @@ import (
 	"context"
 )
 
+const createAlbum = `-- name: CreateAlbum :one
+INSERT INTO
+    albums (family_id, name)
+VALUES
+    ($1, $2)
+RETURNING
+    id, family_id, name, created_at, updated_at
+`
+
+type CreateAlbumParams struct {
+	FamilyID int32
+	Name     string
+}
+
+func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) (Album, error) {
+	row := q.db.QueryRowContext(ctx, createAlbum, arg.FamilyID, arg.Name)
+	var i Album
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteAlbum = `-- name: DeleteAlbum :exec
+DELETE FROM albums
+WHERE
+    id = $1
+`
+
+func (q *Queries) DeleteAlbum(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteAlbum, id)
+	return err
+}
+
+const findAlbumByID = `-- name: FindAlbumByID :one
+SELECT
+    id, family_id, name, created_at, updated_at
+FROM
+    albums
+WHERE
+    id = $1
+`
+
+func (q *Queries) FindAlbumByID(ctx context.Context, id int32) (Album, error) {
+	row := q.db.QueryRowContext(ctx, findAlbumByID, id)
+	var i Album
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const findAlbumsByFamilyID = `-- name: FindAlbumsByFamilyID :many
+SELECT
+    id, family_id, name, created_at, updated_at
+FROM
+    albums
+WHERE
+    family_id = $1
+ORDER BY
+    id
+`
+
+func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID int32) ([]Album, error) {
+	rows, err := q.db.QueryContext(ctx, findAlbumsByFamilyID, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Album
+	for rows.Next() {
+		var i Album
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findAlbumsForWrite = `-- name: FindAlbumsForWrite :many
 SELECT
     a.id, a.family_id, a.name, a.created_at, a.updated_at
@@ -101,4 +201,33 @@ func (q *Queries) GetAlbumsOptions(ctx context.Context, arg GetAlbumsOptionsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateAlbum = `-- name: UpdateAlbum :one
+UPDATE albums
+SET
+    name = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+RETURNING
+    id, family_id, name, created_at, updated_at
+`
+
+type UpdateAlbumParams struct {
+	Name string
+	ID   int32
+}
+
+func (q *Queries) UpdateAlbum(ctx context.Context, arg UpdateAlbumParams) (Album, error) {
+	row := q.db.QueryRowContext(ctx, updateAlbum, arg.Name, arg.ID)
+	var i Album
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strconv"
+
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
@@ -52,4 +54,124 @@ func (con *AlbumHandler) GetAlbumsOptions(c echo.Context) error {
 		return err
 	}
 	return c.JSON(200, models.NewAlbumOptionResponses(opts))
+}
+
+// @Tags Album
+// @Description Get all albums for the family (settings use)
+// @Router /album [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200 {object} []models.AlbumResponse
+func (con *AlbumHandler) GetAllAlbums(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	albums, err := con.albumService.GetAllAlbums(c.Request().Context(), authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+	responses := make([]models.AlbumResponse, len(albums))
+	for i, a := range albums {
+		responses[i] = *models.NewAlbumResponse(&a)
+	}
+	return c.JSON(200, responses)
+}
+
+// @Tags Album
+// @Description Create a new album
+// @Router /album [post]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param body body models.CreateAlbumRequest true "Create Album Request"
+// @Success 201 {object} models.AlbumWithPermissionsResponse
+func (con *AlbumHandler) CreateAlbum(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	req := new(models.CreateAlbumRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+	perms := make([]services.GroupPermission, len(req.Permissions))
+	for i, p := range req.Permissions {
+		perms[i] = services.GroupPermission{GroupID: p.GroupID, Permission: p.Permission}
+	}
+	album, err := con.albumService.CreateAlbum(c.Request().Context(), authUser.FamilyId, req.Name, perms)
+	if err != nil {
+		return err
+	}
+	_, albumPerms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(201, models.NewAlbumWithPermissionsResponse(&album, albumPerms))
+}
+
+// @Tags Album
+// @Description Get album with permissions
+// @Router /album/:id [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param id path int true "Album ID"
+// @Success 200 {object} models.AlbumWithPermissionsResponse
+func (con *AlbumHandler) GetAlbum(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(400, "invalid album id")
+	}
+	album, perms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), int32(id), authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewAlbumWithPermissionsResponse(&album, perms))
+}
+
+// @Tags Album
+// @Description Update an album
+// @Router /album/:id [put]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param id path int true "Album ID"
+// @Param body body models.UpdateAlbumRequest true "Update Album Request"
+// @Success 200 {object} models.AlbumWithPermissionsResponse
+func (con *AlbumHandler) UpdateAlbum(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(400, "invalid album id")
+	}
+	req := new(models.UpdateAlbumRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+	perms := make([]services.GroupPermission, len(req.Permissions))
+	for i, p := range req.Permissions {
+		perms[i] = services.GroupPermission{GroupID: p.GroupID, Permission: p.Permission}
+	}
+	album, err := con.albumService.UpdateAlbum(c.Request().Context(), int32(id), authUser.FamilyId, req.Name, perms)
+	if err != nil {
+		return err
+	}
+	_, albumPerms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewAlbumWithPermissionsResponse(&album, albumPerms))
+}
+
+// @Tags Album
+// @Description Delete an album
+// @Router /album/:id [delete]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param id path int true "Album ID"
+// @Success 204
+func (con *AlbumHandler) DeleteAlbum(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(400, "invalid album id")
+	}
+	if err := con.albumService.DeleteAlbum(c.Request().Context(), int32(id), authUser.FamilyId); err != nil {
+		return err
+	}
+	return c.NoContent(204)
 }

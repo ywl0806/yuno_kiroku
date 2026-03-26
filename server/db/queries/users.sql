@@ -54,3 +54,21 @@ VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
     *;
+
+-- name: FindUserByID :one
+SELECT
+    *
+FROM
+    users
+WHERE
+    id = $1;
+
+-- name: UpdateUserName :one
+UPDATE users
+SET
+    name = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+RETURNING
+    *;

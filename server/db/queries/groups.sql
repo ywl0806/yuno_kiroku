@@ -26,3 +26,18 @@ VALUES
     ($1, $2, $3)
 RETURNING
     *;
+
+-- name: UpdateGroup :one
+UPDATE groups
+SET
+    name = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+RETURNING
+    *;
+
+-- name: DeleteGroup :exec
+DELETE FROM groups
+WHERE
+    id = $1;

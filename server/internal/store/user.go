@@ -14,6 +14,8 @@ type UserStore interface {
 	FindUserByUsername(ctx context.Context, username string) (db.User, error)
 	FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error)
 	FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error)
+	FindUserByID(ctx context.Context, id int32) (db.User, error)
+	UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error)
 }
 
 type userStore struct {
@@ -46,4 +48,12 @@ func (s *userStore) FindUserByProvider(ctx context.Context, provider, providerUs
 		Provider:       sql.NullString{String: provider, Valid: true},
 		ProviderUserID: sql.NullString{String: providerUserID, Valid: true},
 	}))
+}
+
+func (s *userStore) FindUserByID(ctx context.Context, id int32) (db.User, error) {
+	return wrapErr(s.queries.FindUserByID(ctx, id))
+}
+
+func (s *userStore) UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error) {
+	return wrapErr(s.queries.UpdateUserName(ctx, arg))
 }

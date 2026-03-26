@@ -25,3 +25,11 @@ func NewGroupResponse(g *db.Group) *GroupResponse {
 		UpdatedAt: g.UpdatedAt,
 	}
 }
+
+type CreateGroupRequest struct {
+	Name string `json:"name" validate:"required"`
+}
+
+type UpdateGroupRequest struct {
+	Name string `json:"name" validate:"required"`
+}

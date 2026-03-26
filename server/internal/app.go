@@ -68,7 +68,7 @@ func Init(e *echo.Echo) {
 	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
 	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader, faceService, st.IdentityFaceImg)
 	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
-	albumService := services.NewAlbumService(st.Album)
+	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission)
 	groupService := services.NewGroupService(st.Family, st.Group)
 	kidService := services.NewKidService(st.Kid)
 

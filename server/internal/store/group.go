@@ -11,6 +11,8 @@ type GroupStore interface {
 	FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error)
 	FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]db.Group, error)
 	CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error)
+	UpdateGroup(ctx context.Context, arg db.UpdateGroupParams) (db.Group, error)
+	DeleteGroup(ctx context.Context, id int32) error
 }
 
 type groupStore struct {
@@ -33,4 +35,12 @@ func (s *groupStore) FindGroupsByFamilyID(ctx context.Context, familyID int32) (
 
 func (s *groupStore) CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error) {
 	return wrapErr(s.queries.CreateGroup(ctx, arg))
+}
+
+func (s *groupStore) UpdateGroup(ctx context.Context, arg db.UpdateGroupParams) (db.Group, error) {
+	return wrapErr(s.queries.UpdateGroup(ctx, arg))
+}
+
+func (s *groupStore) DeleteGroup(ctx context.Context, id int32) error {
+	return s.queries.DeleteGroup(ctx, id)
 }

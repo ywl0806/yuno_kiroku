@@ -20,4 +20,9 @@ func (ar *AlbumRouter) Register(root *echo.Group) {
 
 	album.GET("/write", ar.albumHandler.GetAlbumsForWrite, guard.Handler)
 	album.GET("/options", ar.albumHandler.GetAlbumsOptions, guard.Handler)
+	album.GET("", ar.albumHandler.GetAllAlbums, guard.Handler)
+	album.POST("", ar.albumHandler.CreateAlbum, guard.Handler)
+	album.GET("/:id", ar.albumHandler.GetAlbum, guard.Handler)
+	album.PUT("/:id", ar.albumHandler.UpdateAlbum, guard.Handler)
+	album.DELETE("/:id", ar.albumHandler.DeleteAlbum, guard.Handler)
 }

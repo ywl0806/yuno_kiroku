@@ -23,6 +23,17 @@ func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.Find
 	return s.userStore.FindMembersByFamilyID(ctx, familyID)
 }
 
+func (s *UserService) GetMe(ctx context.Context, userID int32) (db.User, error) {
+	return s.userStore.FindUserByID(ctx, userID)
+}
+
+func (s *UserService) UpdateMe(ctx context.Context, userID int32, name string) (db.User, error) {
+	return s.userStore.UpdateUserName(ctx, db.UpdateUserNameParams{
+		Name: sql.NullString{String: name, Valid: name != ""},
+		ID:   userID,
+	})
+}
+
 // 유저 생성
 func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 

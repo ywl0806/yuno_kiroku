@@ -19,4 +19,7 @@ func (r *GroupRouter) Register(root *echo.Group) {
 	guard := middlewares.NewGuard()
 
 	group.GET("", r.groupHandler.GetGroups, guard.Handler)
+	group.POST("", r.groupHandler.CreateGroup, guard.Handler)
+	group.PUT("/:id", r.groupHandler.UpdateGroup, guard.Handler)
+	group.DELETE("/:id", r.groupHandler.DeleteGroup, guard.Handler)
 }

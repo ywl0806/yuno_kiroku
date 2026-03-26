@@ -150,6 +150,34 @@ func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]
 	return items, nil
 }
 
+const findUserByID = `-- name: FindUserByID :one
+SELECT
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+FROM
+    users
+WHERE
+    id = $1
+`
+
+func (q *Queries) FindUserByID(ctx context.Context, id int32) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.FamilyID,
+		&i.GroupID,
+		&i.IdentityID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const findUserByProvider = `-- name: FindUserByProvider :one
 SELECT
     id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
@@ -258,4 +286,39 @@ func (q *Queries) FindUsers(ctx context.Context) ([]FindUsersRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserName = `-- name: UpdateUserName :one
+UPDATE users
+SET
+    name = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+RETURNING
+    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+`
+
+type UpdateUserNameParams struct {
+	Name sql.NullString
+	ID   int32
+}
+
+func (q *Queries) UpdateUserName(ctx context.Context, arg UpdateUserNameParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserName, arg.Name, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.Password,
+		&i.FamilyID,
+		&i.GroupID,
+		&i.IdentityID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

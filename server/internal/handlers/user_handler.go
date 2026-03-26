@@ -44,6 +44,39 @@ func (con *UserHandler) CreateUser(c echo.Context) error {
 }
 
 // @Tags User
+// @Description Get current authenticated user
+// @Router /user/me [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200 {object} models.MeResponse
+func (con *UserHandler) GetMe(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	user, err := con.userService.GetMe(c.Request().Context(), authUser.ID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMeResponse(&user))
+}
+
+// @Tags User
+// @Description Update current user's name
+// @Router /user/me [put]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param body body models.UpdateMeRequest true "Update Me Request"
+// @Success 200 {object} models.MeResponse
+func (con *UserHandler) UpdateMe(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	req := new(models.UpdateMeRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	user, err := con.userService.UpdateMe(c.Request().Context(), authUser.ID, req.Name)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMeResponse(&user))
+}
+
+// @Tags User
 // @Description Get members in the same family
 // @Router /user/members [get]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)

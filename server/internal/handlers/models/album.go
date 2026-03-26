@@ -41,3 +41,34 @@ func NewAlbumOptionResponses(albumOptions []db.GetAlbumsOptionsRow) *[]AlbumOpti
 	}
 	return &albumOptionResponses
 }
+
+type GroupPermission struct {
+	GroupID    int32  `json:"group_id"`
+	Permission string `json:"permission"`
+}
+
+type CreateAlbumRequest struct {
+	Name        string            `json:"name" validate:"required"`
+	Permissions []GroupPermission `json:"permissions"`
+}
+
+type UpdateAlbumRequest struct {
+	Name        string            `json:"name" validate:"required"`
+	Permissions []GroupPermission `json:"permissions"`
+}
+
+type AlbumWithPermissionsResponse struct {
+	AlbumResponse
+	Permissions []GroupPermission `json:"permissions"`
+}
+
+func NewAlbumWithPermissionsResponse(album *db.Album, perms []db.AlbumGroupsPermission) *AlbumWithPermissionsResponse {
+	groupPerms := make([]GroupPermission, len(perms))
+	for i, p := range perms {
+		groupPerms[i] = GroupPermission{GroupID: p.GroupID, Permission: p.Permission}
+	}
+	return &AlbumWithPermissionsResponse{
+		AlbumResponse: *NewAlbumResponse(album),
+		Permissions:   groupPerms,
+	}
+}

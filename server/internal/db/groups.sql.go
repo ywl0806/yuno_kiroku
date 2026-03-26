@@ -38,6 +38,17 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group
 	return i, err
 }
 
+const deleteGroup = `-- name: DeleteGroup :exec
+DELETE FROM groups
+WHERE
+    id = $1
+`
+
+func (q *Queries) DeleteGroup(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteGroup, id)
+	return err
+}
+
 const findGroupByID = `-- name: FindGroupByID :one
 SELECT
     id,
@@ -108,4 +119,34 @@ func (q *Queries) FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]G
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateGroup = `-- name: UpdateGroup :one
+UPDATE groups
+SET
+    name = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+RETURNING
+    id, family_id, is_admin, name, created_at, updated_at
+`
+
+type UpdateGroupParams struct {
+	Name string
+	ID   int32
+}
+
+func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group, error) {
+	row := q.db.QueryRowContext(ctx, updateGroup, arg.Name, arg.ID)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.IsAdmin,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -19,5 +19,7 @@ func (ur *UserRouter) Register(root *echo.Group) {
 	guard := middlewares.NewGuard()
 
 	userRouter.POST("", ur.userHandler.CreateUser)
+	userRouter.GET("/me", ur.userHandler.GetMe, guard.Handler)
+	userRouter.PUT("/me", ur.userHandler.UpdateMe, guard.Handler)
 	userRouter.GET("/members", ur.userHandler.GetMembers, guard.Handler)
 }
