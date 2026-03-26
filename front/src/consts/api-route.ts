@@ -23,6 +23,7 @@ export const API_ROUTES = {
 
   // Identity
   IDENTITY: {
+    OPTIONS: '/identity/options',
     LIST: '/identity',
     BY_ID: (id: number) => `/identity/${id}`,
     UPDATE: '/identity',
@@ -60,6 +61,7 @@ export const API_ROUTES = {
   // Album
   ALBUM: {
     LIST_FOR_WRITE: '/album/write',
+    OPTIONS: '/album/options',
   },
 
   // MediaItem

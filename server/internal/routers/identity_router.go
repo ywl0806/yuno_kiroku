@@ -20,4 +20,5 @@ func (ir *IdentityRouter) Register(root *echo.Group) {
 
 	identityRouter.GET("/:id", ir.identityHandler.FindIdentityByIdAndGroupId, guard.Handler)
 	identityRouter.GET("", ir.identityHandler.FindIdentities, guard.Handler)
+	identityRouter.GET("/options", ir.identityHandler.GetIdentityOptions, guard.Handler)
 }

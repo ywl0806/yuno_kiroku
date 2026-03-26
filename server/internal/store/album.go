@@ -9,6 +9,7 @@ import (
 // AlbumStore 앨범 데이터 접근 인터페이스
 type AlbumStore interface {
 	FindAlbumsForWrite(ctx context.Context, arg db.FindAlbumsForWriteParams) ([]db.Album, error)
+	GetAlbumsOptions(ctx context.Context, familyID int32, groupID int32) ([]db.GetAlbumsOptionsRow, error)
 }
 
 type albumStore struct {
@@ -22,4 +23,11 @@ func NewAlbumStore(queries *db.Queries) AlbumStore {
 
 func (s *albumStore) FindAlbumsForWrite(ctx context.Context, arg db.FindAlbumsForWriteParams) ([]db.Album, error) {
 	return wrapErr(s.queries.FindAlbumsForWrite(ctx, arg))
+}
+
+func (s *albumStore) GetAlbumsOptions(ctx context.Context, familyID int32, groupID int32) ([]db.GetAlbumsOptionsRow, error) {
+	return wrapErr(s.queries.GetAlbumsOptions(ctx, db.GetAlbumsOptionsParams{
+		FamilyID: familyID,
+		GroupID:  groupID,
+	}))
 }

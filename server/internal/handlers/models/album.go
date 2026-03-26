@@ -21,3 +21,23 @@ func NewAlbumResponse(album *db.Album) *AlbumResponse {
 		UpdatedAt: album.UpdatedAt,
 	}
 }
+
+type AlbumOptionResponse struct {
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
+}
+
+func NewAlbumOptionResponse(albumOption *db.GetAlbumsOptionsRow) *AlbumOptionResponse {
+	return &AlbumOptionResponse{
+		ID:   albumOption.ID,
+		Name: albumOption.Name,
+	}
+}
+
+func NewAlbumOptionResponses(albumOptions []db.GetAlbumsOptionsRow) *[]AlbumOptionResponse {
+	albumOptionResponses := make([]AlbumOptionResponse, len(albumOptions))
+	for i, albumOption := range albumOptions {
+		albumOptionResponses[i] = *NewAlbumOptionResponse(&albumOption)
+	}
+	return &albumOptionResponses
+}

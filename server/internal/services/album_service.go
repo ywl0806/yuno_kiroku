@@ -25,3 +25,7 @@ func (s *AlbumService) GetAlbumsForWrite(ctx context.Context, familyId int32, gr
 	}
 	return albums, nil
 }
+
+func (s *AlbumService) GetAlbumsOptions(ctx context.Context, familyID int32, groupID int32) ([]db.GetAlbumsOptionsRow, error) {
+	return s.albumStore.GetAlbumsOptions(ctx, familyID, groupID)
+}

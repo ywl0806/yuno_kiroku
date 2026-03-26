@@ -59,3 +59,8 @@ func (s *IdentityService) FindNewestIdentityFaceImgByFamilyId(ctx context.Contex
 	}
 	return identityFaceImgs, nil
 }
+
+// identity 옵션 조회
+func (s *IdentityService) GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error) {
+	return s.identityStore.GetIdentityOptions(ctx, familyID)
+}

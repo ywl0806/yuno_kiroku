@@ -80,34 +80,6 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 	return &mediaItemResponses
 }
 
-func NewMediaItemResponseWithIdentity(mediaItem *db.GetMediaItemsByTakenAtWithIdentityRow) *MediaItemResponse {
-	return &MediaItemResponse{
-		ID:              mediaItem.ID,
-		FamilyID:        mediaItem.FamilyID,
-		AlbumID:         mediaItem.AlbumID,
-		TakenAt:         mediaItem.TakenAt,
-		FileName:        mediaItem.FileName.String,
-		CreatedAt:       mediaItem.CreatedAt,
-		UpdatedAt:       mediaItem.UpdatedAt,
-		OriginalUrl:     internalutils.ParseStoragePath(mediaItem.OriginalStorageKey),
-		OriginalWidth:   mediaItem.OriginalWidth,
-		OriginalHeight:  mediaItem.OriginalHeight,
-		ThumbnailUrl:    internalutils.ParseStoragePath(mediaItem.ThumbnailStorageKey),
-		ThumbnailWidth:  mediaItem.ThumbnailWidth,
-		ThumbnailHeight: mediaItem.ThumbnailHeight,
-		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey),
-		ViewWidth:       mediaItem.ViewWidth,
-		ViewHeight:      mediaItem.ViewHeight,
-	}
-}
-
-func NewMediaItemsResponseWithIdentity(mediaItems []db.GetMediaItemsByTakenAtWithIdentityRow) *[]MediaItemResponse {
-	mediaItemResponses := make([]MediaItemResponse, len(mediaItems))
-	for i, mediaItem := range mediaItems {
-		mediaItemResponses[i] = *NewMediaItemResponseWithIdentity(&mediaItem)
-	}
-	return &mediaItemResponses
-}
 
 type UploadBatchStatus struct {
 	ID           int32  `json:"id"`
@@ -134,4 +106,11 @@ func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *Upl
 		Statuses:    statuses,
 		IsCompleted: isCompleted,
 	}
+}
+
+type GetMediaItemsRequest struct {
+	From        *time.Time `query:"from" validate:"required"`
+	To          *time.Time `query:"to" validate:"required"`
+	IdentityIDs []int32    `query:"identity_ids"`
+	AlbumID     *int32     `query:"album_id"`
 }

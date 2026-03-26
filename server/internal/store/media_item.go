@@ -12,7 +12,6 @@ type MediaItemStore interface {
 	CreateMediaFile(ctx context.Context, arg db.CreateMediaFileParams) (db.MediaFile, error)
 	GetMediaItemByFaceDetection(ctx context.Context, arg db.GetMediaItemByFaceDetectionParams) (db.MediaItem, error)
 	GetMediaItemsByTakenAt(ctx context.Context, arg db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error)
-	GetMediaItemsByTakenAtWithIdentity(ctx context.Context, arg db.GetMediaItemsByTakenAtWithIdentityParams) ([]db.GetMediaItemsByTakenAtWithIdentityRow, error)
 	GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error)
 	CreateUploadBatch(ctx context.Context, albumID int32) (db.UploadBatch, error)
 	UpdateMediaItemUploadStatus(ctx context.Context, arg db.UpdateMediaItemUploadStatusParams) (db.UpdateMediaItemUploadStatusRow, error)
@@ -42,10 +41,6 @@ func (s *mediaItemStore) GetMediaItemByFaceDetection(ctx context.Context, arg db
 
 func (s *mediaItemStore) GetMediaItemsByTakenAt(ctx context.Context, arg db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error) {
 	return wrapErr(s.queries.GetMediaItemsByTakenAt(ctx, arg))
-}
-
-func (s *mediaItemStore) GetMediaItemsByTakenAtWithIdentity(ctx context.Context, arg db.GetMediaItemsByTakenAtWithIdentityParams) ([]db.GetMediaItemsByTakenAtWithIdentityRow, error) {
-	return wrapErr(s.queries.GetMediaItemsByTakenAtWithIdentity(ctx, arg))
 }
 
 func (s *mediaItemStore) GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error) {

@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"log"
-	"time"
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
@@ -117,12 +115,6 @@ func (con *MediaItemHandler) GetMediaItemRange(c echo.Context) error {
 	return c.JSON(200, ranges)
 }
 
-type GetMediaItemsRequest struct {
-	From        *time.Time `query:"from" validate:"required"`
-	To          *time.Time `query:"to" validate:"required"`
-	IdentityIDs []int32    `query:"identity_ids"`
-}
-
 // @Tags MediaItem
 // @Description 미디어 아이템 목록 조회
 // @Router /media-item [get]
@@ -130,9 +122,10 @@ type GetMediaItemsRequest struct {
 // @Param from query string true "From" example(2025-01-01)
 // @Param to query string true "To" example(2025-01-01)
 // @Param identity_ids query []int false "Identity IDs"
+// @Param album_id query int false "Album ID"
 // @Success 200
 func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
-	reqParams := new(GetMediaItemsRequest)
+	reqParams := new(models.GetMediaItemsRequest)
 	if err := c.Bind(reqParams); err != nil {
 		log.Println("bind get media items request error: ", err)
 		return err
@@ -144,27 +137,7 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
-	if len(reqParams.IdentityIDs) > 0 {
-		params := &db.GetMediaItemsByTakenAtWithIdentityParams{
-			GroupID:     authUser.GroupId,
-			TakenAtFrom: *reqParams.From,
-			TakenAtTo:   *reqParams.To,
-			IdentityIds: reqParams.IdentityIDs,
-		}
-		mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAtWithIdentity(ctx, params)
-		if err != nil {
-			log.Println("get media items by taken at with identity error: ", err)
-			return err
-		}
-		return c.JSON(200, models.NewMediaItemsResponseWithIdentity(mediaItems))
-	}
-
-	params := &db.GetMediaItemsByTakenAtParams{
-		GroupID:     authUser.GroupId,
-		TakenAtFrom: *reqParams.From,
-		TakenAtTo:   *reqParams.To,
-	}
-	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, params)
+	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, authUser.GroupId, *reqParams.From, *reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs)
 	if err != nil {
 		log.Println("get media items by taken at error: ", err)
 		return err

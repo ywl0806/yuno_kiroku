@@ -48,3 +48,16 @@ func (h *IdentityHandler) FindIdentities(c echo.Context) error {
 	}
 	return c.JSON(200, models.NewIdentityListResponse(identities))
 }
+
+// @Tags Identity
+// @Description identity 옵션 조회
+// @Router /identity/options [get]
+// @Success 200 {object} models.IdentityOptionResponse
+func (h *IdentityHandler) GetIdentityOptions(c echo.Context) error {
+	familyId := middlewares.GetAuthUser(c).FamilyId
+	identityOptions, err := h.identityService.GetIdentityOptions(c.Request().Context(), familyId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewIdentityOptionResponses(identityOptions))
+}

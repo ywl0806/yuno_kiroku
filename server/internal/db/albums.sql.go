@@ -14,8 +14,8 @@ SELECT
     a.id, a.family_id, a.name, a.created_at, a.updated_at
 FROM
     albums as a
-    inner join album_groups_permissions as agp on a.id = agp.album_id
-    inner join groups as g on agp.group_id = g.id
+    INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
+    INNER JOIN groups as g on agp.group_id = g.id
 WHERE
     a.family_id = $1::int
     AND g.id = $2::int
@@ -43,6 +43,53 @@ func (q *Queries) FindAlbumsForWrite(ctx context.Context, arg FindAlbumsForWrite
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAlbumsOptions = `-- name: GetAlbumsOptions :many
+SELECT
+    a.id,
+    a.name
+FROM
+    albums as a
+    INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
+    INNER JOIN groups as g on agp.group_id = g.id
+WHERE
+    a.family_id = $1::int
+    AND g.id = $2::int
+    AND agp.permission = 'R'
+`
+
+type GetAlbumsOptionsParams struct {
+	FamilyID int32
+	GroupID  int32
+}
+
+type GetAlbumsOptionsRow struct {
+	ID   int32
+	Name string
+}
+
+func (q *Queries) GetAlbumsOptions(ctx context.Context, arg GetAlbumsOptionsParams) ([]GetAlbumsOptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAlbumsOptions, arg.FamilyID, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAlbumsOptionsRow
+	for rows.Next() {
+		var i GetAlbumsOptionsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

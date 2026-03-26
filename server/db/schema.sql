@@ -242,3 +242,21 @@ CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_identity_id ON identity_face_i
 CREATE INDEX IF NOT EXISTS idx_upload_batches_upload_at ON upload_batches (upload_at);
 
 CREATE INDEX IF NOT EXISTS idx_upload_batches_album_id ON upload_batches (album_id);
+
+-- GetMediaItemsByTakenAt 쿼리 최적화 인덱스
+-- agp: group_id + permission 필터 후 album_id 를 INCLUDE로 즉시 획득
+CREATE INDEX IF NOT EXISTS idx_agp_group_id_permission ON album_groups_permissions (group_id, permission) INCLUDE (album_id);
+
+-- media_items: upload_status = '03' 은 항상 고정이므로 partial index
+-- album_id(JOIN) + taken_at(범위 필터 + 정렬) 복합
+CREATE INDEX IF NOT EXISTS idx_media_items_album_id_taken_at_completed ON media_items (album_id, taken_at DESC)
+    WHERE upload_status = '03';
+
+-- media_files: LATERAL 조인 시 media_item_id + role 로 즉시 조회
+-- storage_key, width, height INCLUDE → index-only scan 가능
+CREATE INDEX IF NOT EXISTS idx_media_files_media_item_id_role ON media_files (media_item_id, role)
+    INCLUDE (storage_key, width, height);
+
+-- face_detections: EXISTS 서브쿼리에서 identity_id = ANY(array) + media_item_id 체크
+-- identity_id 를 leading column으로
+CREATE INDEX IF NOT EXISTS idx_face_detections_identity_id_media_item_id ON face_detections (identity_id, media_item_id);

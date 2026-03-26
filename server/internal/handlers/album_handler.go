@@ -37,3 +37,19 @@ func (con *AlbumHandler) GetAlbumsForWrite(c echo.Context) error {
 
 	return c.JSON(200, albumResponses)
 }
+
+// @Tags Album
+// @Description Get albums options
+// @Router /album/options [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Success 200 {object} []models.AlbumOptionResponse
+func (con *AlbumHandler) GetAlbumsOptions(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	familyId := authUser.FamilyId
+	groupId := authUser.GroupId
+	opts, err := con.albumService.GetAlbumsOptions(c.Request().Context(), familyId, groupId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewAlbumOptionResponses(opts))
+}

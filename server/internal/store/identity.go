@@ -11,6 +11,7 @@ type IdentityStore interface {
 	CreateIdentity(ctx context.Context, familyID int32) (db.Identity, error)
 	FindIdentityByIdAndFamilyId(ctx context.Context, arg db.FindIdentityByIdAndFamilyIdParams) (db.Identity, error)
 	FindIdentitiesByFamilyId(ctx context.Context, familyID int32) ([]db.Identity, error)
+	GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error)
 }
 
 type identityStore struct {
@@ -33,4 +34,8 @@ func (s *identityStore) FindIdentityByIdAndFamilyId(ctx context.Context, arg db.
 
 func (s *identityStore) FindIdentitiesByFamilyId(ctx context.Context, familyID int32) ([]db.Identity, error) {
 	return wrapErr(s.queries.FindIdentitiesByFamilyId(ctx, familyID))
+}
+
+func (s *identityStore) GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error) {
+	return wrapErr(s.queries.GetIdentityOptions(ctx, familyID))
 }

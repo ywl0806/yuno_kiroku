@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createIdentity = `-- name: CreateIdentity :one
@@ -92,4 +93,64 @@ func (q *Queries) FindIdentityByIdAndFamilyId(ctx context.Context, arg FindIdent
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getIdentityOptions = `-- name: GetIdentityOptions :many
+SELECT DISTINCT ON (i.id)
+    i.id, 
+    k.id AS kid_id,
+    k.name AS kid_name,
+    u.id AS user_id,
+    u.name AS user_name,
+    ifi.storage_key
+FROM 
+    identities AS i
+    LEFT JOIN kids AS k ON i.id = k.identity_id
+    LEFT JOIN users AS u ON i.id = u.identity_id
+    LEFT JOIN identity_face_imgs AS ifi ON i.id = ifi.identity_id
+    JOIN media_items AS mi ON ifi.media_item_id = mi.id
+WHERE 
+    i.family_id = $1
+ORDER BY 
+    i.id,
+    mi.taken_at DESC
+`
+
+type GetIdentityOptionsRow struct {
+	ID         int32
+	KidID      sql.NullInt32
+	KidName    sql.NullString
+	UserID     sql.NullInt32
+	UserName   sql.NullString
+	StorageKey sql.NullString
+}
+
+func (q *Queries) GetIdentityOptions(ctx context.Context, familyID int32) ([]GetIdentityOptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getIdentityOptions, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetIdentityOptionsRow
+	for rows.Next() {
+		var i GetIdentityOptionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.KidID,
+			&i.KidName,
+			&i.UserID,
+			&i.UserName,
+			&i.StorageKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

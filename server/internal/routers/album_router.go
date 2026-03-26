@@ -19,4 +19,5 @@ func (ar *AlbumRouter) Register(root *echo.Group) {
 	guard := middlewares.NewGuard()
 
 	album.GET("/write", ar.albumHandler.GetAlbumsForWrite, guard.Handler)
+	album.GET("/options", ar.albumHandler.GetAlbumsOptions, guard.Handler)
 }

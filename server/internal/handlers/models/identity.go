@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
 type IdentityResponse struct {
@@ -38,4 +39,53 @@ func NewIdentityListResponse(identities []db.Identity) *IdentityListResponse {
 
 type FindIdentityByIdAndGroupIdRequest struct {
 	ID int32 `json:"id"`
+}
+
+type IdentityOptionResponse struct {
+	ID       int32   `json:"id"`
+	KidID    *int32  `json:"kid_id"`
+	KidName  *string `json:"kid_name"`
+	UserID   *int32  `json:"user_id"`
+	UserName *string `json:"user_name"`
+	ImageURL *string `json:"image_url"`
+}
+
+func NewIdentityOptionResponse(identityOption *db.GetIdentityOptionsRow) *IdentityOptionResponse {
+	var kidID *int32
+	if identityOption.KidID.Valid {
+		kidID = &identityOption.KidID.Int32
+	}
+	var userID *int32
+	if identityOption.UserID.Valid {
+		userID = &identityOption.UserID.Int32
+	}
+	var kidName *string
+	if identityOption.KidName.Valid {
+		kidName = &identityOption.KidName.String
+	}
+	var userName *string
+	if identityOption.UserName.Valid {
+		userName = &identityOption.UserName.String
+	}
+	var imageURL *string
+	if identityOption.StorageKey.Valid {
+		url := internalutils.ParseStoragePath(identityOption.StorageKey.String)
+		imageURL = &url
+	}
+	return &IdentityOptionResponse{
+		ID:       identityOption.ID,
+		KidID:    kidID,
+		KidName:  kidName,
+		UserID:   userID,
+		UserName: userName,
+		ImageURL: imageURL,
+	}
+}
+
+func NewIdentityOptionResponses(identityOptions []db.GetIdentityOptionsRow) *[]IdentityOptionResponse {
+	identityOptionResponses := make([]IdentityOptionResponse, len(identityOptions))
+	for i, identityOption := range identityOptions {
+		identityOptionResponses[i] = *NewIdentityOptionResponse(&identityOption)
+	}
+	return &identityOptionResponses
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"io"
+	"time"
 	"log"
 	"mime/multipart"
 	"path/filepath"
@@ -308,20 +309,24 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 }
 
 // GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환합니다.
-func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, params *db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error) {
-	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, *params)
+func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, from, to time.Time, albumID *int32, identityIDs []int32) ([]db.GetMediaItemsByTakenAtRow, error) {
+	if identityIDs == nil {
+		identityIDs = []int32{}
+	}
+	albumIDNull := sql.NullInt32{Valid: false}
+	if albumID != nil {
+		albumIDNull = sql.NullInt32{Int32: *albumID, Valid: true}
+	}
+	params := db.GetMediaItemsByTakenAtParams{
+		GroupID:     groupID,
+		TakenAtFrom: from,
+		TakenAtTo:   to,
+		AlbumID:     albumIDNull,
+		IdentityIds: identityIDs,
+	}
+	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, params)
 	if err != nil {
 		log.Println("get media items by taken at error:", err)
-		return nil, err
-	}
-	return mediaItems, nil
-}
-
-// GetMediaItemsByTakenAtWithIdentity는 특정 identity들이 포함된 미디어 아이템을 반환합니다.
-func (s *MediaItemService) GetMediaItemsByTakenAtWithIdentity(ctx context.Context, params *db.GetMediaItemsByTakenAtWithIdentityParams) ([]db.GetMediaItemsByTakenAtWithIdentityRow, error) {
-	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAtWithIdentity(ctx, *params)
-	if err != nil {
-		log.Println("get media items by taken at with identity error:", err)
 		return nil, err
 	}
 	return mediaItems, nil

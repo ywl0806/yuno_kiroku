@@ -18,6 +18,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => 
     month,
     enabled: false,
     identityIds: filter.selectedIdentityIds.length > 0 ? filter.selectedIdentityIds : undefined,
+    albumId: filter.selectedAlbumId ? filter.selectedAlbumId : undefined,
   })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
@@ -30,14 +31,8 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => 
     }
   }, [date, year, month, refetch, filter])
 
-  const filteredPhotos = useMemo(() => {
-    if (!photos) return []
-    if (filter.selectedAlbumId === null) return photos
-    return photos.filter((p) => p.album_id === String(filter.selectedAlbumId))
-  }, [photos, filter.selectedAlbumId])
-
   const photoAlbum: AlbumPhoto[] = useMemo(() => {
-    return filteredPhotos.map((mediaItem) => {
+    return photos?.map((mediaItem) => {
       return {
         key: mediaItem.id,
         src: mediaItem.thumbnail_url,
@@ -45,8 +40,8 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => 
         height: mediaItem.thumbnail_height,
         alt: mediaItem.file_name,
       }
-    })
-  }, [filteredPhotos])
+    }) ?? []
+  }, [photos])
   return (
     <div className="scroll-container h-full w-full overflow-y-auto">
       <PhotoGrid
@@ -57,7 +52,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => 
         }}
       />
       <PhotoDetailSwipeDialog
-        photos={filteredPhotos}
+        photos={photos ?? []}
         index={detailViewIndex}
         setIndex={setDetailViewIndex}
         open={openDetailView}
