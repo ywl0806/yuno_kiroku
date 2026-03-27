@@ -137,12 +137,57 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
+	if reqParams.AlbumID == nil && len(reqParams.IdentityIDs) == 0 {
+		homeItems, err := con.mediaItemService.GetMediaItemsByTakenAtHome(ctx, authUser.GroupId, *reqParams.From, *reqParams.To)
+		if err != nil {
+			log.Println("get media items by taken at home error: ", err)
+			return err
+		}
+		return c.JSON(200, models.NewMediaItemsResponseFromHome(homeItems))
+	}
+
 	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, authUser.GroupId, *reqParams.From, *reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs)
 	if err != nil {
 		log.Println("get media items by taken at error: ", err)
 		return err
 	}
 	return c.JSON(200, models.NewMediaItemsResponse(mediaItems))
+}
+
+// @Tags MediaItem
+// @Description 검색 (페이지네이션)
+// @Router /media-item/search [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param from query string false "From (RFC3339)"
+// @Param to query string false "To (RFC3339)"
+// @Param identity_ids query []int false "Identity IDs"
+// @Param album_id query int false "Album ID"
+// @Param page query int false "Page (1-based, default 1)"
+// @Success 200 {object} models.SearchMediaItemsResponse
+func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
+	reqParams := new(models.SearchMediaItemsRequest)
+	if err := c.Bind(reqParams); err != nil {
+		return err
+	}
+
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+
+	result, err := con.mediaItemService.SearchMediaItems(ctx, authUser.GroupId, reqParams.From, reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs, reqParams.Page)
+	if err != nil {
+		log.Println("search media items error:", err)
+		return err
+	}
+
+	items := make([]models.MediaItemResponse, len(result.Items))
+	for i, item := range result.Items {
+		items[i] = *models.NewSearchMediaItemResponse(&item)
+	}
+	return c.JSON(200, models.SearchMediaItemsResponse{
+		Items:   items,
+		HasNext: result.HasNext,
+		Page:    reqParams.Page,
+	})
 }
 
 // @Tags MediaItem

@@ -308,6 +308,21 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 	return err
 }
 
+// GetMediaItemsByTakenAtHome는 필터 없이 촬영 시간 범위 내의 미디어 아이템을 반환합니다 (홈 전용 경량 쿼리).
+func (s *MediaItemService) GetMediaItemsByTakenAtHome(ctx context.Context, groupID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtHomeRow, error) {
+	params := db.GetMediaItemsByTakenAtHomeParams{
+		GroupID:     groupID,
+		TakenAtFrom: from,
+		TakenAtTo:   to,
+	}
+	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAtHome(ctx, params)
+	if err != nil {
+		log.Println("get media items by taken at home error:", err)
+		return nil, err
+	}
+	return mediaItems, nil
+}
+
 // GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환합니다.
 func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, from, to time.Time, albumID *int32, identityIDs []int32) ([]db.GetMediaItemsByTakenAtRow, error) {
 	if identityIDs == nil {
@@ -359,6 +374,55 @@ func (s *MediaItemService) GetMediaItemRange(ctx context.Context, groupId int32)
 	}
 
 	return mediaItemRanges, nil
+}
+
+const SearchPageSize = 30
+
+type SearchMediaItemsResult struct {
+	Items   []db.SearchMediaItemsRow
+	HasNext bool
+}
+
+// SearchMediaItems는 검색 조건으로 미디어 아이템을 페이지 단위로 반환합니다.
+func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, from, to *time.Time, albumID *int32, identityIDs []int32, page int) (*SearchMediaItemsResult, error) {
+	if identityIDs == nil {
+		identityIDs = []int32{}
+	}
+	albumIDNull := sql.NullInt32{Valid: false}
+	if albumID != nil {
+		albumIDNull = sql.NullInt32{Int32: *albumID, Valid: true}
+	}
+	fromNull := sql.NullTime{Valid: false}
+	if from != nil {
+		fromNull = sql.NullTime{Time: *from, Valid: true}
+	}
+	toNull := sql.NullTime{Valid: false}
+	if to != nil {
+		toNull = sql.NullTime{Time: *to, Valid: true}
+	}
+	if page < 1 {
+		page = 1
+	}
+	offset := int32((page - 1) * SearchPageSize)
+	// 1件多く取得してhas_nextを判定
+	params := db.SearchMediaItemsParams{
+		GroupID:     groupID,
+		TakenAtFrom: fromNull,
+		TakenAtTo:   toNull,
+		AlbumID:     albumIDNull,
+		IdentityIds: identityIDs,
+		PageOffset:  offset,
+		PageSize:    int32(SearchPageSize) + 1,
+	}
+	items, err := s.mediaItemStore.SearchMediaItems(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	hasNext := len(items) > SearchPageSize
+	if hasNext {
+		items = items[:SearchPageSize]
+	}
+	return &SearchMediaItemsResult{Items: items, HasNext: hasNext}, nil
 }
 
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성합니다.

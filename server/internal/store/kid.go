@@ -13,6 +13,7 @@ type KidStore interface {
 	UpdateKid(ctx context.Context, arg db.UpdateKidParams) (db.Kid, error)
 	DeleteKid(ctx context.Context, id int32) error
 	GetKidByID(ctx context.Context, id int32) (db.Kid, error)
+	GetKidsWithRandomFaceImg(ctx context.Context, arg db.GetKidsWithRandomFaceImgParams) ([]db.GetKidsWithRandomFaceImgRow, error)
 }
 
 type kidStore struct {
@@ -42,4 +43,8 @@ func (s *kidStore) DeleteKid(ctx context.Context, id int32) error {
 
 func (s *kidStore) GetKidByID(ctx context.Context, id int32) (db.Kid, error) {
 	return wrapErr(s.queries.GetKidByID(ctx, id))
+}
+
+func (s *kidStore) GetKidsWithRandomFaceImg(ctx context.Context, arg db.GetKidsWithRandomFaceImgParams) ([]db.GetKidsWithRandomFaceImgRow, error) {
+	return wrapErr(s.queries.GetKidsWithRandomFaceImg(ctx, arg))
 }

@@ -1,8 +1,7 @@
-import { HomeFilter } from '@/feature/home/components/home-filter-panel'
 import { HomeHeader } from '@/feature/home/components/home-header'
 import { PhotoSwiper } from '@/feature/home/components/photo-swiper'
 import { MediaItemRange } from '@/types'
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 type Props = {
@@ -11,10 +10,6 @@ type Props = {
 }
 export const HomeContainer: FC<Props> = ({ date, range }) => {
   const nav = useNavigate()
-  const [filter, setFilter] = useState<HomeFilter>({
-    selectedAlbumId: null,
-    selectedIdentityIds: [],
-  })
 
   useEffect(() => {
     if (!range || date) return
@@ -25,8 +20,8 @@ export const HomeContainer: FC<Props> = ({ date, range }) => {
   }, [date, range])
   return (
     <div className="flex h-full flex-col">
-      <HomeHeader date={date ?? ''} range={range} filter={filter} onFilterChange={setFilter} />
-      <PhotoSwiper date={date ?? ''} range={range} filter={filter} />
+      <HomeHeader date={date ?? ''} range={range} />
+      <PhotoSwiper date={date ?? ''} range={range} />
     </div>
   )
 }

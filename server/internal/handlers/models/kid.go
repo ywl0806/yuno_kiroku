@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
 type KidResponse struct {
@@ -26,6 +27,41 @@ type UpdateKidRequest struct {
 	Name       *string `json:"name"`
 	BirthDate  *string `json:"birth_date"`
 	IdentityID *int32  `json:"identity_id"`
+}
+
+type GetKidsWithFaceImgRequest struct {
+	Year  int `query:"year" validate:"required"`
+	Month int `query:"month" validate:"required"`
+}
+
+type KidWithFaceImgResponse struct {
+	KidID        int32  `json:"kid_id"`
+	Name         string `json:"name"`
+	FaceImgURL   string `json:"face_img_url"`
+	MediaItemID  int32  `json:"media_item_id"`
+	TakenAtYear  int    `json:"taken_at_year"`
+	TakenAtMonth int    `json:"taken_at_month"`
+	BirthDate    string `json:"birth_date"`
+}
+
+func NewKidWithFaceImgResponse(k *db.GetKidsWithRandomFaceImgRow) *KidWithFaceImgResponse {
+	return &KidWithFaceImgResponse{
+		KidID:        k.ID,
+		Name:         k.Name.String,
+		FaceImgURL:   internalutils.ParseStoragePath(k.StorageKey),
+		MediaItemID:  k.MediaItemID,
+		TakenAtYear:  k.TakenAt.Year(),
+		TakenAtMonth: int(k.TakenAt.Month()),
+		BirthDate:    k.BirthDate.Time.Format("2006-01-02"),
+	}
+}
+
+func NewKidWithFaceImgResponses(ks []db.GetKidsWithRandomFaceImgRow) *[]KidWithFaceImgResponse {
+	kidWithFaceImgResponses := make([]KidWithFaceImgResponse, len(ks))
+	for i, k := range ks {
+		kidWithFaceImgResponses[i] = *NewKidWithFaceImgResponse(&k)
+	}
+	return &kidWithFaceImgResponses
 }
 
 func NewKidResponse(k *db.Kid) *KidResponse {

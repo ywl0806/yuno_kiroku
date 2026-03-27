@@ -18,6 +18,7 @@ func (r *KidRouter) Register(root *echo.Group) {
 	kid := root.Group("/kid")
 	guard := middlewares.NewGuard()
 
+	kid.GET("/face-imgs", r.kidHandler.GetKidsWithFaceImg, guard.Handler)
 	kid.POST("", r.kidHandler.CreateKid, guard.Handler)
 	kid.PUT("/:kidId", r.kidHandler.UpdateKid, guard.Handler)
 	kid.DELETE("/:kidId", r.kidHandler.DeleteKid, guard.Handler)

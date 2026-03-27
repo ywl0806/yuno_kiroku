@@ -80,6 +80,35 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 	return &mediaItemResponses
 }
 
+func NewMediaItemResponseFromHome(mediaItem *db.GetMediaItemsByTakenAtHomeRow) *MediaItemResponse {
+	return &MediaItemResponse{
+		ID:              mediaItem.ID,
+		FamilyID:        mediaItem.FamilyID,
+		AlbumID:         mediaItem.AlbumID,
+		TakenAt:         mediaItem.TakenAt,
+		FileName:        mediaItem.FileName.String,
+		CreatedAt:       mediaItem.CreatedAt,
+		UpdatedAt:       mediaItem.UpdatedAt,
+		OriginalUrl:     internalutils.ParseStoragePath(mediaItem.OriginalStorageKey),
+		OriginalWidth:   mediaItem.OriginalWidth,
+		OriginalHeight:  mediaItem.OriginalHeight,
+		ThumbnailUrl:    internalutils.ParseStoragePath(mediaItem.ThumbnailStorageKey),
+		ThumbnailWidth:  mediaItem.ThumbnailWidth,
+		ThumbnailHeight: mediaItem.ThumbnailHeight,
+		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey),
+		ViewWidth:       mediaItem.ViewWidth,
+		ViewHeight:      mediaItem.ViewHeight,
+	}
+}
+
+func NewMediaItemsResponseFromHome(mediaItems []db.GetMediaItemsByTakenAtHomeRow) *[]MediaItemResponse {
+	mediaItemResponses := make([]MediaItemResponse, len(mediaItems))
+	for i, mediaItem := range mediaItems {
+		mediaItemResponses[i] = *NewMediaItemResponseFromHome(&mediaItem)
+	}
+	return &mediaItemResponses
+}
+
 
 type UploadBatchStatus struct {
 	ID           int32  `json:"id"`
@@ -113,4 +142,39 @@ type GetMediaItemsRequest struct {
 	To          *time.Time `query:"to" validate:"required"`
 	IdentityIDs []int32    `query:"identity_ids"`
 	AlbumID     *int32     `query:"album_id"`
+}
+
+type SearchMediaItemsRequest struct {
+	From        *time.Time `query:"from"`
+	To          *time.Time `query:"to"`
+	IdentityIDs []int32    `query:"identity_ids"`
+	AlbumID     *int32     `query:"album_id"`
+	Page        int        `query:"page"`
+}
+
+type SearchMediaItemsResponse struct {
+	Items   []MediaItemResponse `json:"items"`
+	HasNext bool                `json:"has_next"`
+	Page    int                 `json:"page"`
+}
+
+func NewSearchMediaItemResponse(item *db.SearchMediaItemsRow) *MediaItemResponse {
+	return &MediaItemResponse{
+		ID:              item.ID,
+		FamilyID:        item.FamilyID,
+		AlbumID:         item.AlbumID,
+		TakenAt:         item.TakenAt,
+		FileName:        item.FileName.String,
+		CreatedAt:       item.CreatedAt,
+		UpdatedAt:       item.UpdatedAt,
+		OriginalUrl:     internalutils.ParseStoragePath(item.OriginalStorageKey),
+		OriginalWidth:   item.OriginalWidth,
+		OriginalHeight:  item.OriginalHeight,
+		ThumbnailUrl:    internalutils.ParseStoragePath(item.ThumbnailStorageKey),
+		ThumbnailWidth:  item.ThumbnailWidth,
+		ThumbnailHeight: item.ThumbnailHeight,
+		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey),
+		ViewWidth:       item.ViewWidth,
+		ViewHeight:      item.ViewHeight,
+	}
 }

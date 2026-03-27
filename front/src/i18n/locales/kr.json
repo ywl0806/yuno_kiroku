@@ -8,7 +8,14 @@
     "loading": "로딩 중...",
     "none": "없음"
   },
-  "nav": { "home": "홈", "album": "앨범", "upload": "업로드", "settings": "설정", "logout": "로그아웃" },
+  "nav": {
+    "home": "홈",
+    "album": "앨범",
+    "search": "검색",
+    "upload": "업로드",
+    "settings": "설정",
+    "logout": "로그아웃"
+  },
   "auth": {
     "login": "로그인",
     "logout": "로그아웃",
@@ -39,7 +46,18 @@
     "filter": "필터",
     "filterAll": "전체",
     "filterAlbum": "앨범",
-    "filterKid": "아이"
+    "filterKid": "아이",
+    "ageLabel_months": "{{months}}개월",
+    "ageLabel_years": "{{years}}살"
+  },
+  "search": {
+    "title": "검색",
+    "period": "기간",
+    "allPeriod": "전체 기간",
+    "noResults": "검색 결과가 없습니다",
+    "selectFilter": "필터를 선택하면 사진이 표시됩니다",
+    "loadMore": "더 보기",
+    "loading": "불러오는 중..."
   },
   "page": { "settings": "설정", "logout": "로그아웃", "notFound": "페이지를 찾을 수 없습니다" },
   "settings": {

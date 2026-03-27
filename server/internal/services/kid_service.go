@@ -7,6 +7,7 @@ import (
 
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
 type KidService struct {
@@ -55,4 +56,21 @@ func (s *KidService) UpdateKid(ctx context.Context, id int32, name *string, birt
 
 func (s *KidService) DeleteKid(ctx context.Context, id int32) error {
 	return s.kidStore.DeleteKid(ctx, id)
+}
+
+type KidWithFaceImg struct {
+	KidID       int32
+	Name        string
+	FaceImgURL  string
+	MediaItemID int32
+	TakenAt     time.Time
+}
+
+// GetKidsWithFaceImg 월별 아이 얼굴 사진 조회
+func (s *KidService) GetKidsWithFaceImg(ctx context.Context, familyID int32, year int, month int) ([]db.GetKidsWithRandomFaceImgRow, error) {
+	return s.kidStore.GetKidsWithRandomFaceImg(ctx, db.GetKidsWithRandomFaceImgParams{
+		FamilyID:    familyID,
+		TakenAtTo:   utils.GetLastDayOfMonth(year, month),
+		TakenAtFrom: utils.GetFirstDayOfMonth(year, month),
+	})
 }

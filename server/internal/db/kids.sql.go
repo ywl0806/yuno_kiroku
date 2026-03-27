@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createKid = `-- name: CreateKid :one
@@ -102,6 +103,75 @@ func (q *Queries) GetKidByID(ctx context.Context, id int32) (Kid, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getKidsWithRandomFaceImg = `-- name: GetKidsWithRandomFaceImg :many
+SELECT
+    k.id,
+    k.name,
+    k.birth_date,
+    k.identity_id,
+    k.family_id,
+    ifi.media_item_id,
+    ifi.storage_key,
+    mi.taken_at
+FROM kids AS k 
+INNER JOIN identity_face_imgs AS ifi ON k.identity_id = ifi.identity_id
+INNER JOIN media_items AS mi ON ifi.media_item_id = mi.id
+WHERE k.family_id = $1
+    AND mi.taken_at <= $2::timestamp
+    AND mi.taken_at >= $3::timestamp
+GROUP BY k.id, k.name, k.birth_date, k.identity_id, k.family_id, ifi.media_item_id, ifi.storage_key, mi.taken_at
+ORDER BY k.id, RANDOM()
+`
+
+type GetKidsWithRandomFaceImgParams struct {
+	FamilyID    int32
+	TakenAtTo   time.Time
+	TakenAtFrom time.Time
+}
+
+type GetKidsWithRandomFaceImgRow struct {
+	ID          int32
+	Name        sql.NullString
+	BirthDate   sql.NullTime
+	IdentityID  sql.NullInt32
+	FamilyID    int32
+	MediaItemID int32
+	StorageKey  string
+	TakenAt     time.Time
+}
+
+func (q *Queries) GetKidsWithRandomFaceImg(ctx context.Context, arg GetKidsWithRandomFaceImgParams) ([]GetKidsWithRandomFaceImgRow, error) {
+	rows, err := q.db.QueryContext(ctx, getKidsWithRandomFaceImg, arg.FamilyID, arg.TakenAtTo, arg.TakenAtFrom)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetKidsWithRandomFaceImgRow
+	for rows.Next() {
+		var i GetKidsWithRandomFaceImgRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.BirthDate,
+			&i.IdentityID,
+			&i.FamilyID,
+			&i.MediaItemID,
+			&i.StorageKey,
+			&i.TakenAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateKid = `-- name: UpdateKid :one

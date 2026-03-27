@@ -1,27 +1,34 @@
 import { PhotoDetailSwipeDialog } from '@/components/blocks/photo-detail-swipe-dialog'
 import { PhotoGrid } from '@/components/blocks/photo-grid'
-import { HomeFilter } from '@/feature/home/components/home-filter-panel'
+import { MonthHeroSection } from '@/feature/home/components/month-hero-section'
 import { useGetMediaItems } from '@/feature/home/hooks/use-get-media-items'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 type Props = {
   year: number
   month: number
   date: string
-  filter: HomeFilter
 }
 
-export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => {
+type OpenMediaItemState = {
+  mediaItemId: number
+  year: number
+  month: number
+}
+
+export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
   const { data: photos, refetch, isFetched } = useGetMediaItems({
     year,
     month,
     enabled: false,
-    identityIds: filter.selectedIdentityIds.length > 0 ? filter.selectedIdentityIds : undefined,
-    albumId: filter.selectedAlbumId ? filter.selectedAlbumId : undefined,
   })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
+
+  const location = useLocation()
+  const nav = useNavigate()
 
   useEffect(() => {
     if (!date || isFetched) return
@@ -29,7 +36,21 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => 
     if (parseInt(y) === year && parseInt(m) === month) {
       refetch()
     }
-  }, [date, year, month, refetch, filter])
+  }, [date, year, month, refetch])
+
+  // URL state로 특정 사진 상세뷰 자동 열기
+  useEffect(() => {
+    const req = location.state?.openMediaItem as OpenMediaItemState | undefined
+    if (!req || !photos || req.year !== year || req.month !== month) return
+    const index = photos.findIndex((p) => Number(p.id) === req.mediaItemId)
+    if (index !== -1) {
+      setDetailViewIndex(index)
+      setOpenDetailView(true)
+      // state 소비 후 제거
+      nav(location.pathname, { replace: true, state: {} })
+    }
+  }, [photos, location.state, year, month])
+
 
   const photoAlbum: AlbumPhoto[] = useMemo(() => {
     return photos?.map((mediaItem) => {
@@ -42,8 +63,12 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, filter }) => 
       }
     }) ?? []
   }, [photos])
+
   return (
     <div className="scroll-container h-full w-full overflow-y-auto">
+      {photos && photos.length > 0 && (
+        <MonthHeroSection year={year} month={month} allPhotos={photos} />
+      )}
       <PhotoGrid
         photos={photoAlbum}
         onClick={(index) => {

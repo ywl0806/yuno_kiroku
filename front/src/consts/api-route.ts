@@ -61,6 +61,7 @@ export const API_ROUTES = {
     CREATE: '/kid',
     UPDATE: (kidId: number) => `/kid/${kidId}`,
     DELETE: (kidId: number) => `/kid/${kidId}`,
+    FACE_IMGS: '/kid/face-imgs',
   },
 
   // Album
@@ -77,6 +78,7 @@ export const API_ROUTES = {
   // MediaItem
   MEDIA_ITEM: {
     LIST: '/media-item',
+    SEARCH: '/media-item/search',
     UPLOAD: '/media-item/image/upload',
     RANGE: '/media-item/range',
     UPLOAD_BATCH: '/media-item/upload-batch',

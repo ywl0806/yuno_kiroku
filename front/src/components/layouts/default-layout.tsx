@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { House, Settings, Upload } from 'lucide-react'
+import { House, Search, Settings, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 
@@ -28,6 +28,7 @@ const NavItem = ({
 }
 const navConfig: { path: string; icon: React.ElementType; labelKey: string }[] = [
   { path: '/', icon: House, labelKey: 'nav.album' },
+  { path: '/search', icon: Search, labelKey: 'nav.search' },
   { path: '/upload', icon: Upload, labelKey: 'nav.upload' },
   { path: '/settings', icon: Settings, labelKey: 'nav.settings' },
 ]

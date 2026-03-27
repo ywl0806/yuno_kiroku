@@ -83,6 +83,29 @@ func (h *KidHandler) UpdateKid(c echo.Context) error {
 }
 
 // @Tags Kid
+// @Description 월별 아이 얼굴 사진 조회
+// @Router /kid/face-imgs [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param body body models.GetKidsWithFaceImgRequest true "Get kids with face img request"
+// @Success 200 {array} models.KidWithFaceImgResponse
+func (h *KidHandler) GetKidsWithFaceImg(c echo.Context) error {
+
+	req := new(models.GetKidsWithFaceImgRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+
+	authUser := middlewares.GetAuthUser(c)
+	kids, err := h.kidService.GetKidsWithFaceImg(c.Request().Context(), authUser.FamilyId, req.Year, req.Month)
+
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, models.NewKidWithFaceImgResponses(kids))
+}
+
+// @Tags Kid
 // @Description Delete a kid
 // @Router /kid/{kidId} [delete]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)

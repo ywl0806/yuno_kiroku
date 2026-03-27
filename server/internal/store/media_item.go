@@ -12,10 +12,12 @@ type MediaItemStore interface {
 	CreateMediaFile(ctx context.Context, arg db.CreateMediaFileParams) (db.MediaFile, error)
 	GetMediaItemByFaceDetection(ctx context.Context, arg db.GetMediaItemByFaceDetectionParams) (db.MediaItem, error)
 	GetMediaItemsByTakenAt(ctx context.Context, arg db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error)
+	GetMediaItemsByTakenAtHome(ctx context.Context, arg db.GetMediaItemsByTakenAtHomeParams) ([]db.GetMediaItemsByTakenAtHomeRow, error)
 	GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error)
 	CreateUploadBatch(ctx context.Context, albumID int32) (db.UploadBatch, error)
 	UpdateMediaItemUploadStatus(ctx context.Context, arg db.UpdateMediaItemUploadStatusParams) (db.UpdateMediaItemUploadStatusRow, error)
 	GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error)
+	SearchMediaItems(ctx context.Context, arg db.SearchMediaItemsParams) ([]db.SearchMediaItemsRow, error)
 }
 
 type mediaItemStore struct {
@@ -43,6 +45,10 @@ func (s *mediaItemStore) GetMediaItemsByTakenAt(ctx context.Context, arg db.GetM
 	return wrapErr(s.queries.GetMediaItemsByTakenAt(ctx, arg))
 }
 
+func (s *mediaItemStore) GetMediaItemsByTakenAtHome(ctx context.Context, arg db.GetMediaItemsByTakenAtHomeParams) ([]db.GetMediaItemsByTakenAtHomeRow, error) {
+	return wrapErr(s.queries.GetMediaItemsByTakenAtHome(ctx, arg))
+}
+
 func (s *mediaItemStore) GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error) {
 	return wrapErr(s.queries.GetMediaItemRange(ctx, clanGroupID))
 }
@@ -57,4 +63,8 @@ func (s *mediaItemStore) UpdateMediaItemUploadStatus(ctx context.Context, arg db
 
 func (s *mediaItemStore) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
 	return wrapErr(s.queries.GetUploadStatuses(ctx, uploadBatchID))
+}
+
+func (s *mediaItemStore) SearchMediaItems(ctx context.Context, arg db.SearchMediaItemsParams) ([]db.SearchMediaItemsRow, error) {
+	return wrapErr(s.queries.SearchMediaItems(ctx, arg))
 }

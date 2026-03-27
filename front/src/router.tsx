@@ -16,6 +16,7 @@ import { SettingsMemberEditPage } from '@/page/setting/member/edit'
 import { SettingsMemberInvitePage } from '@/page/setting/member/invite'
 import { SettingsKidNewPage } from '@/page/setting/kid/new'
 import { SettingsKidEditPage } from '@/page/setting/kid/edit'
+import { SearchPage } from '@/page/search'
 import { UploadPage } from '@/page/upload/upload'
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 
@@ -29,6 +30,7 @@ export const router = createBrowserRouter(
       <Route path="/" element={<DefaultLayout />}>
         <Route index element={<HomePage />} />
         <Route path={'/:date'} element={<HomePage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/logout" element={<LogoutPage />} />
         <Route path="*" element={<NotFoundPage />} />

@@ -1,10 +1,7 @@
 import colors from '@/colors'
 import { DropdownYear } from '@/components/blocks/dropdown-year'
-// import { ScrollHideWrapper } from '@/components/layouts/scroll-hide-wrapper'
-import { HomeFilter, HomeFilterPanel } from '@/feature/home/components/home-filter-panel'
 import { MediaItemRange } from '@/types'
 import { Tab, Tabs } from '@mui/material'
-import { SlidersHorizontal } from 'lucide-react'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -16,14 +13,9 @@ type SelectedDate = {
 type Props = {
   date: string
   range: MediaItemRange[]
-  filter: HomeFilter
-  onFilterChange: (filter: HomeFilter) => void
 }
-export const HomeHeader: FC<Props> = ({ date, range, filter, onFilterChange }) => {
+export const HomeHeader: FC<Props> = ({ date, range }) => {
   const nav = useNavigate()
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
-
-  const isFilterActive = filter.selectedAlbumId !== null || filter.selectedIdentityIds.length > 0
 
   const [selectedDate, setSelectedDate] = useState<SelectedDate>({
     year: parseInt(date?.split('-')[0] ?? '0') ?? new Date().getFullYear(),
@@ -53,7 +45,6 @@ export const HomeHeader: FC<Props> = ({ date, range, filter, onFilterChange }) =
 
   return (
     <div className="pt-5">
-      {/* <ScrollHideWrapper> */}
       <div className="flex items-center justify-center gap-2 pt-2">
         <DropdownYear
           years={years}
@@ -67,26 +58,7 @@ export const HomeHeader: FC<Props> = ({ date, range, filter, onFilterChange }) =
             }
           }}
         />
-        <button
-          type="button"
-          onClick={() => setIsFilterOpen((prev) => !prev)}
-          className="relative flex items-center justify-center rounded-full p-1"
-        >
-          <SlidersHorizontal
-            size={20}
-            style={{ color: isFilterActive ? colors.amethyst : undefined }}
-            className={isFilterActive ? '' : 'text-muted-foreground'}
-          />
-          {isFilterActive && (
-            <span
-              className="absolute right-0 top-0 h-2 w-2 rounded-full"
-              style={{ backgroundColor: colors.amethyst }}
-            />
-          )}
-        </button>
       </div>
-      {isFilterOpen && <HomeFilterPanel filter={filter} onFilterChange={onFilterChange} />}
-      {/* </ScrollHideWrapper> */}
 
       <div className="z-99 bg-background h-full">
         {range.length > 0 && (
