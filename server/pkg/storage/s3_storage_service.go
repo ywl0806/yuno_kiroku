@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -58,6 +60,33 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 	}
 
 	return &S3StorageService{bucketName: bucketName, client: client}
+}
+
+func (s *S3StorageService) GetFile(key string) ([]byte, error) {
+	ctx := context.Background()
+	result, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("파일 다운로드 실패: %w", err)
+	}
+	defer result.Body.Close()
+	return io.ReadAll(result.Body)
+}
+
+func (s *S3StorageService) GeneratePresignedPutURL(key string, contentType string, expiresIn time.Duration) (string, error) {
+	ctx := context.Background()
+	presignClient := s3.NewPresignClient(s.client)
+	req, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucketName),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
+	}, s3.WithPresignExpires(expiresIn))
+	if err != nil {
+		return "", fmt.Errorf("presigned URL 생성 실패: %w", err)
+	}
+	return req.URL, nil
 }
 
 func (s *S3StorageService) SaveFile(file []byte, filePath string, fileName string) (string, error) {

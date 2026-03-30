@@ -80,6 +80,7 @@ export const API_ROUTES = {
     LIST: '/media-item',
     SEARCH: '/media-item/search',
     UPLOAD: '/media-item/image/upload',
+    PRESIGNED_URL: '/media-item/presigned-url',
     RANGE: '/media-item/range',
     UPLOAD_BATCH: '/media-item/upload-batch',
     UPLOAD_BATCH_STATUS: '/media-item/upload-batch/status',

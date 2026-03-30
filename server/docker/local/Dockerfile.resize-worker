@@ -1,0 +1,29 @@
+FROM golang:1.24-alpine
+
+# libvips 및 빌드 도구 설치
+RUN apk add --no-cache \
+    --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community \
+    vips-dev \
+    vips \
+    libheif-dev \
+    libheif \
+    pkgconfig \
+    gcc \
+    musl-dev \
+    g++ \
+    glib-dev \
+    expat-dev
+
+ENV CGO_ENABLED=1
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o /resize-worker ./cmd/resize-worker/
+
+EXPOSE 1325
+CMD ["/resize-worker"]

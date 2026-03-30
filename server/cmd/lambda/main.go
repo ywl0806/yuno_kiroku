@@ -4,7 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	_ "github.com/ywl0806/yuno_kiroku/docs"
-	api "github.com/ywl0806/yuno_kiroku/internal"
+	"github.com/ywl0806/yuno_kiroku/internal/api"
 
 	echoadapter "github.com/awslabs/aws-lambda-go-api-proxy/echo"
 

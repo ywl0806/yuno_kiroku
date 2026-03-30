@@ -38,6 +38,19 @@ type FaceDetection struct {
 	UpdatedAt      time.Time
 }
 
+type FaceRecognitionJob struct {
+	ID             int32
+	MediaItemID    int32
+	FamilyID       int32
+	ViewStorageKey string
+	Status         string
+	AttemptCount   int32
+	LastError      sql.NullString
+	CompletedAt    sql.NullTime
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 type Family struct {
 	ID        int32
 	Name      string

@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,6 +28,20 @@ type ImageUploader struct {
 
 func NewImageUploader(storage storage.StorageService, cropper imagepkg.Cropper) *ImageUploader {
 	return &ImageUploader{storage: storage, cropper: cropper}
+}
+
+// 원본 이미지용 S3 키를 미리 생성 (Presigned URL 발급 시 사용)
+// 반환 형식: {familyId}/{albumId}/{date}/original/{uuid}.{ext}
+func (u *ImageUploader) BuildOriginalKey(familyId, albumId int32, fileName string, date time.Time) string {
+	ext := strings.ToLower(strings.TrimPrefix(fileName[strings.LastIndex(fileName, "."):], "."))
+	uploadPath := strconv.Itoa(int(familyId)) + "/" + strconv.Itoa(int(albumId))
+	folderName := uploadPath + "/" + date.Format("2006-01-02")
+	return folderName + "/" + consts.ORIGINAL_STORAGE_PREFIX + "/" + uuid.New().String() + "." + ext
+}
+
+// Presigned PUT URL을 생성
+func (u *ImageUploader) GeneratePresignedPutURL(key string, contentType string, expiresIn time.Duration) (string, error) {
+	return u.storage.GeneratePresignedPutURL(key, contentType, expiresIn)
 }
 
 // 가족/앨범에 대한 스토리지 경로 prefix를 반환

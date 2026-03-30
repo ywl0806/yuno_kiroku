@@ -239,6 +239,25 @@ CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_media_item_id ON identity_face
 
 CREATE INDEX IF NOT EXISTS idx_identity_face_imgs_identity_id ON identity_face_imgs (identity_id);
 
+-- 얼굴 인식 배치 작업 테이블
+CREATE TABLE IF NOT EXISTS face_recognition_jobs (
+    id               SERIAL PRIMARY KEY,
+    media_item_id    INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+    family_id        INTEGER NOT NULL REFERENCES families(id),
+    view_storage_key VARCHAR(512) NOT NULL,
+    status           VARCHAR(2) NOT NULL DEFAULT '01',
+    attempt_count    INTEGER NOT NULL DEFAULT 0,
+    last_error       TEXT,
+    completed_at     TIMESTAMP,
+    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_frj_media_item_id ON face_recognition_jobs (media_item_id);
+CREATE INDEX IF NOT EXISTS idx_frj_status_created ON face_recognition_jobs (status, created_at) WHERE status = '01';
+CREATE INDEX IF NOT EXISTS idx_frj_family_id_status ON face_recognition_jobs (family_id, status);
+CREATE INDEX IF NOT EXISTS idx_media_files_storage_key ON media_files (storage_key);
+
 CREATE INDEX IF NOT EXISTS idx_upload_batches_upload_at ON upload_batches (upload_at);
 
 CREATE INDEX IF NOT EXISTS idx_upload_batches_album_id ON upload_batches (album_id);

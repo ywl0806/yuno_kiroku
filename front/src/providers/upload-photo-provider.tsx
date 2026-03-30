@@ -55,21 +55,31 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
   ) => {
     try {
       updatePhotoStatus(index, UPLOAD_STATUS.PENDING)
-      const formData = new FormData()
-      formData.append('file', mediaItem.file)
 
-      const response = await MyAxiosWithAuth.post(
-        `${API_ROUTES.MEDIA_ITEM.UPLOAD}?album_id=${albumId}&upload_batch_id=${uploadBatchId}&retry=${retry ? '1' : '0'
-        }`,
-        formData,
+      // 1. Presigned URL 발급
+      const presignedRes = await MyAxiosWithAuth.post(
+        `${API_ROUTES.MEDIA_ITEM.PRESIGNED_URL}?album_id=${albumId}&upload_batch_id=${uploadBatchId}`,
+        { file_name: mediaItem.file.name, content_type: mediaItem.file.type || 'image/jpeg' },
       )
-      const mediaItemId = response.data?.media_item_id as number | undefined
+      const { media_item_id: mediaItemId, presigned_url: presignedUrl } = presignedRes.data as {
+        media_item_id: number
+        presigned_url: string
+        storage_key: string
+      }
+
+      // 2. MinIO/S3에 직접 PUT (인증 헤더 없이)
+      await fetch(presignedUrl, {
+        method: 'PUT',
+        body: mediaItem.file,
+        headers: { 'Content-Type': mediaItem.file.type || 'image/jpeg' },
+      })
+
       setMediaItems((prev) => {
         const next = [...prev]
         next[index] = {
           ...next[index],
-          status: UPLOAD_STATUS.COMPLETED,
-          ...(mediaItemId != null && { media_item_id: mediaItemId }),
+          status: UPLOAD_STATUS.PROCESSING,
+          media_item_id: mediaItemId,
         }
         return next
       })
@@ -78,14 +88,13 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         pollUploadBatchStatus(uploadBatchId)
         return
       }
-      return response.data
+      return presignedRes.data
     } catch (error) {
       if (error instanceof AxiosError) {
         updatePhotoStatus(index, UPLOAD_STATUS.FAILED, {
           code: UPLOAD_MEDIA_ITEM_ERROR_CODE.INTERNAL_SERVER_ERROR,
           message: error.response?.data.message ?? 'Internal server error',
         })
-
       }
       return null
     }
@@ -198,7 +207,11 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
   }
   const uploadCompleted = useMemo(() => {
     return mediaItems.filter(
-      (mediaItem) => mediaItem.status === UPLOAD_STATUS.COMPLETED || mediaItem.status === UPLOAD_STATUS.FAILED || mediaItem.status === UPLOAD_STATUS.DUPLICATE,
+      (mediaItem) =>
+        mediaItem.status === UPLOAD_STATUS.COMPLETED ||
+        mediaItem.status === UPLOAD_STATUS.PROCESSING ||
+        mediaItem.status === UPLOAD_STATUS.FAILED ||
+        mediaItem.status === UPLOAD_STATUS.DUPLICATE,
     ).length
   }, [mediaItems])
 

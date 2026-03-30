@@ -17,6 +17,7 @@ type Store struct {
 	InviteToken            InviteTokenStore
 	Kid                    KidStore
 	IdentityFaceImg        IdentityFaceImgStore
+	FaceRecognitionJob     FaceRecognitionJobStore
 }
 
 // New Store 컨테이너 생성 (각 도메인 Store 구현체 주입)
@@ -33,5 +34,6 @@ func New(queries *db.Queries) *Store {
 		InviteToken:            NewInviteTokenStore(queries),
 		Kid:                    NewKidStore(queries),
 		IdentityFaceImg:        NewIdentityFaceImgStore(queries),
+		FaceRecognitionJob:     NewFaceRecognitionJobStore(queries),
 	}
 }

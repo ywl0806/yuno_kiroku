@@ -425,6 +425,54 @@ func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, 
 	return &SearchMediaItemsResult{Items: items, HasNext: hasNext}, nil
 }
 
+// PresignedUploadResult는 Presigned URL 발급 후 반환하는 응답입니다.
+type PresignedUploadResult struct {
+	MediaItemID int32
+	PresignedURL string
+	StorageKey   string
+}
+
+// CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급합니다.
+// DB 레코드를 먼저 생성(DB-first)하여 고아 파일을 방지합니다.
+func (s *MediaItemService) CreatePresignedUpload(
+	ctx context.Context,
+	fileName, contentType string,
+	familyId, albumId, uploadBatchID int32,
+) (*PresignedUploadResult, error) {
+	storageKey := s.imageUploader.BuildOriginalKey(familyId, albumId, fileName, time.Now())
+
+	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, db.CreateMediaItemParams{
+		FamilyID:      familyId,
+		AlbumID:       albumId,
+		UploadBatchID: uploadBatchID,
+		TakenAt:       time.Now(), // Resize Worker가 EXIF 파싱 후 실제 값으로 업데이트
+		FileName:      sql.NullString{String: fileName, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
+		MediaItemID: mediaItem.ID,
+		Role:        string(enums.MediaItemRoleOriginal),
+		StorageKey:  storageKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	presignedURL, err := s.imageUploader.GeneratePresignedPutURL(storageKey, contentType, time.Hour)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PresignedUploadResult{
+		MediaItemID:  mediaItem.ID,
+		PresignedURL: presignedURL,
+		StorageKey:   storageKey,
+	}, nil
+}
+
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성합니다.
 func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)

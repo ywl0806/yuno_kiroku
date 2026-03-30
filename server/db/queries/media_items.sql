@@ -146,6 +146,17 @@ SET upload_status = $2
 WHERE id = $1
 RETURNING id, upload_status, created_at, updated_at;
 
+-- name: UpdateMediaItemTakenAt :exec
+UPDATE media_items
+SET taken_at = $2,
+    taken_location_latitude = $3,
+    taken_location_longitude = $4,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;
+
+-- name: GetMediaItemByID :one
+SELECT * FROM media_items WHERE id = $1 LIMIT 1;
+
 -- name: SearchMediaItems :many
 SELECT
     mi.*,

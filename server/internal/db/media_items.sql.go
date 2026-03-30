@@ -115,6 +115,29 @@ func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaI
 	return i, err
 }
 
+const getMediaItemByID = `-- name: GetMediaItemByID :one
+SELECT id, family_id, album_id, upload_batch_id, upload_status, taken_location_latitude, taken_location_longitude, taken_at, file_name, created_at, updated_at FROM media_items WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetMediaItemByID(ctx context.Context, id int32) (MediaItem, error) {
+	row := q.db.QueryRowContext(ctx, getMediaItemByID, id)
+	var i MediaItem
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.AlbumID,
+		&i.UploadBatchID,
+		&i.UploadStatus,
+		&i.TakenLocationLatitude,
+		&i.TakenLocationLongitude,
+		&i.TakenAt,
+		&i.FileName,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getMediaItemRange = `-- name: GetMediaItemRange :many
 SELECT
     EXTRACT(
@@ -575,6 +598,32 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateMediaItemTakenAt = `-- name: UpdateMediaItemTakenAt :exec
+UPDATE media_items
+SET taken_at = $2,
+    taken_location_latitude = $3,
+    taken_location_longitude = $4,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+`
+
+type UpdateMediaItemTakenAtParams struct {
+	ID                     int32
+	TakenAt                time.Time
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+}
+
+func (q *Queries) UpdateMediaItemTakenAt(ctx context.Context, arg UpdateMediaItemTakenAtParams) error {
+	_, err := q.db.ExecContext(ctx, updateMediaItemTakenAt,
+		arg.ID,
+		arg.TakenAt,
+		arg.TakenLocationLatitude,
+		arg.TakenLocationLongitude,
+	)
+	return err
 }
 
 const updateMediaItemUploadStatus = `-- name: UpdateMediaItemUploadStatus :one

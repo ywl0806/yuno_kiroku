@@ -19,9 +19,8 @@ services:
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
+      STORAGE_BUCKET: yuno-media
       AWS_REGION: us-east-1
-      THUMBNAIL_BUCKET: thumbnail
-      ORIGINAL_BUCKET: original
 
     networks:
       - app-net
@@ -33,6 +32,27 @@ services:
       - 8000:8000
     volumes:
       - ../ai:/app
+    networks:
+      - app-net
+
+  ai-batch:
+    build:
+      context: ../ai
+      dockerfile: docker/local/Dockerfile
+    command: ["python", "-m", "src.batch.face_recognition_batch"]
+    volumes:
+      - ../ai:/app
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5433/yuno?sslmode=disable
+      STORAGE_TYPE: minio
+      S3_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: yuno-media
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: password
+      AWS_REGION: us-east-1
+    depends_on:
+      - postgres
+      - minio
     networks:
       - app-net
   postgres:
@@ -49,6 +69,27 @@ services:
     networks:
       - app-net
 
+  resize-worker:
+    build:
+      context: .
+      dockerfile: docker/local/Dockerfile.resize-worker
+    ports:
+      - "1325:1325"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5433/yuno?sslmode=disable
+      STORAGE_TYPE: minio
+      S3_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: password
+      STORAGE_BUCKET: yuno-media
+      AWS_REGION: us-east-1
+      PORT: "1325"
+    depends_on:
+      - postgres
+      - minio
+    networks:
+      - app-net
+
   minio:
     image: minio/minio:RELEASE.2025-04-08T15-41-24Z
     container_name: s3-minio
@@ -58,6 +99,9 @@ services:
     environment:
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
+      # original/ 업로드 시 resize-worker로 webhook 전송
+      MINIO_NOTIFY_WEBHOOK_ENABLE_1: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_1: http://resize-worker:1325/resize
     command: server /data --console-address ":9090"
     volumes:
       - "minio:/data"
@@ -69,15 +113,22 @@ services:
     container_name: mc
     depends_on:
       - minio
-    volumes:
-      - minio:/data
+      - resize-worker
     networks:
       - app-net
     entrypoint: >
       /bin/sh -c "
-      mc alias set myminio http://minio:9000 root password;
-      mc mb --ignore-existing myminio/my-bucket;
-      echo 'Buckets created successfully';
+      until mc alias set myminio http://minio:9000 root password; do
+        echo 'MinIO 연결 대기 중...';
+        sleep 2;
+      done;
+      mc mb --ignore-existing myminio/yuno-media;
+      mc anonymous set download myminio/yuno-media;
+      mc event add myminio/yuno-media arn:minio:sqs::1:webhook --event put --prefix original/ || true;
+      mc cors set --config-file /dev/stdin myminio/yuno-media << 'EOF'
+      {\"CORSRules\":[{\"AllowedHeaders\":[\"*\"],\"AllowedMethods\":[\"GET\",\"PUT\"],\"AllowedOrigins\":[\"http://localhost:5155\"],\"ExposeHeaders\":[\"ETag\"]}]}
+      EOF
+      echo '버킷, CORS 및 이벤트 설정 완료';
       "
 
 networks:
