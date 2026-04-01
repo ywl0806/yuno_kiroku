@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/services"
+	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 )
 
 type minioEvent struct {
@@ -23,10 +23,10 @@ type minioEvent struct {
 }
 
 type ResizeHandler struct {
-	resizeService *services.ResizeService
+	resizeService *workerServices.ResizeService
 }
 
-func NewResizeHandler(resizeService *services.ResizeService) *ResizeHandler {
+func NewResizeHandler(resizeService *workerServices.ResizeService) *ResizeHandler {
 	return &ResizeHandler{resizeService: resizeService}
 }
 

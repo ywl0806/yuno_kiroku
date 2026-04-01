@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 STORAGE_TYPE = os.environ.get("STORAGE_TYPE", "minio")
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://minio:9000")
-STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "yuno-media")
+STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "my-bucket")
 MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER", "root")
 MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD", "password")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
@@ -35,6 +35,7 @@ RESIZE_WORKER_URL = os.environ.get("RESIZE_WORKER_URL", "http://resize-worker:13
 
 POLL_INTERVAL = 5
 BATCH_SIZE = 10
+IDLE_EXIT_SECONDS = 60
 
 _running = True
 
@@ -135,17 +136,25 @@ def run_batch_loop():
     logger.info("AI Batch Worker 시작")
     conn = get_db_conn()
     s3_client = get_s3_client()
+    idle_start: float | None = None
 
     while _running:
         try:
             jobs = fetch_pending_jobs(conn, BATCH_SIZE)
             if jobs:
+                idle_start = None
                 logger.info(f"처리할 job: {len(jobs)}개")
                 for job in jobs:
                     if not _running:
                         break
                     process_job(s3_client, job)
             else:
+                now = time.monotonic()
+                if idle_start is None:
+                    idle_start = now
+                elif now - idle_start >= IDLE_EXIT_SECONDS:
+                    logger.info(f"{IDLE_EXIT_SECONDS}초 동안 pending job 없음 - 종료")
+                    break
                 time.sleep(POLL_INTERVAL)
         except psycopg2.OperationalError:
             logger.warning("DB 연결 재시도...")

@@ -18,14 +18,16 @@ import (
 // s3 storage service
 
 type S3StorageService struct {
-	bucketName string
-	client     *s3.Client
+	bucketName    string
+	client        *s3.Client
+	presignClient *s3.PresignClient
 }
 
 func NewS3StorageService(bucketName string) *S3StorageService {
 
 	storageType := viper.GetString("STORAGE_TYPE")
 	var client *s3.Client
+	var presignClient *s3.PresignClient
 
 	if storageType == "minio" {
 		// MinIO를 위한 커스텀 설정
@@ -46,6 +48,16 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 			o.UsePathStyle = true
 		})
 
+		// 외부 공개 호스트가 있으면 해당 엔드포인트로 presign 클라이언트 별도 생성
+		// (서명의 host 헤더가 클라이언트가 실제 요청하는 호스트와 일치해야 함)
+		if storageServiceHost := viper.GetString("STORAGE_SERVICE_HOST"); storageServiceHost != "" {
+			externalClient := s3.NewFromConfig(cfg, func(o *s3.Options) {
+				o.BaseEndpoint = aws.String(storageServiceHost)
+				o.UsePathStyle = true
+			})
+			presignClient = s3.NewPresignClient(externalClient)
+		}
+
 	} else {
 		// AWS S3를 위한 기본 설정
 		cfg, err := config.LoadDefaultConfig(context.Background())
@@ -59,11 +71,10 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 		client = s3.NewFromConfig(cfg)
 	}
 
-	return &S3StorageService{bucketName: bucketName, client: client}
+	return &S3StorageService{bucketName: bucketName, client: client, presignClient: presignClient}
 }
 
-func (s *S3StorageService) GetFile(key string) ([]byte, error) {
-	ctx := context.Background()
+func (s *S3StorageService) GetFile(ctx context.Context, key string) ([]byte, error) {
 	result, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),
@@ -75,23 +86,26 @@ func (s *S3StorageService) GetFile(key string) ([]byte, error) {
 	return io.ReadAll(result.Body)
 }
 
-func (s *S3StorageService) GeneratePresignedPutURL(key string, contentType string, expiresIn time.Duration) (string, error) {
-	ctx := context.Background()
-	presignClient := s3.NewPresignClient(s.client)
-	req, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
+func (s *S3StorageService) GeneratePresignedPutURL(ctx context.Context, key string, contentType string, expiresIn time.Duration) (string, error) {
+	pc := s.presignClient
+	if pc == nil {
+		pc = s3.NewPresignClient(s.client)
+	}
+
+	req, err := pc.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucketName),
 		Key:         aws.String(key),
 		ContentType: aws.String(contentType),
 	}, s3.WithPresignExpires(expiresIn))
+
 	if err != nil {
 		return "", fmt.Errorf("presigned URL 생성 실패: %w", err)
 	}
+
 	return req.URL, nil
 }
 
-func (s *S3StorageService) SaveFile(file []byte, filePath string, fileName string) (string, error) {
-	ctx := context.Background()
-
+func (s *S3StorageService) SaveFile(ctx context.Context, file []byte, filePath string, fileName string) (string, error) {
 	fileKey := fmt.Sprintf("%s/%s", filePath, fileName)
 
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{

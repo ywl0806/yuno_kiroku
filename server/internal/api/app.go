@@ -10,18 +10,17 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
+	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/api/routers"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers"
 	"github.com/ywl0806/yuno_kiroku/internal/i18n"
-	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/oauth"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
-	"github.com/ywl0806/yuno_kiroku/internal/api/routers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/internal/validator"
-	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 )
 
 // Initialize the root router on the app
@@ -63,10 +62,9 @@ func Init(e *echo.Echo) {
 			RedirectURI:  viper.GetString("KAKAO_REDIRECT_URI"),
 		},
 	)
-	cropper := imagepkg.NewCropper()
-	imageUploader := services.NewImageUploader(storageService, cropper)
+	imageUploader := services.NewImageUploader(storageService)
 	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
-	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader, faceService, st.IdentityFaceImg)
+	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader)
 	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
 	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission)
 	groupService := services.NewGroupService(st.Family, st.Group)

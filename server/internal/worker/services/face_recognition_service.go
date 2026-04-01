@@ -4,10 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
+	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
@@ -33,7 +37,7 @@ type FaceRecognitionService struct {
 	faceStore       store.FaceStore
 	identityStore   store.IdentityStore
 	identityFaceImg store.IdentityFaceImgStore
-	imageUploader   *ImageUploader
+	imageUploader   *services.ImageUploader
 }
 
 func NewFaceRecognitionService(
@@ -42,7 +46,7 @@ func NewFaceRecognitionService(
 	faceStore store.FaceStore,
 	identityStore store.IdentityStore,
 	identityFaceImg store.IdentityFaceImgStore,
-	imageUploader *ImageUploader,
+	imageUploader *services.ImageUploader,
 ) *FaceRecognitionService {
 	return &FaceRecognitionService{
 		faceJobStore:    faceJobStore,
@@ -83,8 +87,13 @@ func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRe
 	for _, face := range faces {
 		identityID, err := s.matchOrCreateIdentity(ctx, job.FamilyID, face.Embedding)
 		if err != nil {
-			log.Printf("identity 매칭 실패 (무시): %v", err)
-			continue
+			log.Printf("identity 매칭 실패 → 새로운 identity 생성: %v", err)
+			newIdentity, err := s.identityStore.CreateIdentity(ctx, job.FamilyID)
+			if err != nil {
+				log.Printf("새로운 identity 생성 실패: %v", err)
+				continue
+			}
+			identityID = newIdentity.ID
 		}
 
 		// face_detections INSERT
@@ -110,7 +119,7 @@ func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRe
 
 		// 최초 1회만 view 이미지 다운로드
 		if viewData == nil {
-			viewData, err = s.imageUploader.storage.GetFile(job.ViewStorageKey)
+			viewData, err = s.imageUploader.GetFile(ctx, job.ViewStorageKey)
 			if err != nil {
 				log.Printf("view 이미지 다운로드 실패 (크롭 생략): %v", err)
 				continue
@@ -123,7 +132,8 @@ func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRe
 			}
 		}
 
-		storageKey, err := s.imageUploader.CropFaceAndUpload(
+		storageKey, err := s.CropFaceAndUpload(
+			ctx,
 			viewData, viewWidth, viewHeight,
 			int32(face.FaceLocation.Top), int32(face.FaceLocation.Right),
 			int32(face.FaceLocation.Bottom), int32(face.FaceLocation.Left),
@@ -146,11 +156,12 @@ func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRe
 	return nil
 }
 
+// matchOrCreateIdentity 얼굴 임베딩을 데이터베이스에서 검색 후 매칭된 identity가 없으면 새로운 identity를 생성합니다.
 func (s *FaceRecognitionService) matchOrCreateIdentity(ctx context.Context, familyID int32, embedding []float64) (int32, error) {
 	similar, err := s.faceStore.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
 		FamilyID:            familyID,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
-		SimilarityThreshold: FACE_SEARCH_THRESHOLD,
+		SimilarityThreshold: consts.FACE_SEARCH_THRESHOLD,
 	})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return 0, err
@@ -183,4 +194,66 @@ func imageDimensions(data []byte) (width, height int, err error) {
 	// JPEG/WebP: 크롭 좌표 범위를 이미지 크기로 clamp하는 용도이므로
 	// 정확한 파싱 없이 큰 값으로 설정해도 CropFaceAndUpload 내에서 clamp됨
 	return 65535, 65535, nil
+}
+
+// 얼굴 bbox에 패딩을 적용한 크롭 영역을 계산하고,
+// cropper로 크롭·리사이즈한 뒤 스토리지에 업로드합니다.
+func (s *FaceRecognitionService) CropFaceAndUpload(
+	ctx context.Context,
+	viewData []byte, imgWidth, imgHeight int,
+	top, right, bottom, left int32, padding float64,
+	identityID, mediaItemID int32,
+) (string, error) {
+	// bbox 패딩 계산
+	faceW := int(right - left)
+	faceH := int(bottom - top)
+
+	padX := int(float64(faceW) * padding)
+	padY := int(float64(faceH) * padding)
+
+	if faceW > faceH {
+		padY += int(float64(faceW-faceH)*padding) + (faceW-faceH)/2
+	} else {
+		padX += int(float64(faceH-faceW)*padding) + (faceH-faceW)/2
+	}
+
+	cropLeft := clampMin(int(left)-padX, 0)
+	cropTop := clampMin(int(top)-padY, 0)
+	cropRight := clampMax(int(right)+padX, imgWidth)
+	cropBottom := clampMax(int(bottom)+padY, imgHeight)
+
+	cropW := cropRight - cropLeft
+	cropH := cropBottom - cropTop
+
+	croppedBytes, err := imagepkg.CropAndResize(viewData, cropLeft, cropTop, cropW, cropH, 512)
+	if err != nil {
+		return "", fmt.Errorf("얼굴 크롭 실패: %w", err)
+	}
+	defer func() { croppedBytes = nil }()
+
+	storageKey, err := s.imageUploader.SaveFile(
+		ctx,
+		croppedBytes,
+		fmt.Sprintf("identities/%d", identityID),
+		fmt.Sprintf("face_%d.webp", mediaItemID),
+	)
+	if err != nil {
+		return "", fmt.Errorf("얼굴 크롭 이미지 업로드 실패: %w", err)
+	}
+
+	return storageKey, nil
+}
+
+func clampMin(v, min int) int {
+	if v < min {
+		return min
+	}
+	return v
+}
+
+func clampMax(v, max int) int {
+	if v > max {
+		return max
+	}
+	return v
 }

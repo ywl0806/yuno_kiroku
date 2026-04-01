@@ -82,12 +82,14 @@ func (s *InviteService) MarkInviteTokenUsed(ctx context.Context, token string) e
 	return s.inviteTokenStore.MarkInviteTokenUsed(ctx, token)
 }
 
+// generateSecureToken 안전한 토큰 생성
 func generateSecureToken(byteLen int) string {
 	b := make([]byte, byteLen)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
+// validateFamilyExists 가족 존재 확인
 func (s *InviteService) validateFamilyExists(ctx context.Context, familyID int32) error {
 	family, err := s.familyStore.FindFamilyByID(ctx, familyID)
 	if err != nil {

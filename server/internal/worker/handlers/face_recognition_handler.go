@@ -1,16 +1,17 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/services"
+	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 )
 
 type faceRecognitionCompleteRequest struct {
-	JobID int32                 `json:"job_id"`
-	Faces []services.FaceResult `json:"faces"`
+	JobID int32                       `json:"job_id"`
+	Faces []workerServices.FaceResult `json:"faces"`
 }
 
 type faceRecognitionFailRequest struct {
@@ -19,10 +20,10 @@ type faceRecognitionFailRequest struct {
 }
 
 type FaceRecognitionHandler struct {
-	faceRecognitionService *services.FaceRecognitionService
+	faceRecognitionService *workerServices.FaceRecognitionService
 }
 
-func NewFaceRecognitionHandler(faceRecognitionService *services.FaceRecognitionService) *FaceRecognitionHandler {
+func NewFaceRecognitionHandler(faceRecognitionService *workerServices.FaceRecognitionService) *FaceRecognitionHandler {
 	return &FaceRecognitionHandler{faceRecognitionService: faceRecognitionService}
 }
 
@@ -46,10 +47,13 @@ func (h *FaceRecognitionHandler) Complete(c echo.Context) error {
 	}
 
 	go func() {
-		if err := h.faceRecognitionService.Complete(c.Request().Context(), req.JobID, req.Faces); err != nil {
+		backgroundContext := context.Background()
+		if err := h.faceRecognitionService.Complete(backgroundContext, req.JobID, req.Faces); err != nil {
 			log.Printf("얼굴 인식 처리 실패 [job_id=%d]: %v", req.JobID, err)
+		} else {
+			log.Printf("얼굴 인식 처리 완료 [job_id=%d]", req.JobID)
 		}
+		backgroundContext.Done()
 	}()
-
 	return c.JSON(http.StatusOK, map[string]string{"status": "processing"})
 }

@@ -7,4 +7,6 @@ const (
 	VIEW_STORAGE_PREFIX      = "view"
 	THUMBNAIL_STORAGE_PREFIX = "thumbnail"
 	ORIGINAL_STORAGE_PREFIX  = "original"
+
+	FACE_SEARCH_THRESHOLD = 0.5
 )

@@ -3,56 +3,51 @@ name: yuno
 services:
   app:
     build:
-      context: .
-      dockerfile: docker/local/Dockerfile
+      context: server
+      dockerfile: ../docker/local/app/Dockerfile
     ports:
       - 1323:1323
     volumes:
-      - .:/app
+      - ./server:/app
     depends_on:
       - postgres
       - minio
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5433/yuno?sslmode=disable
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
       AI_API_URL: http://ai:8000
       STORAGE_TYPE: minio
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-      STORAGE_BUCKET: yuno-media
+      STORAGE_BUCKET: my-bucket
       AWS_REGION: us-east-1
 
     networks:
       - app-net
-  ai:
-    build:
-      context: ../ai
-      dockerfile: docker/local/Dockerfile
-    ports:
-      - 8000:8000
-    volumes:
-      - ../ai:/app
-    networks:
-      - app-net
+  # ai:
+  #   build:
+  #     context: ai
+  #     dockerfile: ../docker/local/ai/Dockerfile
+  #   ports:
+  #     - 8000:8000
+  #   volumes:
+  #     - ai:/app
+  #   networks:
+  #     - app-net
 
   ai-batch:
     build:
-      context: ../ai
-      dockerfile: docker/local/Dockerfile
+      context: ai
+      dockerfile: ../docker/local/ai/Dockerfile
     command: ["python", "-m", "src.batch.face_recognition_batch"]
     volumes:
-      - ../ai:/app
+      - ./ai:/app
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5433/yuno?sslmode=disable
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
       STORAGE_TYPE: minio
-      S3_ENDPOINT: http://minio:9000
-      STORAGE_BUCKET: yuno-media
-      MINIO_ROOT_USER: root
-      MINIO_ROOT_PASSWORD: password
       AWS_REGION: us-east-1
     depends_on:
       - postgres
-      - minio
     networks:
       - app-net
   postgres:
@@ -71,19 +66,21 @@ services:
 
   resize-worker:
     build:
-      context: .
-      dockerfile: docker/local/Dockerfile.resize-worker
+      context: server
+      dockerfile: ../docker/local/resize-worker/Dockerfile
     ports:
       - "1325:1325"
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5433/yuno?sslmode=disable
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
       STORAGE_TYPE: minio
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-      STORAGE_BUCKET: yuno-media
+      STORAGE_BUCKET: my-bucket
       AWS_REGION: us-east-1
       PORT: "1325"
+    volumes:
+      - ./server:/app
     depends_on:
       - postgres
       - minio
@@ -122,10 +119,10 @@ services:
         echo 'MinIO 연결 대기 중...';
         sleep 2;
       done;
-      mc mb --ignore-existing myminio/yuno-media;
-      mc anonymous set download myminio/yuno-media;
-      mc event add myminio/yuno-media arn:minio:sqs::1:webhook --event put --prefix original/ || true;
-      mc cors set --config-file /dev/stdin myminio/yuno-media << 'EOF'
+      mc mb --ignore-existing myminio/my-bucket;
+      mc anonymous set download myminio/my-bucket;
+      mc event add myminio/my-bucket arn:minio:sqs::1:webhook --event put --prefix original/ || true;
+      mc cors set --config-file /dev/stdin myminio/my-bucket << 'EOF'
       {\"CORSRules\":[{\"AllowedHeaders\":[\"*\"],\"AllowedMethods\":[\"GET\",\"PUT\"],\"AllowedOrigins\":[\"http://localhost:5155\"],\"ExposeHeaders\":[\"ETag\"]}]}
       EOF
       echo '버킷, CORS 및 이벤트 설정 완료';

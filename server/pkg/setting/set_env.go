@@ -8,6 +8,7 @@ import (
 
 func SettingEnv() {
 	viper.SetConfigType("env")
+	viper.AutomaticEnv()
 
 	viper.SetConfigFile(".env")
 	// Find and read the config file

@@ -102,49 +102,6 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 }
 
 // @Tags MediaItem
-// @Description 이미지 업로드
-// @Accept  multipart/form-data
-// @Param file formData file true "file"
-// @Param album_id query string true "Album ID"
-// @Param upload_batch_id query string true "Upload Batch ID"
-// @Param retry query string false "Retry" example(1)
-// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
-// @Router /media-item/image/upload [post]
-func (con *MediaItemHandler) UploadImage(c echo.Context) error {
-	file, err := c.FormFile("file")
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.file"})
-	}
-
-	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.album_id"})
-	}
-
-	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.upload_batch_id"})
-	}
-
-	retry, _ := utils.ConvertToBool(c.QueryParam("retry"))
-
-	authUser := middlewares.GetAuthUser(c)
-	familyId := authUser.FamilyId
-	ctx := c.Request().Context()
-
-	result, err := con.mediaItemService.UploadImage(ctx, file, familyId, albumId, uploadBatchID, retry)
-	if err != nil {
-		log.Println("upload image error: ", err)
-		return err
-	}
-
-	return c.JSON(200, models.UploadImageResponse{
-		MediaItemID: result.MediaItemID,
-		Status:      result.Status,
-	})
-}
-
-// @Tags MediaItem
 // @Description 사진이 있는 년도와 월 목록 조회
 // @Router /media-item/range [get]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)

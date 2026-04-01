@@ -36,12 +36,6 @@ type ResizedImage struct {
 	Ext    string // 예: ".webp"
 }
 
-// 이미지 영역을 크롭·리사이즈하는 인터페이스
-// DI/테스트를 위해 분리되어 있음
-type Cropper interface {
-	CropAndResize(data []byte, left, top, width, height, targetSize int) ([]byte, error)
-}
-
 // 이미지 bytes에서 메타데이터(크기, EXIF, GPS)를 추출
 func Parse(data []byte, ext string) (Meta, error) {
 	initVips()
@@ -155,18 +149,6 @@ func CropAndResize(data []byte, left, top, width, height, targetSize int) ([]byt
 	}
 
 	return croppedBytes, nil
-}
-
-// CropAndResize 함수를 사용하는 기본 Cropper 구현체
-type defaultCropper struct{}
-
-func (c *defaultCropper) CropAndResize(data []byte, left, top, width, height, targetSize int) ([]byte, error) {
-	return CropAndResize(data, left, top, width, height, targetSize)
-}
-
-// 기본 Cropper 구현체를 반환
-func NewCropper() Cropper {
-	return &defaultCropper{}
 }
 
 // 긴 변이 maxLength가 되도록 새 크기를 계산

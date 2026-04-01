@@ -18,7 +18,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/internal/worker/handlers"
-	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
+	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 )
 
 func Init(e *echo.Echo) {
@@ -33,11 +33,10 @@ func Init(e *echo.Echo) {
 	storageProvider := providers.NewStorageProvider()
 	storageService := storageProvider.StorageService()
 
-	cropper := imagepkg.NewCropper()
-	imageUploader := services.NewImageUploader(storageService, cropper)
+	imageUploader := services.NewImageUploader(storageService)
 
 	var faceDispatcher services.FaceRecognitionDispatcher
-	if viper.GetString("APP_MODE") == "local" {
+	if viper.GetString("APP_MODE") == "local_dev" {
 		faceDispatcher = services.NewLocalFaceRecognitionDispatcher(st.FaceRecognitionJob)
 	} else {
 		cfg, cfgErr := config.LoadDefaultConfig(context.Background())
@@ -54,8 +53,8 @@ func Init(e *echo.Echo) {
 		)
 	}
 
-	resizeService := services.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
-	faceRecognitionService := services.NewFaceRecognitionService(
+	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
+	faceRecognitionService := workerServices.NewFaceRecognitionService(
 		st.FaceRecognitionJob,
 		st.MediaItem,
 		st.Face,

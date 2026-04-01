@@ -12,16 +12,12 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ywl0806/yuno_kiroku/internal/apperr"
-	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
+	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
-)
-
-const (
-	// 얼굴 유사도 임계값
-	FACE_SEARCH_THRESHOLD = 0.5
 )
 
 type FaceService struct {
@@ -113,7 +109,7 @@ func (s *FaceService) FindMostSimilarFace(ctx context.Context, familyId int32, e
 	faceDetection, err := s.faceStore.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
 		FamilyID:            familyId,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
-		SimilarityThreshold: FACE_SEARCH_THRESHOLD,
+		SimilarityThreshold: consts.FACE_SEARCH_THRESHOLD,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || apperr.IsAppError(err, apperr.NotFound) {
