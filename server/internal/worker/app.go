@@ -28,7 +28,7 @@ func Init(e *echo.Echo) {
 	}
 
 	queries := db.New(conn)
-	st := store.New(queries)
+	st := store.New(conn, queries)
 
 	storageProvider := providers.NewStorageProvider()
 	storageService := storageProvider.StorageService()
@@ -55,6 +55,7 @@ func Init(e *echo.Echo) {
 
 	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
 	faceRecognitionService := workerServices.NewFaceRecognitionService(
+		st,
 		st.FaceRecognitionJob,
 		st.MediaItem,
 		st.Face,

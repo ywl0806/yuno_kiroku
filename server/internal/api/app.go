@@ -29,7 +29,7 @@ func Init(e *echo.Echo) {
 	i18n.Init()
 
 	// DB 초기화
-	dbTx, err := db.Init(viper.GetString("APP_MODE") == "dev" || viper.GetString("APP_MODE") == "local" || viper.GetString("APP_MODE") == "local_dev")
+	sqlDB, dbTx, err := db.Init(viper.GetString("APP_MODE") == "dev" || viper.GetString("APP_MODE") == "local" || viper.GetString("APP_MODE") == "local_dev")
 	if err != nil {
 		log.Fatalf("Failed to initialize DB: %v", err)
 	}
@@ -38,7 +38,7 @@ func Init(e *echo.Echo) {
 	queries := db.New(dbTx)
 
 	// store 초기화
-	st := store.New(queries)
+	st := store.New(sqlDB, queries)
 
 	storageProvider := providers.NewStorageProvider()
 	// Storage service
@@ -63,16 +63,15 @@ func Init(e *echo.Echo) {
 		},
 	)
 	imageUploader := services.NewImageUploader(storageService)
-	faceService := services.NewFaceService(st.Face, st.Identity, st.MediaItem)
 	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader)
 	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
-	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission)
+	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission, st)
 	groupService := services.NewGroupService(st.Family, st.Group)
 	kidService := services.NewKidService(st.Kid)
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
-	mediaItemHandler := handlers.NewMediaItemHandler(mediaItemService, faceService)
+	mediaItemHandler := handlers.NewMediaItemHandler(mediaItemService)
 	authHandler := handlers.NewAuthHandler(authService)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 	identityHandler := handlers.NewIdentityHandler(identityService)

@@ -15,16 +15,13 @@ import (
 
 type MediaItemHandler struct {
 	mediaItemService *services.MediaItemService
-	faceService      *services.FaceService
 }
 
 func NewMediaItemHandler(
 	mediaItemService *services.MediaItemService,
-	faceService *services.FaceService,
 ) *MediaItemHandler {
 	return &MediaItemHandler{
 		mediaItemService: mediaItemService,
-		faceService:      faceService,
 	}
 }
 

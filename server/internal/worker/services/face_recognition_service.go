@@ -2,11 +2,10 @@ package services
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
@@ -14,6 +13,10 @@ import (
 	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
+
+// advisoryLockNamespace family 단위 advisory lock에 사용하는 네임스페이스
+// 다른 용도의 advisory lock과 충돌 방지를 위해 상위 32비트에 고정값을 둠
+const advisoryLockNamespace = int64(0x59554E4F) // "YUNO"
 
 // FaceLocation Python batch에서 전달받는 얼굴 위치 좌표
 type FaceLocation struct {
@@ -32,6 +35,7 @@ type FaceResult struct {
 // FaceRecognitionService Python batch로부터 임베딩 결과를 받아
 // identity 매칭, face_detections 저장, 얼굴 크롭을 처리합니다.
 type FaceRecognitionService struct {
+	transactor      store.Transactor
 	faceJobStore    store.FaceRecognitionJobStore
 	mediaItemStore  store.MediaItemStore
 	faceStore       store.FaceStore
@@ -41,14 +45,17 @@ type FaceRecognitionService struct {
 }
 
 func NewFaceRecognitionService(
+	transactor store.Transactor,
 	faceJobStore store.FaceRecognitionJobStore,
 	mediaItemStore store.MediaItemStore,
 	faceStore store.FaceStore,
 	identityStore store.IdentityStore,
 	identityFaceImg store.IdentityFaceImgStore,
 	imageUploader *services.ImageUploader,
+
 ) *FaceRecognitionService {
 	return &FaceRecognitionService{
+		transactor:      transactor,
 		faceJobStore:    faceJobStore,
 		mediaItemStore:  mediaItemStore,
 		faceStore:       faceStore,
@@ -85,35 +92,29 @@ func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRe
 	var viewWidth, viewHeight int
 
 	for _, face := range faces {
-		identityID, err := s.matchOrCreateIdentity(ctx, job.FamilyID, face.Embedding)
-		if err != nil {
-			log.Printf("identity 매칭 실패 → 새로운 identity 생성: %v", err)
-			newIdentity, err := s.identityStore.CreateIdentity(ctx, job.FamilyID)
+		// advisory lock + identity 매칭/생성 + face_detection INSERT를 하나의 트랜잭션으로 처리
+		// → 동일 family의 동시 요청이 와도 중복 identity가 생성되지 않음
+		var identityID int32
+		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|int64(job.FamilyID), func(tx *store.Store) error {
+			id, err := matchOrCreateIdentity(ctx, tx, job.FamilyID, face.Embedding)
 			if err != nil {
-				log.Printf("새로운 identity 생성 실패: %v", err)
-				continue
+				return err
 			}
-			identityID = newIdentity.ID
-		}
+			identityID = id
 
-		// face_detections INSERT
-		_, err = s.faceStore.CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
-			MediaItemID:    job.MediaItemID,
-			IdentityID:     identityID,
-			LocationTop:    int32(face.FaceLocation.Top),
-			LocationRight:  int32(face.FaceLocation.Right),
-			LocationBottom: int32(face.FaceLocation.Bottom),
-			LocationLeft:   int32(face.FaceLocation.Left),
-			Embedding:      utils.Float64SliceToVectorString(face.Embedding),
+			_, err = tx.Face.CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
+				MediaItemID:    job.MediaItemID,
+				IdentityID:     identityID,
+				LocationTop:    int32(face.FaceLocation.Top),
+				LocationRight:  int32(face.FaceLocation.Right),
+				LocationBottom: int32(face.FaceLocation.Bottom),
+				LocationLeft:   int32(face.FaceLocation.Left),
+				Embedding:      utils.Float64SliceToVectorString(face.Embedding),
+			})
+			return err
 		})
 		if err != nil {
-			log.Printf("face_detection 생성 실패 (무시): %v", err)
-			continue
-		}
-
-		// identity face img가 없으면 크롭해서 저장
-		hasImg, err := s.identityFaceImg.HasIdentityFaceImg(ctx, identityID)
-		if err != nil || hasImg {
+			log.Printf("face 처리 실패 (무시): %v", err)
 			continue
 		}
 
@@ -157,43 +158,37 @@ func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRe
 }
 
 // matchOrCreateIdentity 얼굴 임베딩을 데이터베이스에서 검색 후 매칭된 identity가 없으면 새로운 identity를 생성합니다.
-func (s *FaceRecognitionService) matchOrCreateIdentity(ctx context.Context, familyID int32, embedding []float64) (int32, error) {
-	similar, err := s.faceStore.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
+// 반드시 advisory lock이 획득된 트랜잭션 Store(tx) 위에서 호출해야 합니다.
+func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID int32, embedding []float64) (int32, error) {
+	similar, err := tx.Face.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
 		FamilyID:            familyID,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
 		SimilarityThreshold: consts.FACE_SEARCH_THRESHOLD,
 	})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return 0, err
-	}
-
-	if err == nil {
-		if d, ok := similar.Distance.(float64); ok && d > 0 {
-			return similar.IdentityID, nil
-		}
-	}
-
-	newIdentity, err := s.identityStore.CreateIdentity(ctx, familyID)
+	log.Printf("similar: %+v", similar)
+	log.Printf("err: %+v", err)
 	if err != nil {
+		if apperr.IsAppError(err, apperr.NotFound) {
+			newIdentity, err := tx.Identity.CreateIdentity(ctx, familyID)
+			if err != nil {
+				return 0, err
+			}
+			return newIdentity.ID, nil
+		}
 		return 0, err
 	}
-	return newIdentity.ID, nil
+
+	return similar.IdentityID, nil
+
 }
 
 // imageDimensions view 이미지 바이트에서 width/height를 파싱합니다.
 func imageDimensions(data []byte) (width, height int, err error) {
-	if len(data) < 24 {
-		return 0, 0, errors.New("이미지 데이터가 너무 짧음")
+	parsed, err := imagepkg.Parse(data, "")
+	if err != nil {
+		return 0, 0, err
 	}
-	// PNG: 8바이트 시그니처 + IHDR 청크 (width@16, height@20)
-	if data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G' {
-		w := int(data[16])<<24 | int(data[17])<<16 | int(data[18])<<8 | int(data[19])
-		h := int(data[20])<<24 | int(data[21])<<16 | int(data[22])<<8 | int(data[23])
-		return w, h, nil
-	}
-	// JPEG/WebP: 크롭 좌표 범위를 이미지 크기로 clamp하는 용도이므로
-	// 정확한 파싱 없이 큰 값으로 설정해도 CropFaceAndUpload 내에서 clamp됨
-	return 65535, 65535, nil
+	return parsed.Width, parsed.Height, nil
 }
 
 // 얼굴 bbox에 패딩을 적용한 크롭 영역을 계산하고,

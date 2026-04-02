@@ -14,12 +14,13 @@ type GroupPermission struct {
 }
 
 type AlbumService struct {
-	albumStore           store.AlbumStore
-	albumGroupPermStore  store.AlbumGroupPermissionStore
+	albumStore          store.AlbumStore
+	albumGroupPermStore store.AlbumGroupPermissionStore
+	transactor          store.Transactor
 }
 
-func NewAlbumService(albumStore store.AlbumStore, albumGroupPermStore store.AlbumGroupPermissionStore) *AlbumService {
-	return &AlbumService{albumStore: albumStore, albumGroupPermStore: albumGroupPermStore}
+func NewAlbumService(albumStore store.AlbumStore, albumGroupPermStore store.AlbumGroupPermissionStore, transactor store.Transactor) *AlbumService {
+	return &AlbumService{albumStore: albumStore, albumGroupPermStore: albumGroupPermStore, transactor: transactor}
 }
 
 func (s *AlbumService) GetAlbumsForWrite(ctx context.Context, familyId int32, groupId int32) ([]db.Album, error) {
@@ -57,26 +58,32 @@ func (s *AlbumService) GetAlbumWithPermissions(ctx context.Context, albumID int3
 }
 
 func (s *AlbumService) CreateAlbum(ctx context.Context, familyID int32, name string, perms []GroupPermission) (db.Album, error) {
-	album, err := s.albumStore.CreateAlbum(ctx, db.CreateAlbumParams{
-		FamilyID: familyID,
-		Name:     name,
-	})
-	if err != nil {
-		return db.Album{}, err
-	}
-	for _, p := range perms {
-		if err := s.albumGroupPermStore.InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
-			AlbumID:    album.ID,
-			GroupID:    p.GroupID,
-			Permission: p.Permission,
-		}); err != nil {
-			return db.Album{}, err
+	var result db.Album
+	err := s.transactor.Transact(ctx, func(tx *store.Store) error {
+		album, err := tx.Album.CreateAlbum(ctx, db.CreateAlbumParams{
+			FamilyID: familyID,
+			Name:     name,
+		})
+		if err != nil {
+			return err
 		}
-	}
-	return album, nil
+		for _, p := range perms {
+			if err := tx.AlbumGroupPermission.InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
+				AlbumID:    album.ID,
+				GroupID:    p.GroupID,
+				Permission: p.Permission,
+			}); err != nil {
+				return err
+			}
+		}
+		result = album
+		return nil
+	})
+	return result, err
 }
 
 func (s *AlbumService) UpdateAlbum(ctx context.Context, albumID int32, familyID int32, name string, perms []GroupPermission) (db.Album, error) {
+	// 트랜잭션 외부에서 권한 검증 (조회만)
 	album, err := s.albumStore.FindAlbumByID(ctx, albumID)
 	if err != nil {
 		return db.Album{}, err
@@ -84,26 +91,32 @@ func (s *AlbumService) UpdateAlbum(ctx context.Context, albumID int32, familyID 
 	if album.FamilyID != familyID {
 		return db.Album{}, apperr.NewForbiddenError("error.forbidden", nil)
 	}
-	updated, err := s.albumStore.UpdateAlbum(ctx, db.UpdateAlbumParams{
-		Name: name,
-		ID:   albumID,
-	})
-	if err != nil {
-		return db.Album{}, err
-	}
-	if err := s.albumGroupPermStore.DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
-		return db.Album{}, err
-	}
-	for _, p := range perms {
-		if err := s.albumGroupPermStore.InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
-			AlbumID:    albumID,
-			GroupID:    p.GroupID,
-			Permission: p.Permission,
-		}); err != nil {
-			return db.Album{}, err
+
+	var result db.Album
+	err = s.transactor.Transact(ctx, func(tx *store.Store) error {
+		updated, err := tx.Album.UpdateAlbum(ctx, db.UpdateAlbumParams{
+			Name: name,
+			ID:   albumID,
+		})
+		if err != nil {
+			return err
 		}
-	}
-	return updated, nil
+		if err := tx.AlbumGroupPermission.DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
+			return err
+		}
+		for _, p := range perms {
+			if err := tx.AlbumGroupPermission.InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
+				AlbumID:    albumID,
+				GroupID:    p.GroupID,
+				Permission: p.Permission,
+			}); err != nil {
+				return err
+			}
+		}
+		result = updated
+		return nil
+	})
+	return result, err
 }
 
 func (s *AlbumService) DeleteAlbum(ctx context.Context, albumID int32, familyID int32) error {
@@ -114,8 +127,10 @@ func (s *AlbumService) DeleteAlbum(ctx context.Context, albumID int32, familyID 
 	if album.FamilyID != familyID {
 		return apperr.NewForbiddenError("error.forbidden", nil)
 	}
-	if err := s.albumGroupPermStore.DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
-		return err
-	}
-	return s.albumStore.DeleteAlbum(ctx, albumID)
+	return s.transactor.Transact(ctx, func(tx *store.Store) error {
+		if err := tx.AlbumGroupPermission.DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
+			return err
+		}
+		return tx.Album.DeleteAlbum(ctx, albumID)
+	})
 }

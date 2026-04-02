@@ -8,14 +8,15 @@ import (
 )
 
 // DB 커넥션 초기화
-func Init(logQueries bool) (DBTX, error) {
+// *sql.DB는 BeginTx 전용, DBTX는 쿼리 실행(QueryLogger 래핑) 전용
+func Init(logQueries bool) (*sql.DB, DBTX, error) {
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var dbtx DBTX = conn
 	if logQueries {
 		dbtx = NewQueryLogger(conn, true)
 	}
-	return dbtx, nil
+	return conn, dbtx, nil
 }
