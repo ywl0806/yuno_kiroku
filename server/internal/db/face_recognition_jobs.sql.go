@@ -54,28 +54,6 @@ func (q *Queries) CreateFaceRecognitionJob(ctx context.Context, arg CreateFaceRe
 	return i, err
 }
 
-const getFaceRecognitionJobByID = `-- name: GetFaceRecognitionJobByID :one
-SELECT id, media_item_id, family_id, view_storage_key, status, attempt_count, last_error, completed_at, created_at, updated_at FROM face_recognition_jobs WHERE id = $1 LIMIT 1
-`
-
-func (q *Queries) GetFaceRecognitionJobByID(ctx context.Context, id int32) (FaceRecognitionJob, error) {
-	row := q.db.QueryRowContext(ctx, getFaceRecognitionJobByID, id)
-	var i FaceRecognitionJob
-	err := row.Scan(
-		&i.ID,
-		&i.MediaItemID,
-		&i.FamilyID,
-		&i.ViewStorageKey,
-		&i.Status,
-		&i.AttemptCount,
-		&i.LastError,
-		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const failFaceRecognitionJob = `-- name: FailFaceRecognitionJob :exec
 UPDATE face_recognition_jobs
 SET status = CASE WHEN attempt_count >= 3 THEN '09' ELSE '01' END,
@@ -141,6 +119,28 @@ func (q *Queries) FetchPendingFaceRecognitionJobs(ctx context.Context, limit int
 		return nil, err
 	}
 	return items, nil
+}
+
+const getFaceRecognitionJobByID = `-- name: GetFaceRecognitionJobByID :one
+SELECT id, media_item_id, family_id, view_storage_key, status, attempt_count, last_error, completed_at, created_at, updated_at FROM face_recognition_jobs WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetFaceRecognitionJobByID(ctx context.Context, id int32) (FaceRecognitionJob, error) {
+	row := q.db.QueryRowContext(ctx, getFaceRecognitionJobByID, id)
+	var i FaceRecognitionJob
+	err := row.Scan(
+		&i.ID,
+		&i.MediaItemID,
+		&i.FamilyID,
+		&i.ViewStorageKey,
+		&i.Status,
+		&i.AttemptCount,
+		&i.LastError,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getMediaItemIDByStorageKey = `-- name: GetMediaItemIDByStorageKey :one

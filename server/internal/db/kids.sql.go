@@ -106,7 +106,7 @@ func (q *Queries) GetKidByID(ctx context.Context, id int32) (Kid, error) {
 }
 
 const getKidsWithRandomFaceImg = `-- name: GetKidsWithRandomFaceImg :many
-SELECT
+SELECT DISTINCT ON (k.id)
     k.id,
     k.name,
     k.birth_date,
@@ -116,12 +116,11 @@ SELECT
     ifi.storage_key,
     mi.taken_at
 FROM kids AS k 
-INNER JOIN identity_face_imgs AS ifi ON k.identity_id = ifi.identity_id
-INNER JOIN media_items AS mi ON ifi.media_item_id = mi.id
+JOIN identity_face_imgs AS ifi ON k.identity_id = ifi.identity_id
+JOIN media_items AS mi ON ifi.media_item_id = mi.id
 WHERE k.family_id = $1
     AND mi.taken_at <= $2::timestamp
     AND mi.taken_at >= $3::timestamp
-GROUP BY k.id, k.name, k.birth_date, k.identity_id, k.family_id, ifi.media_item_id, ifi.storage_key, mi.taken_at
 ORDER BY k.id, RANDOM()
 `
 
