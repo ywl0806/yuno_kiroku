@@ -1,7 +1,6 @@
-import colors from '@/colors'
 import { DropdownYear } from '@/components/blocks/dropdown-year'
+import { cn } from '@/lib/utils'
 import { MediaItemRange } from '@/types'
-import { Tab, Tabs } from '@mui/material'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -60,58 +59,29 @@ export const HomeHeader: FC<Props> = ({ date, range }) => {
         />
       </div>
 
-      <div className="z-99 bg-background h-full">
+      <div className="z-99 h-full bg-background">
         {range.length > 0 && (
-          <Tabs
-            sx={{
-              '&.MuiTabs-root': {
-                minHeight: '0rem',
-              },
-            }}
-            variant="scrollable"
-            value={currentYearMonthStr}
-            onChange={(_, v) => {
-              nav(`/${v}`)
-            }}
-            scrollButtons
-            TabIndicatorProps={{
-              style: {
-                backgroundColor: colors.amethyst,
-              },
-            }}
-          >
-            {range.length > 0 ? (
-              range.map((ran) => {
-                return (
-                  <Tab
-                    sx={{
-                      '&.MuiButtonBase-root': {
-                        fontSize: '1rem',
-                        minWidth: '0rem',
-                        width: '20%',
-
-                        minHeight: '0',
-                        height: '2.5rem',
-                        paddingBottom: '0',
-                        paddingTop: '0',
-                        '&.Mui-selected': {
-                          color: colors.amethyst,
-                        },
-                      },
-                    }}
-                    key={`${ran.year}-${ran.month}`}
-                    label={ran.month}
-                    value={`${ran.year}-${ran.month}`}
-                    onClick={() => {
-                      nav(`/${ran.year}-${ran.month}`)
-                    }}
-                  ></Tab>
-                )
-              })
-            ) : (
-              <Tab label={currentYearMonthStr.split('-')[1]} value={currentYearMonthStr} />
-            )}
-          </Tabs>
+          <div className="flex overflow-x-auto">
+            {range.map((ran) => {
+              const value = `${ran.year}-${ran.month}`
+              const isSelected = value === currentYearMonthStr
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => nav(`/${value}`)}
+                  className={cn(
+                    'relative h-10 w-[20%] shrink-0 border-b-2 px-0 text-base transition-colors',
+                    isSelected
+                      ? 'border-primary font-medium text-primary'
+                      : 'border-transparent text-muted-foreground',
+                  )}
+                >
+                  {ran.month}
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
     </div>

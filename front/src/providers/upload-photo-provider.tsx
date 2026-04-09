@@ -9,6 +9,7 @@ import {
 } from '@/types'
 import { UploadStatus, UPLOAD_STATUS } from '@/enums'
 import { AxiosError } from 'axios'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { createContext, Dispatch, FC, SetStateAction, useCallback, useContext, useMemo, useState } from 'react'
 
 type UploadPhotoContextType = {
@@ -222,6 +223,20 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     return Math.round((uploadCompleted / mediaItems.length) * 100)
   }, [uploadCompleted, mediaItems])
 
+  const statusCounts = useMemo(() => ({
+    uploading: mediaItems.filter((m) => m.status === UPLOAD_STATUS.PENDING).length,
+    processing: mediaItems.filter((m) => m.status === UPLOAD_STATUS.PROCESSING).length,
+    completed: mediaItems.filter((m) => m.status === UPLOAD_STATUS.COMPLETED).length,
+    failed: mediaItems.filter((m) => m.status === UPLOAD_STATUS.FAILED).length,
+    duplicate: mediaItems.filter((m) => m.status === UPLOAD_STATUS.DUPLICATE).length,
+  }), [mediaItems])
+
+  const uploadPhase = useMemo(() => {
+    if (progress === 100) return 'done'
+    if (statusCounts.uploading > 0) return 'uploading'
+    return 'processing'
+  }, [progress, statusCounts.uploading])
+
   const reUploadPhoto = async (index: number, albumId: number) => {
     const mediaItem = mediaItems[index]
     if (mediaItem.status === UPLOAD_STATUS.FAILED || mediaItem.status === UPLOAD_STATUS.DUPLICATE) {
@@ -262,11 +277,30 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
       }}
     >
       {isUploading && (
-        <div className="fixed left-0 right-0 top-5 rounded-md bg-white/90 px-4">
-          <span className="text-gray-500 text-sm">
-            {uploadCompleted} / {mediaItems.length}
-          </span>
-          <Progress value={progress} className="w-full" />
+        <div className="fixed bottom-6 left-1/2 z-50 w-[320px] -translate-x-1/2 rounded-2xl border bg-white px-5 py-4 shadow-xl transition-all duration-300">
+          <div className="mb-3 flex items-center gap-2">
+            {uploadPhase === 'done' ? (
+              <CheckCircle2 className="size-5 shrink-0 text-emerald" />
+            ) : (
+              <Loader2 className="size-5 shrink-0 animate-spin text-peter-river" />
+            )}
+            <span className="text-sm font-medium text-gray-800">
+              {uploadPhase === 'uploading' && '사진 업로드 중...'}
+              {uploadPhase === 'processing' && '서버에서 처리 중...'}
+              {uploadPhase === 'done' && '업로드 완료!'}
+            </span>
+            <span className="ml-auto text-xs text-gray-400">
+              {uploadCompleted} / {mediaItems.length}
+            </span>
+          </div>
+          <Progress value={progress} className="h-1.5 w-full" />
+          <div className="mt-2 flex gap-3 text-xs text-gray-400">
+            {statusCounts.uploading > 0 && <span>업로드 {statusCounts.uploading}</span>}
+            {statusCounts.processing > 0 && <span>처리중 {statusCounts.processing}</span>}
+            {statusCounts.completed > 0 && <span className="text-emerald">완료 {statusCounts.completed}</span>}
+            {statusCounts.failed > 0 && <span className="text-alizarin">실패 {statusCounts.failed}</span>}
+            {statusCounts.duplicate > 0 && <span>중복 {statusCounts.duplicate}</span>}
+          </div>
         </div>
       )}
       {children}

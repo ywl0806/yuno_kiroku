@@ -1,10 +1,10 @@
 import { LivePhoto } from '@/components/blocks/live-photo'
 import { HeaderContainer } from '@/components/layouts/header-container'
+import { Button } from '@/components/ui/button'
+import { FullScreenModal } from '@/components/ui/full-screen-modal'
 import { MediaItem } from '@/types'
-import CloseIcon from '@mui/icons-material/Close'
-import { Dialog, IconButton, Slide } from '@mui/material'
-import { TransitionProps } from '@mui/material/transitions'
-import { FC, forwardRef, useEffect, useState } from 'react'
+import { X } from 'lucide-react'
+import { FC, useEffect, useState } from 'react'
 import { LazyLoadImage } from 'react-lazy-load-image-component'
 import { Swiper, SwiperClass, SwiperSlide } from 'swiper/react'
 
@@ -16,15 +16,6 @@ type Props = {
   onClose: () => void
 }
 
-const Transition = forwardRef(function Transition(
-  props: TransitionProps & {
-    children: React.ReactElement<any, any>
-  },
-  ref: React.Ref<unknown>,
-) {
-  return <Slide direction="up" ref={ref} {...props} />
-})
-
 export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, open, onClose }) => {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null)
 
@@ -35,15 +26,15 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
   }, [index, swiper])
 
   return (
-    <Dialog open={open} onClose={onClose} fullScreen TransitionComponent={Transition}>
-      <div className="h-screen overflow-hidden">
-        <HeaderContainer className=" flex h-[4rem] items-center">
-          <IconButton onClick={onClose}>
-            <CloseIcon fontSize="large" />
-          </IconButton>
+    <FullScreenModal open={open}>
+      <div className="h-screen">
+        <HeaderContainer className="flex h-[4rem] items-center">
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="size-6" />
+          </Button>
         </HeaderContainer>
 
-        <div className="my-[2rem] h-[90vh] overflow-y-hidden">
+        <div className="my-[2rem] pb-5">
           <Swiper
             slidesPerView={1}
             onSlideChange={(swiper) => {
@@ -51,12 +42,10 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
             }}
             controller={{ control: swiper }}
             onSwiper={(swiper) => setSwiper(swiper)}
-            className="h-full w-full"
-            wrapperClass="h-full w-full"
           >
             {photos.map((photo) => (
-              <SwiperSlide key={photo.id} className="flex h-full w-full items-center justify-center px-1 pb-5">
-                <div className="flex h-full w-full items-center justify-center">
+              <SwiperSlide key={photo.id} className="flex h-full w-full items-center justify-center px-1">
+                <div className="flex h-full w-full items-center justify-center overflow-y-auto">
                   {photo.live_url ? (
                     <LivePhoto photo={photo} />
                   ) : (
@@ -65,9 +54,6 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
                       src={photo.view_url}
                       alt={photo.file_name}
                       effect="blur"
-                      onClick={() => {
-                        window.open(photo.view_url, '_blank')
-                      }}
                     />
                   )}
                 </div>
@@ -76,6 +62,6 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           </Swiper>
         </div>
       </div>
-    </Dialog>
+    </FullScreenModal>
   )
 }

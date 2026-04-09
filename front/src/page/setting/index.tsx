@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 
 const MenuSubTitle = ({ title }: { title: string }) => {
   return (
-    <div className="flex items-center justify-between px-4 pb-3 pt-7">
+    <div className="flex items-center justify-between px-4 pb-3 pt-7 bg-accent-foreground/20">
       <span className="text-[0.8rem]">{title}</span>
     </div>
   )
@@ -21,9 +21,9 @@ export const SettingsPage = () => {
   const { data } = useGetSettingsData()
 
   return (
-    <div className="h-full bg-neutral-100">
-      <div className="max-w-[50rem] mx-auto h-full overflow-y-auto bg-neutral-200 pb-[5rem]">
-        <div className="flex items-center justify-center gap-2 px-4 py-2 border-b bg-white">
+    <div className="h-full">
+      <div className="max-w-[50rem] mx-auto h-full overflow-y-auto pb-[5rem] border">
+        <div className="flex items-center justify-center gap-2 px-4 py-2 border-b">
           <span className="text-lg font-bold">{t('settings.title')}</span>
         </div>
         {/* 메뉴 */}

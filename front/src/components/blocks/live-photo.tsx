@@ -1,6 +1,7 @@
 import { LivePhotoBadge } from '@/components/blocks/live-photo-badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { MediaItem } from '@/types'
-import { Fade, IconButton } from '@mui/material'
 import { FC, useEffect, useRef, useState } from 'react'
 
 type Props = {
@@ -30,38 +31,26 @@ export const LivePhoto: FC<Props> = ({ photo }) => {
       })
     }
   }, [])
+
   return (
     <div className="relative">
       <div className="absolute">
-        <IconButton onClick={playVideo}>
+        <Button variant="ghost" size="icon" className="rounded-full" onClick={playVideo}>
           <LivePhotoBadge />
-        </IconButton>
+        </Button>
       </div>
-      <Fade
-        in={livePhotoPlay}
-        timeout={{
-          enter: 0,
-          exit: 500,
-        }}
-        className="absolute"
-      >
-        <video
-          ref={videoRef}
-          className="w-full"
-          src={photo.live_url}
-          playsInline
-          onClick={() => setLivePhotoPlay((prev) => !prev)}
-        />
-      </Fade>
-      <Fade
-        in={!livePhotoPlay}
-        timeout={{
-          enter: 0,
-          exit: 500,
-        }}
-      >
-        <img src={photo.thumbnail_url} alt={photo.file_name} />
-      </Fade>
+      <video
+        ref={videoRef}
+        className={cn('absolute w-full transition-opacity', livePhotoPlay ? 'opacity-100 duration-0' : 'opacity-0 duration-500')}
+        src={photo.live_url}
+        playsInline
+        onClick={() => setLivePhotoPlay((prev) => !prev)}
+      />
+      <img
+        src={photo.thumbnail_url}
+        alt={photo.file_name}
+        className={cn('transition-opacity', livePhotoPlay ? 'opacity-0 duration-500' : 'opacity-100 duration-0')}
+      />
     </div>
   )
 }

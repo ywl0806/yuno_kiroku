@@ -1,5 +1,6 @@
 import { PhotoGrid } from './photo-grid'
 import { Button } from '@/components/ui/button'
+import colors from '@/colors'
 import { UPLOAD_STATUS } from '@/enums'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
 import { UploadMediaItem } from '@/types'
@@ -149,44 +150,62 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                     </Button>
                   </div>
                 )}
-                {isUploaded && (
-                  <div className="bg-gray-500/40 absolute inset-0 flex items-center justify-center">
-                    {images[props.layout.index].status === UPLOAD_STATUS.PENDING && (
-                      <Loader2 className="animate-spin text-white" />
-                    )}
+                {isUploaded && (() => {
+                  const status = images[props.layout.index].status
+                  const overlayBg =
+                    status === UPLOAD_STATUS.COMPLETED
+                      ? 'bg-green-200/40'
+                      : status === UPLOAD_STATUS.FAILED
+                        ? 'bg-red-200/40'
+                        : 'bg-black/40'
+                  return (
+                    <div className={`absolute inset-0 flex items-center justify-center ${overlayBg}`}>
+                      {status === UPLOAD_STATUS.PENDING && (
+                        <Loader2 className="animate-spin text-white drop-shadow" />
+                      )}
 
-                    {images[props.layout.index].status === UPLOAD_STATUS.COMPLETED && <Check className="text-white" />}
-                    {images[props.layout.index].status === UPLOAD_STATUS.DUPLICATE && (
-                      <div className="flex flex-col items-center gap-2">
-                        <p className="rounded-md bg-white p-2 text-sm text-slate-500">{t('upload.alreadyUploaded')}</p>
-                        <Button
-                          variant="default"
-                          className="rounded-full"
-                          onClick={() => reUploadPhoto(props.layout.index, albumId)}
-                        >
-                          <RefreshCcw />
-                          <span>{t('upload.uploadAnyway')}</span>
-                        </Button>
-                      </div>
-                    )}
+                      {status === UPLOAD_STATUS.PROCESSING && (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <Loader2 className="animate-spin text-white drop-shadow" />
+                          <span className="rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">처리 중</span>
+                        </div>
+                      )}
 
-                    {images[props.layout.index].status === UPLOAD_STATUS.FAILED && (
-                      <div className="flex flex-col items-center gap-2">
-                        <X className="text-red-500" />
-                        <p className="rounded-full bg-white p-2 text-sm text-red-500">{t('upload.uploadFailed')}</p>
+                      {status === UPLOAD_STATUS.COMPLETED && (
+                        <Check className="size-7 text-white drop-shadow" strokeWidth={3} />
+                      )}
 
-                        <Button
-                          variant="ghost"
-                          className="rounded-full bg-white"
-                          onClick={() => reUploadPhoto(props.layout.index, albumId)}
-                        >
-                          <RefreshCcw />
-                          <span>{t('upload.reUpload')}</span>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      {status === UPLOAD_STATUS.DUPLICATE && (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="rounded-md bg-white/90 px-2 py-1 text-xs text-slate-600">{t('upload.alreadyUploaded')}</p>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="rounded-full"
+                            onClick={() => reUploadPhoto(props.layout.index, albumId)}
+                          >
+                            <RefreshCcw className="size-3" />
+                            <span>{t('upload.uploadAnyway')}</span>
+                          </Button>
+                        </div>
+                      )}
+
+                      {status === UPLOAD_STATUS.FAILED && (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="rounded-md bg-white/90 px-2 py-1 text-xs text-red-500">{t('upload.uploadFailed')}</p>
+                          <Button
+                            size="sm"
+                            className="rounded-full bg-white text-gray-700 hover:bg-gray-100"
+                            onClick={() => reUploadPhoto(props.layout.index, albumId)}
+                          >
+                            <RefreshCcw className="size-3" />
+                            <span>{t('upload.reUpload')}</span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
                 {props.renderDefaultPhoto()}
               </div>
             )}
