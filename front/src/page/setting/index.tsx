@@ -9,8 +9,8 @@ import { Link } from 'react-router-dom'
 
 const MenuSubTitle = ({ title }: { title: string }) => {
   return (
-    <div className="flex items-center justify-between px-4 pb-3 pt-7 bg-accent-foreground/20">
-      <span className="text-[0.8rem]">{title}</span>
+    <div className="flex items-center justify-between px-4 pb-3 pt-7 bg-background border-y border-gray-200">
+      <span className="text-[0.8rem] text-muted-foreground">{title}</span>
     </div>
   )
 }
@@ -30,7 +30,7 @@ export const SettingsPage = () => {
         <section>
           <MenuSubTitle title={t('settings.app.title')} />
           <Link to="/settings/app">
-            <div className="flex items-center justify-between px-4 py-3 hover:bg-accent bg-white">
+            <div className="flex items-center justify-between px-4 py-3 hover:bg-accent bg-white ">
               <span className="text-sm">{t('settings.app.language.title')}</span>
               <ChevronRight className="size-4 text-muted-foreground" />
             </div>

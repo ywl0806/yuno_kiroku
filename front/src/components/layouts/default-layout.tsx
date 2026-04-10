@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { UploadPhotoProvider } from '@/providers/upload-photo-provider'
 import { House, Search, Settings, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, Outlet, useLocation } from 'react-router-dom'
@@ -38,22 +39,24 @@ export const DefaultLayout = () => {
   const location = useLocation()
   const pathname = location.pathname
   return (
-    <div className="flex h-screen flex-col">
-      <div className="flex-1 overflow-y-hidden">
-        <Outlet />
-      </div>
+    <UploadPhotoProvider>
+      <div className="flex h-screen flex-col">
+        <div className="flex-1 overflow-y-hidden">
+          <Outlet />
+        </div>
 
-      <div className="flex h-[3.5rem] items-center justify-center gap-5 px-5">
-        {navConfig.map((nav) => (
-          <NavItem
-            key={nav.path}
-            path={nav.path}
-            icon={<nav.icon />}
-            label={t(nav.labelKey)}
-            isActive={pathname === nav.path}
-          />
-        ))}
+        <div className="flex h-[3.5rem] items-center justify-center gap-5 px-5">
+          {navConfig.map((nav) => (
+            <NavItem
+              key={nav.path}
+              path={nav.path}
+              icon={<nav.icon />}
+              label={t(nav.labelKey)}
+              isActive={pathname === nav.path}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+    </UploadPhotoProvider>
   )
 }

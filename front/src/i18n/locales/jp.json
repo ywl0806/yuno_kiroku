@@ -40,7 +40,23 @@
     "alreadyUploaded": "すでにアップロードされています",
     "uploadAnyway": "再アップロードする",
     "uploadFailed": "アップロード失敗",
-    "reUpload": "再アップロード"
+    "reUpload": "再アップロード",
+    "progress": {
+      "uploading": "写真をアップロード中...",
+      "processing": "サーバーで処理中...",
+      "done": "アップロード完了！",
+      "statusUploading": "アップロード",
+      "statusProcessing": "処理中",
+      "statusCompleted": "完了",
+      "statusFailed": "失敗",
+      "statusDuplicate": "重複",
+      "leaveWarningTitle": "アップロード中断の警告",
+      "leaveWarningBody": "写真をアップロード中です。今移動するとアップロードがキャンセルされます。",
+      "leaveWarningStay": "アップロード継続",
+      "leaveWarningLeave": "移動",
+      "recoveryInProgress": "前回のアップロードを処理中...",
+      "recoveryDone": "前回のアップロード処理完了！"
+    }
   },
   "home": {
     "filter": "フィルター",

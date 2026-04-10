@@ -1,6 +1,5 @@
 import { PhotoGrid } from './photo-grid'
 import { Button } from '@/components/ui/button'
-import colors from '@/colors'
 import { UPLOAD_STATUS } from '@/enums'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
 import { UploadMediaItem } from '@/types'

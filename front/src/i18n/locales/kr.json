@@ -40,7 +40,23 @@
     "alreadyUploaded": "이미 업로드되었습니다",
     "uploadAnyway": "다시 업로드",
     "uploadFailed": "업로드 실패",
-    "reUpload": "다시 업로드"
+    "reUpload": "다시 업로드",
+    "progress": {
+      "uploading": "사진 업로드 중...",
+      "processing": "서버에서 처리 중...",
+      "done": "업로드 완료!",
+      "statusUploading": "업로드",
+      "statusProcessing": "처리중",
+      "statusCompleted": "완료",
+      "statusFailed": "실패",
+      "statusDuplicate": "중복",
+      "leaveWarningTitle": "업로드 중단 경고",
+      "leaveWarningBody": "사진을 업로드하는 중입니다. 지금 이동하면 업로드가 취소됩니다.",
+      "leaveWarningStay": "계속 업로드",
+      "leaveWarningLeave": "이동",
+      "recoveryInProgress": "이전 업로드 처리 중...",
+      "recoveryDone": "이전 업로드 처리 완료!"
+    }
   },
   "home": {
     "filter": "필터",
