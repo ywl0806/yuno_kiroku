@@ -6,7 +6,11 @@
     "delete": "削除",
     "edit": "編集",
     "loading": "読み込み中...",
-    "none": "なし"
+    "none": "なし",
+    "year": "年",
+    "month": "月",
+    "before": "前",
+    "after": "後"
   },
   "nav": {
     "home": "ホーム",

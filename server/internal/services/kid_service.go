@@ -70,7 +70,19 @@ type KidWithFaceImg struct {
 func (s *KidService) GetKidsWithFaceImg(ctx context.Context, familyID int32, year int, month int) ([]db.GetKidsWithRandomFaceImgRow, error) {
 	return s.kidStore.GetKidsWithRandomFaceImg(ctx, db.GetKidsWithRandomFaceImgParams{
 		FamilyID:    familyID,
-		TakenAtTo:   utils.GetLastDayOfMonth(year, month),
-		TakenAtFrom: utils.GetFirstDayOfMonth(year, month),
+		TakenAtTo:   sql.NullTime{Time: utils.GetLastDayOfMonth(year, month), Valid: true},
+		TakenAtFrom: sql.NullTime{Time: utils.GetFirstDayOfMonth(year, month), Valid: true},
 	})
+}
+
+func (s *KidService) GetKidsWithFaceImgFast(ctx context.Context, familyID int32, currentYear int, currentMonth int) ([]db.GetKidsWithRandomFaceImgRow, error) {
+	return s.kidStore.GetKidsWithRandomFaceImg(ctx, db.GetKidsWithRandomFaceImgParams{
+		FamilyID:  familyID,
+		TakenAtTo: sql.NullTime{Time: utils.GetLastDayOfMonth(calculateYearAndMonth(currentYear, currentMonth, -2)), Valid: true},
+	})
+}
+
+func calculateYearAndMonth(currentYear int, currentMonth int, offset int) (int, int) {
+
+	return currentYear + offset/12, currentMonth + offset%12
 }

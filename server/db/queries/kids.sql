@@ -27,6 +27,12 @@ FROM kids AS k
 JOIN identity_face_imgs AS ifi ON k.identity_id = ifi.identity_id
 JOIN media_items AS mi ON ifi.media_item_id = mi.id
 WHERE k.family_id = $1
-    AND mi.taken_at <= sqlc.arg(taken_at_to)::timestamp
-    AND mi.taken_at >= sqlc.arg(taken_at_from)::timestamp
+    AND CASE WHEN sqlc.narg(taken_at_to)::timestamp IS NOT NULL THEN
+        mi.taken_at <= sqlc.narg(taken_at_to)::timestamp
+        ELSE TRUE
+    END
+    AND CASE WHEN sqlc.narg(taken_at_from)::timestamp IS NOT NULL THEN
+        mi.taken_at >= sqlc.narg(taken_at_from)::timestamp
+        ELSE TRUE
+    END
 ORDER BY k.id, RANDOM();

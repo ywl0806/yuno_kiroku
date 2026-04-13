@@ -34,7 +34,7 @@ type GetKidsWithFaceImgRequest struct {
 	Month int `query:"month" validate:"required"`
 }
 
-type KidWithFaceImgResponse struct {
+type KidWithFaceImg struct {
 	KidID        int32  `json:"kid_id"`
 	Name         string `json:"name"`
 	FaceImgURL   string `json:"face_img_url"`
@@ -44,8 +44,8 @@ type KidWithFaceImgResponse struct {
 	BirthDate    string `json:"birth_date"`
 }
 
-func NewKidWithFaceImgResponse(k *db.GetKidsWithRandomFaceImgRow) *KidWithFaceImgResponse {
-	return &KidWithFaceImgResponse{
+func NewKidWithFaceImg(k *db.GetKidsWithRandomFaceImgRow) *KidWithFaceImg {
+	return &KidWithFaceImg{
 		KidID:        k.ID,
 		Name:         k.Name.String,
 		FaceImgURL:   internalutils.ParseStoragePath(k.StorageKey),
@@ -56,12 +56,26 @@ func NewKidWithFaceImgResponse(k *db.GetKidsWithRandomFaceImgRow) *KidWithFaceIm
 	}
 }
 
-func NewKidWithFaceImgResponses(ks []db.GetKidsWithRandomFaceImgRow) *[]KidWithFaceImgResponse {
-	kidWithFaceImgResponses := make([]KidWithFaceImgResponse, len(ks))
+type KidWithFaceImgResponse struct {
+	Kids     []KidWithFaceImg `json:"kids"`
+	FastKids []KidWithFaceImg `json:"fast_kids"`
+}
+
+func NewKidWithFaceImgResponse(ks []db.GetKidsWithRandomFaceImgRow, fastKs []db.GetKidsWithRandomFaceImgRow) *KidWithFaceImgResponse {
+
+	kids := make([]KidWithFaceImg, len(ks))
 	for i, k := range ks {
-		kidWithFaceImgResponses[i] = *NewKidWithFaceImgResponse(&k)
+		kids[i] = *NewKidWithFaceImg(&k)
 	}
-	return &kidWithFaceImgResponses
+
+	fastKids := make([]KidWithFaceImg, len(fastKs))
+	for i, k := range fastKs {
+		fastKids[i] = *NewKidWithFaceImg(&k)
+	}
+	return &KidWithFaceImgResponse{
+		Kids:     kids,
+		FastKids: fastKids,
+	}
 }
 
 func NewKidResponse(k *db.Kid) *KidResponse {

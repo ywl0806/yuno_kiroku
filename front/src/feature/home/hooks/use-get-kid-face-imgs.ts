@@ -12,6 +12,11 @@ export type KidFaceImg = {
   birth_date: string
 }
 
+type KidFaceImgResponse = {
+  kids: KidFaceImg[]
+  fast_kids: KidFaceImg[]
+}
+
 /**
  * 월별 아이 얼굴 사진 조회
  * @param year 년도
@@ -22,7 +27,7 @@ export const useGetKidFaceImgs = (year: number, month: number) => {
   return useQuery({
     queryKey: ['kid-face-imgs', year, month],
     queryFn: async () => {
-      const response = await MyAxiosWithAuth.get<KidFaceImg[]>(API_ROUTES.KID.FACE_IMGS, {
+      const response = await MyAxiosWithAuth.get<KidFaceImgResponse>(API_ROUTES.KID.FACE_IMGS, {
         params: { year, month },
       })
       return response.data

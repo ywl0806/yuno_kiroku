@@ -39,12 +39,15 @@ WHERE
     AND (
         CASE WHEN sqlc.arg (only_not_linked)::boolean THEN
             (k.id IS NULL AND u.id IS NULL)
+            ELSE TRUE
         END
         OR CASE WHEN sqlc.arg (with_kid_ids)::int[] IS NOT NULL THEN
             (k.id = ALL (sqlc.arg (with_kid_ids)::int[]))
+            ELSE TRUE
         END
         OR CASE WHEN sqlc.arg (with_user_ids)::int[] IS NOT NULL THEN
             (u.id = ALL (sqlc.arg (with_user_ids)::int[]))
+            ELSE TRUE
         END
     )
 ORDER BY

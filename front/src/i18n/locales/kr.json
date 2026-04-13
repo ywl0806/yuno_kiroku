@@ -6,7 +6,11 @@
     "delete": "삭제",
     "edit": "편집",
     "loading": "로딩 중...",
-    "none": "없음"
+    "none": "없음",
+    "year": "년",
+    "month": "개월",
+    "before": "전",
+    "after": "후"
   },
   "nav": {
     "home": "홈",

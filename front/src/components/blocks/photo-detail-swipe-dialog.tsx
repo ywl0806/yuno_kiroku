@@ -1,5 +1,4 @@
 import { LivePhoto } from '@/components/blocks/live-photo'
-import { HeaderContainer } from '@/components/layouts/header-container'
 import { Button } from '@/components/ui/button'
 import { FullScreenModal } from '@/components/ui/full-screen-modal'
 import { MediaItem } from '@/types'
@@ -28,15 +27,16 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
   return (
     <FullScreenModal open={open}>
       <div className="h-screen">
-        <HeaderContainer className="flex h-[4rem] items-center">
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="size-6" />
-          </Button>
-        </HeaderContainer>
+        <Button className='absolute top-5 right-5 z-10' variant="default" size="icon" onClick={onClose}>
+          <X className="size-6" />
+        </Button>
 
-        <div className="my-[2rem] pb-5">
+
+        <div className="h-full w-full">
           <Swiper
             slidesPerView={1}
+            className="h-full w-full"
+            wrapperClass="h-full w-full"
             onSlideChange={(swiper) => {
               setIndex(swiper.activeIndex)
             }}
@@ -44,13 +44,13 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
             onSwiper={(swiper) => setSwiper(swiper)}
           >
             {photos.map((photo) => (
-              <SwiperSlide key={photo.id} className="flex h-full w-full items-center justify-center px-1">
-                <div className="flex h-full w-full items-center justify-center overflow-y-auto">
+              <SwiperSlide key={photo.id}>
+                <div className='h-full w-full flex items-center justify-center'>
                   {photo.live_url ? (
                     <LivePhoto photo={photo} />
                   ) : (
                     <LazyLoadImage
-                      className="mx-auto max-h-[90vh] object-cover"
+                      className='max-h-[calc(100vh-5rem)] object-contain'
                       src={photo.view_url}
                       alt={photo.file_name}
                       effect="blur"

@@ -97,12 +97,16 @@ func (h *KidHandler) GetKidsWithFaceImg(c echo.Context) error {
 
 	authUser := middlewares.GetAuthUser(c)
 	kids, err := h.kidService.GetKidsWithFaceImg(c.Request().Context(), authUser.FamilyId, req.Year, req.Month)
-
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, models.NewKidWithFaceImgResponses(kids))
+	fastKids, err := h.kidService.GetKidsWithFaceImgFast(c.Request().Context(), authUser.FamilyId, req.Year, req.Month)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, models.NewKidWithFaceImgResponse(kids, fastKids))
 }
 
 // @Tags Kid

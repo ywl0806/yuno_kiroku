@@ -119,15 +119,21 @@ FROM kids AS k
 JOIN identity_face_imgs AS ifi ON k.identity_id = ifi.identity_id
 JOIN media_items AS mi ON ifi.media_item_id = mi.id
 WHERE k.family_id = $1
-    AND mi.taken_at <= $2::timestamp
-    AND mi.taken_at >= $3::timestamp
+    AND CASE WHEN $2::timestamp IS NOT NULL THEN
+        mi.taken_at <= $2::timestamp
+        ELSE TRUE
+    END
+    AND CASE WHEN $3::timestamp IS NOT NULL THEN
+        mi.taken_at >= $3::timestamp
+        ELSE TRUE
+    END
 ORDER BY k.id, RANDOM()
 `
 
 type GetKidsWithRandomFaceImgParams struct {
 	FamilyID    int32
-	TakenAtTo   time.Time
-	TakenAtFrom time.Time
+	TakenAtTo   sql.NullTime
+	TakenAtFrom sql.NullTime
 }
 
 type GetKidsWithRandomFaceImgRow struct {
