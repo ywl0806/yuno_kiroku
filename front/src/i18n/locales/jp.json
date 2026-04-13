@@ -15,8 +15,9 @@
   "nav": {
     "home": "ホーム",
     "album": "アルバム",
+    "recent": "近況",
     "search": "検索",
-    "upload": "アップロード",
+    "upload": "追加",
     "settings": "設定",
     "logout": "ログアウト"
   },
@@ -76,6 +77,13 @@
     "allPeriod": "全期間",
     "noResults": "検索結果がありません",
     "selectFilter": "フィルターを選択すると写真が表示されます",
+    "loadMore": "もっと見る",
+    "loading": "読み込み中..."
+  },
+  "recent": {
+    "title": "最近のアップロード",
+    "count": "{{count}}枚",
+    "noUploads": "アップロードされた写真がありません",
     "loadMore": "もっと見る",
     "loading": "読み込み中..."
   },

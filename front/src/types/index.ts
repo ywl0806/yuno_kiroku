@@ -97,6 +97,27 @@ export interface AlbumWithPermissions extends Album {
   permissions: AlbumGroupPermission[]
 }
 
+export interface BatchThumbnail {
+  id: number
+  thumbnail_url: string
+  thumbnail_width: number
+  thumbnail_height: number
+}
+
+export interface UploadBatchWithThumbnails {
+  id: number
+  album_id: number
+  upload_at: string
+  count: number
+  thumbnails: BatchThumbnail[]
+}
+
+export interface UploadBatchesResponse {
+  items: UploadBatchWithThumbnails[]
+  has_next: boolean
+  page: number
+}
+
 export const UPLOAD_MEDIA_ITEM_ERROR_CODE = {
   DUPLICATE: 'duplicate',
   INTERNAL_SERVER_ERROR: 'internal_server_error',

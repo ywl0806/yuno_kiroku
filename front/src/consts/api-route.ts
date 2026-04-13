@@ -84,5 +84,7 @@ export const API_ROUTES = {
     RANGE: '/media-item/range',
     UPLOAD_BATCH: '/media-item/upload-batch',
     UPLOAD_BATCH_STATUS: '/media-item/upload-batch/status',
+    UPLOAD_BATCHES: '/media-item/upload-batch',
+    UPLOAD_BATCH_ITEMS: (id: number) => `/media-item/upload-batch/${id}/items`,
   },
 }

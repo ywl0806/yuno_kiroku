@@ -21,6 +21,9 @@ type MediaItemStore interface {
 	UpdateMediaItemUploadStatus(ctx context.Context, arg db.UpdateMediaItemUploadStatusParams) (db.UpdateMediaItemUploadStatusRow, error)
 	GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error)
 	SearchMediaItems(ctx context.Context, arg db.SearchMediaItemsParams) ([]db.SearchMediaItemsRow, error)
+	GetUploadBatchesAndMediaItemCounts(ctx context.Context, arg db.GetUploadBatchesAndMediaItemCountsParams) ([]db.GetUploadBatchesAndMediaItemCountsRow, error)
+	GetMediaItemsByUploadBatchId(ctx context.Context, arg db.GetMediaItemsByUploadBatchIdParams) ([]db.GetMediaItemsByUploadBatchIdRow, error)
+	GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]db.GetUploadBatchWithThumbnailsRow, error)
 }
 
 type mediaItemStore struct {
@@ -82,4 +85,16 @@ func (s *mediaItemStore) GetMediaItemIDByStorageKey(ctx context.Context, storage
 
 func (s *mediaItemStore) UpdateMediaItemTakenAt(ctx context.Context, arg db.UpdateMediaItemTakenAtParams) error {
 	return s.queries.UpdateMediaItemTakenAt(ctx, arg)
+}
+
+func (s *mediaItemStore) GetUploadBatchesAndMediaItemCounts(ctx context.Context, arg db.GetUploadBatchesAndMediaItemCountsParams) ([]db.GetUploadBatchesAndMediaItemCountsRow, error) {
+	return wrapErr(s.queries.GetUploadBatchesAndMediaItemCounts(ctx, arg))
+}
+
+func (s *mediaItemStore) GetMediaItemsByUploadBatchId(ctx context.Context, arg db.GetMediaItemsByUploadBatchIdParams) ([]db.GetMediaItemsByUploadBatchIdRow, error) {
+	return wrapErr(s.queries.GetMediaItemsByUploadBatchId(ctx, arg))
+}
+
+func (s *mediaItemStore) GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]db.GetUploadBatchWithThumbnailsRow, error) {
+	return wrapErr(s.queries.GetUploadBatchWithThumbnails(ctx, batchIds))
 }

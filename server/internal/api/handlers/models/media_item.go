@@ -5,6 +5,7 @@ import (
 
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
+	"github.com/ywl0806/yuno_kiroku/internal/services"
 	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
@@ -148,6 +149,67 @@ func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *Upl
 	return &UploadBatchStatusResponse{
 		Statuses:    statuses,
 		IsCompleted: isCompleted,
+	}
+}
+
+type BatchThumbnailResponse struct {
+	ID              int32  `json:"id"`
+	ThumbnailUrl    string `json:"thumbnail_url"`
+	ThumbnailWidth  int32  `json:"thumbnail_width"`
+	ThumbnailHeight int32  `json:"thumbnail_height"`
+}
+
+type UploadBatchWithThumbnailsResponse struct {
+	ID         int32                    `json:"id"`
+	AlbumID    int32                    `json:"album_id"`
+	UploadAt   time.Time                `json:"upload_at"`
+	Count      int64                    `json:"count"`
+	Thumbnails []BatchThumbnailResponse `json:"thumbnails"`
+}
+
+type GetUploadBatchesResponse struct {
+	Items   []UploadBatchWithThumbnailsResponse `json:"items"`
+	HasNext bool                                `json:"has_next"`
+	Page    int                                 `json:"page"`
+}
+
+func NewUploadBatchWithThumbnailsResponse(batch services.UploadBatchWithThumbnails) UploadBatchWithThumbnailsResponse {
+	thumbnails := make([]BatchThumbnailResponse, len(batch.Thumbnails))
+	for i, t := range batch.Thumbnails {
+		thumbnails[i] = BatchThumbnailResponse{
+			ID:              t.ID,
+			ThumbnailUrl:    t.ThumbnailUrl,
+			ThumbnailWidth:  t.ThumbnailWidth,
+			ThumbnailHeight: t.ThumbnailHeight,
+		}
+	}
+	return UploadBatchWithThumbnailsResponse{
+		ID:         batch.ID,
+		AlbumID:    batch.AlbumID,
+		UploadAt:   batch.UploadAt,
+		Count:      batch.Count,
+		Thumbnails: thumbnails,
+	}
+}
+
+func NewUploadBatchItemResponse(item *db.GetMediaItemsByUploadBatchIdRow) *MediaItemResponse {
+	return &MediaItemResponse{
+		ID:              item.ID,
+		FamilyID:        item.FamilyID,
+		AlbumID:         item.AlbumID,
+		TakenAt:         item.TakenAt,
+		FileName:        item.FileName.String,
+		CreatedAt:       item.CreatedAt,
+		UpdatedAt:       item.UpdatedAt,
+		OriginalUrl:     internalutils.ParseStoragePath(item.OriginalStorageKey),
+		OriginalWidth:   item.OriginalWidth,
+		OriginalHeight:  item.OriginalHeight,
+		ThumbnailUrl:    internalutils.ParseStoragePath(item.ThumbnailStorageKey),
+		ThumbnailWidth:  item.ThumbnailWidth,
+		ThumbnailHeight: item.ThumbnailHeight,
+		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey),
+		ViewWidth:       item.ViewWidth,
+		ViewHeight:      item.ViewHeight,
 	}
 }
 

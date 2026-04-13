@@ -10,6 +10,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
+	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
 type MediaItemService struct {
@@ -221,4 +222,114 @@ func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albu
 // GetUploadStatuses는 배치 내 모든 아이템의 업로드 상태를 반환합니다.
 func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
 	return s.mediaItemStore.GetUploadStatuses(ctx, uploadBatchID)
+}
+
+type BatchThumbnail struct {
+	ID              int32
+	ThumbnailUrl    string
+	ThumbnailWidth  int32
+	ThumbnailHeight int32
+}
+
+type UploadBatchWithThumbnails struct {
+	ID         int32
+	AlbumID    int32
+	UploadAt   time.Time
+	Count      int64
+	Thumbnails []BatchThumbnail
+}
+
+// GetUploadBatchesWithThumbnails는 배치 목록과 각 배치의 썸네일 5개를 반환합니다. (2-쿼리 방식)
+func (s *MediaItemService) GetUploadBatchesWithThumbnails(ctx context.Context, groupID int32, page int) ([]UploadBatchWithThumbnails, bool, error) {
+	if page < 1 {
+		page = 1
+	}
+	offset := int32((page - 1) * SearchPageSize)
+
+	// Step 1: 배치 목록 + 카운트 (페이지네이션, 완료된 아이템만 카운트)
+	batches, err := s.mediaItemStore.GetUploadBatchesAndMediaItemCounts(ctx, db.GetUploadBatchesAndMediaItemCountsParams{
+		GroupID:    groupID,
+		PageSize:   int32(SearchPageSize) + 1,
+		PageOffset: offset,
+	})
+	if err != nil {
+		return nil, false, err
+	}
+
+	hasNext := len(batches) > SearchPageSize
+	if hasNext {
+		batches = batches[:SearchPageSize]
+	}
+
+	if len(batches) == 0 {
+		return []UploadBatchWithThumbnails{}, hasNext, nil
+	}
+
+	// Step 2: 배치 ID 배열로 썸네일 한 번에 조회
+	batchIDs := make([]int32, len(batches))
+	for i, b := range batches {
+		batchIDs[i] = b.ID
+	}
+
+	thumbnailRows, err := s.mediaItemStore.GetUploadBatchWithThumbnails(ctx, batchIDs)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Step 3: batch ID로 그룹화
+	thumbnailMap := make(map[int32][]BatchThumbnail)
+	for _, t := range thumbnailRows {
+		width := int32(0)
+		height := int32(0)
+		if t.Width.Valid {
+			width = t.Width.Int32
+		}
+		if t.Height.Valid {
+			height = t.Height.Int32
+		}
+		thumbnailMap[t.ID] = append(thumbnailMap[t.ID], BatchThumbnail{
+			ID:              t.MediaItemID,
+			ThumbnailUrl:    internalutils.ParseStoragePath(t.StorageKey),
+			ThumbnailWidth:  width,
+			ThumbnailHeight: height,
+		})
+	}
+
+	result := make([]UploadBatchWithThumbnails, len(batches))
+	for i, b := range batches {
+		result[i] = UploadBatchWithThumbnails{
+			ID:         b.ID,
+			AlbumID:    b.AlbumID,
+			UploadAt:   b.UploadAt,
+			Count:      b.Count,
+			Thumbnails: thumbnailMap[b.ID],
+		}
+	}
+	return result, hasNext, nil
+}
+
+type UploadBatchItemsResult struct {
+	Items   []db.GetMediaItemsByUploadBatchIdRow
+	HasNext bool
+}
+
+// GetMediaItemsByUploadBatch는 특정 배치의 미디어 아이템을 페이지 단위로 반환합니다.
+func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, page int) (*UploadBatchItemsResult, error) {
+	if page < 1 {
+		page = 1
+	}
+	offset := int32((page - 1) * SearchPageSize)
+	items, err := s.mediaItemStore.GetMediaItemsByUploadBatchId(ctx, db.GetMediaItemsByUploadBatchIdParams{
+		UploadBatchID: uploadBatchID,
+		PageOffset:    offset,
+		PageSize:      int32(SearchPageSize) + 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	hasNext := len(items) > SearchPageSize
+	if hasNext {
+		items = items[:SearchPageSize]
+	}
+	return &UploadBatchItemsResult{Items: items, HasNext: hasNext}, nil
 }

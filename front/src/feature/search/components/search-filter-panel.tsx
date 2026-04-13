@@ -24,7 +24,7 @@ export const SearchFilterPanel: FC<Props> = ({ filter, onFilterChange }) => {
       .map((opt) => ({ id: opt.id, name: opt.kid_name ?? '', image_url: opt.image_url ?? '' }))
   }, [identityOptions])
 
-  const rangeLabel = (r: MediaItemRange) => `${r.year}년 ${r.month}월`
+  const rangeLabel = (r: MediaItemRange) => `${r.year}-${r.month}`
 
   return (
     <div className="space-y-4 p-4">

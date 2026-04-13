@@ -32,7 +32,7 @@ func (q *Queries) CreateUploadBatch(ctx context.Context, albumID int32) (UploadB
 }
 
 const getUploadBatchesAndMediaItemCounts = `-- name: GetUploadBatchesAndMediaItemCounts :many
-SELECT 
+SELECT
     ub.id,
     ub.album_id,
     ub.upload_at,
@@ -43,14 +43,22 @@ INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
 INNER JOIN (
     SELECT upload_batch_id, COUNT(*) AS count
     FROM media_items
+    WHERE upload_status = '03'
     GROUP BY upload_batch_id
 ) AS item_counts ON item_counts.upload_batch_id = ub.id
-WHERE 
+WHERE
     agp.group_id = $1::int
     AND agp.permission = 'R'
-    
 ORDER BY ub.upload_at DESC
+LIMIT $3::int
+OFFSET $2::int
 `
+
+type GetUploadBatchesAndMediaItemCountsParams struct {
+	GroupID    int32
+	PageOffset int32
+	PageSize   int32
+}
 
 type GetUploadBatchesAndMediaItemCountsRow struct {
 	ID       int32
@@ -59,8 +67,8 @@ type GetUploadBatchesAndMediaItemCountsRow struct {
 	Count    int64
 }
 
-func (q *Queries) GetUploadBatchesAndMediaItemCounts(ctx context.Context, groupID int32) ([]GetUploadBatchesAndMediaItemCountsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getUploadBatchesAndMediaItemCounts, groupID)
+func (q *Queries) GetUploadBatchesAndMediaItemCounts(ctx context.Context, arg GetUploadBatchesAndMediaItemCountsParams) ([]GetUploadBatchesAndMediaItemCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUploadBatchesAndMediaItemCounts, arg.GroupID, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}

@@ -215,3 +215,66 @@ SELECT
 FROM media_items AS mi
 WHERE mi.upload_batch_id = $1
 ORDER BY mi.id ASC;
+
+-- name: GetMediaItemThumbnailsByUploadBatchId :many
+SELECT
+    mi.*,
+    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
+    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
+    COALESCE(mf_orig.width, 0)   AS original_width,
+    COALESCE(mf_orig.height, 0)  AS original_height,
+    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
+    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
+    COALESCE(mf_view.width, 0)   AS view_width,
+    COALESCE(mf_view.height, 0)  AS view_height
+FROM media_items AS mi
+LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
+LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
+LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+WHERE mi.upload_batch_id = $1 AND mi.upload_status = '03'
+ORDER BY mi.taken_at ASC
+LIMIT 5;
+
+-- name: GetMediaItemsByUploadBatchId :many
+SELECT
+    mi.*,
+    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
+    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
+    COALESCE(mf_orig.width, 0)   AS original_width,
+    COALESCE(mf_orig.height, 0)  AS original_height,
+    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
+    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
+    COALESCE(mf_view.width, 0)   AS view_width,
+    COALESCE(mf_view.height, 0)  AS view_height
+FROM media_items AS mi
+LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
+LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
+LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+WHERE mi.upload_batch_id = sqlc.arg(upload_batch_id)::int AND mi.upload_status = '03'
+ORDER BY mi.taken_at ASC
+LIMIT sqlc.arg(page_size)::int
+OFFSET sqlc.arg(page_offset)::int;
+
+-- name: GetUploadBatchWithThumbnails :many
+SELECT
+    ub.id, ub.album_id,
+    mf_thumb.storage_key,
+    mf_thumb.width,
+    mf_thumb.height,
+    mf_thumb.media_item_id
+FROM upload_batches AS ub
+LEFT JOIN LATERAL (
+    SELECT storage_key, width, height, media_item_id
+    FROM media_items AS mi
+    JOIN media_files AS mf ON mf.media_item_id = mi.id
+    WHERE mf.role = '02'
+    AND mi.upload_status = '03'
+    AND mi.upload_batch_id = ub.id
+    ORDER BY mi.taken_at ASC
+    LIMIT 5
+) AS mf_thumb ON true
+WHERE ub.id = ANY(sqlc.arg(batch_ids)::int[])
+AND mf_thumb.storage_key IS NOT NULL
+ORDER BY ub.upload_at DESC;

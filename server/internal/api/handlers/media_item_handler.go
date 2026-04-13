@@ -189,6 +189,74 @@ func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
 }
 
 // @Tags MediaItem
+// @Description 업로드 배치 목록 + 썸네일 5개 조회
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/upload-batch [get]
+func (con *MediaItemHandler) GetUploadBatches(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+	page := 1
+	if p := c.QueryParam("page"); p != "" {
+		if parsed, err := utils.ConvertToInt32(p); err == nil {
+			page = int(parsed)
+		}
+	}
+
+	batches, hasNext, err := con.mediaItemService.GetUploadBatchesWithThumbnails(ctx, authUser.GroupId, page)
+	if err != nil {
+		return err
+	}
+
+	items := make([]models.UploadBatchWithThumbnailsResponse, len(batches))
+	for i, b := range batches {
+		items[i] = models.NewUploadBatchWithThumbnailsResponse(b)
+	}
+	return c.JSON(200, models.GetUploadBatchesResponse{
+		Items:   items,
+		HasNext: hasNext,
+		Page:    page,
+	})
+}
+
+// @Tags MediaItem
+// @Description 특정 배치의 미디어 아이템 목록 조회 (페이지네이션)
+// @Param id path int true "Upload Batch ID"
+// @Param page query int false "Page (1-based, default 1)"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/upload-batch/{id}/items [get]
+func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
+	uploadBatchID, err := utils.ConvertToInt32(c.Param("id"))
+	if err != nil {
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
+	}
+
+	page := 1
+	if p := c.QueryParam("page"); p != "" {
+		if parsed, err := utils.ConvertToInt32(p); err == nil {
+			page = int(parsed)
+		}
+	}
+
+	ctx := c.Request().Context()
+
+	result, err := con.mediaItemService.GetMediaItemsByUploadBatch(ctx, uploadBatchID, page)
+	if err != nil {
+		log.Println("get upload batch items error:", err)
+		return err
+	}
+
+	items := make([]models.MediaItemResponse, len(result.Items))
+	for i, item := range result.Items {
+		items[i] = *models.NewUploadBatchItemResponse(&item)
+	}
+	return c.JSON(200, models.SearchMediaItemsResponse{
+		Items:   items,
+		HasNext: result.HasNext,
+		Page:    page,
+	})
+}
+
+// @Tags MediaItem
 // @Description 업로드 배치 상태 조회
 // @Param upload_batch_id query string true "Upload Batch ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)

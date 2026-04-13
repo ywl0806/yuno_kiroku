@@ -193,6 +193,94 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, groupID int32) ([]GetMe
 	return items, nil
 }
 
+const getMediaItemThumbnailsByUploadBatchId = `-- name: GetMediaItemThumbnailsByUploadBatchId :many
+SELECT
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
+    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
+    COALESCE(mf_orig.width, 0)   AS original_width,
+    COALESCE(mf_orig.height, 0)  AS original_height,
+    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
+    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
+    COALESCE(mf_view.width, 0)   AS view_width,
+    COALESCE(mf_view.height, 0)  AS view_height
+FROM media_items AS mi
+LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
+LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
+LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+WHERE mi.upload_batch_id = $1 AND mi.upload_status = '03'
+ORDER BY mi.taken_at ASC
+LIMIT 5
+`
+
+type GetMediaItemThumbnailsByUploadBatchIdRow struct {
+	ID                     int32
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	UploadStatus           string
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+	TakenAt                time.Time
+	FileName               sql.NullString
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	OriginalStorageKey     string
+	ThumbnailStorageKey    string
+	ViewStorageKey         string
+	OriginalWidth          int32
+	OriginalHeight         int32
+	ThumbnailWidth         int32
+	ThumbnailHeight        int32
+	ViewWidth              int32
+	ViewHeight             int32
+}
+
+func (q *Queries) GetMediaItemThumbnailsByUploadBatchId(ctx context.Context, uploadBatchID int32) ([]GetMediaItemThumbnailsByUploadBatchIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMediaItemThumbnailsByUploadBatchId, uploadBatchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMediaItemThumbnailsByUploadBatchIdRow
+	for rows.Next() {
+		var i GetMediaItemThumbnailsByUploadBatchIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.AlbumID,
+			&i.UploadBatchID,
+			&i.UploadStatus,
+			&i.TakenLocationLatitude,
+			&i.TakenLocationLongitude,
+			&i.TakenAt,
+			&i.FileName,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OriginalStorageKey,
+			&i.ThumbnailStorageKey,
+			&i.ViewStorageKey,
+			&i.OriginalWidth,
+			&i.OriginalHeight,
+			&i.ThumbnailWidth,
+			&i.ThumbnailHeight,
+			&i.ViewWidth,
+			&i.ViewHeight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
     mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
@@ -412,6 +500,163 @@ func (q *Queries) GetMediaItemsByTakenAtHome(ctx context.Context, arg GetMediaIt
 			&i.ThumbnailHeight,
 			&i.ViewWidth,
 			&i.ViewHeight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMediaItemsByUploadBatchId = `-- name: GetMediaItemsByUploadBatchId :many
+SELECT
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
+    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
+    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
+    COALESCE(mf_orig.width, 0)   AS original_width,
+    COALESCE(mf_orig.height, 0)  AS original_height,
+    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
+    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
+    COALESCE(mf_view.width, 0)   AS view_width,
+    COALESCE(mf_view.height, 0)  AS view_height
+FROM media_items AS mi
+LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
+LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
+LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+WHERE mi.upload_batch_id = $1::int AND mi.upload_status = '03'
+ORDER BY mi.taken_at ASC
+LIMIT $3::int
+OFFSET $2::int
+`
+
+type GetMediaItemsByUploadBatchIdParams struct {
+	UploadBatchID int32
+	PageOffset    int32
+	PageSize      int32
+}
+
+type GetMediaItemsByUploadBatchIdRow struct {
+	ID                     int32
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	UploadStatus           string
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+	TakenAt                time.Time
+	FileName               sql.NullString
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	OriginalStorageKey     string
+	ThumbnailStorageKey    string
+	ViewStorageKey         string
+	OriginalWidth          int32
+	OriginalHeight         int32
+	ThumbnailWidth         int32
+	ThumbnailHeight        int32
+	ViewWidth              int32
+	ViewHeight             int32
+}
+
+func (q *Queries) GetMediaItemsByUploadBatchId(ctx context.Context, arg GetMediaItemsByUploadBatchIdParams) ([]GetMediaItemsByUploadBatchIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMediaItemsByUploadBatchId, arg.UploadBatchID, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMediaItemsByUploadBatchIdRow
+	for rows.Next() {
+		var i GetMediaItemsByUploadBatchIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.AlbumID,
+			&i.UploadBatchID,
+			&i.UploadStatus,
+			&i.TakenLocationLatitude,
+			&i.TakenLocationLongitude,
+			&i.TakenAt,
+			&i.FileName,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OriginalStorageKey,
+			&i.ThumbnailStorageKey,
+			&i.ViewStorageKey,
+			&i.OriginalWidth,
+			&i.OriginalHeight,
+			&i.ThumbnailWidth,
+			&i.ThumbnailHeight,
+			&i.ViewWidth,
+			&i.ViewHeight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUploadBatchWithThumbnails = `-- name: GetUploadBatchWithThumbnails :many
+SELECT
+    ub.id, ub.album_id,
+    mf_thumb.storage_key,
+    mf_thumb.width,
+    mf_thumb.height,
+    mf_thumb.media_item_id
+FROM upload_batches AS ub
+LEFT JOIN LATERAL (
+    SELECT storage_key, width, height, media_item_id
+    FROM media_items AS mi
+    JOIN media_files AS mf ON mf.media_item_id = mi.id
+    WHERE mf.role = '02'
+    AND mi.upload_status = '03'
+    AND mi.upload_batch_id = ub.id
+    ORDER BY mi.taken_at ASC
+    LIMIT 5
+) AS mf_thumb ON true
+WHERE ub.id = ANY($1::int[])
+AND mf_thumb.storage_key IS NOT NULL
+ORDER BY ub.upload_at DESC
+`
+
+type GetUploadBatchWithThumbnailsRow struct {
+	ID          int32
+	AlbumID     int32
+	StorageKey  string
+	Width       sql.NullInt32
+	Height      sql.NullInt32
+	MediaItemID int32
+}
+
+func (q *Queries) GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]GetUploadBatchWithThumbnailsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUploadBatchWithThumbnails, pq.Array(batchIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUploadBatchWithThumbnailsRow
+	for rows.Next() {
+		var i GetUploadBatchWithThumbnailsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AlbumID,
+			&i.StorageKey,
+			&i.Width,
+			&i.Height,
+			&i.MediaItemID,
 		); err != nil {
 			return nil, err
 		}

@@ -16,9 +16,11 @@ import { SettingsMemberEditPage } from '@/page/setting/member/edit'
 import { SettingsMemberInvitePage } from '@/page/setting/member/invite'
 import { SettingsKidNewPage } from '@/page/setting/kid/new'
 import { SettingsKidEditPage } from '@/page/setting/kid/edit'
+import { RecentPage } from '@/page/recent'
 import { SearchPage } from '@/page/search'
 import { UploadPage } from '@/page/upload/upload'
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
+import { BatchDetailPage } from '@/page/recent/detail'
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -30,6 +32,8 @@ export const router = createBrowserRouter(
       <Route path="/" element={<DefaultLayout />}>
         <Route index element={<HomePage />} />
         <Route path={'/:date'} element={<HomePage />} />
+        <Route path="/recent" element={<RecentPage />} />
+        <Route path="/recent/:batchId" element={<BatchDetailPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/logout" element={<LogoutPage />} />

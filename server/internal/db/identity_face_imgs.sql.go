@@ -62,12 +62,15 @@ WHERE
     AND (
         CASE WHEN $2::boolean THEN
             (k.id IS NULL AND u.id IS NULL)
+            ELSE TRUE
         END
         OR CASE WHEN $3::int[] IS NOT NULL THEN
             (k.id = ALL ($3::int[]))
+            ELSE TRUE
         END
         OR CASE WHEN $4::int[] IS NOT NULL THEN
             (u.id = ALL ($4::int[]))
+            ELSE TRUE
         END
     )
 ORDER BY
