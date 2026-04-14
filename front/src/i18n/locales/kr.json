@@ -129,12 +129,27 @@
       "inviteNamePlaceholder": "초대할 가족 이름",
       "inviteGroupLabel": "앨범 그룹",
       "inviteGroupPlaceholder": "그룹 선택",
+      "inviteTitleLabel": "가족 칭호",
+      "inviteTitlePlaceholder": "칭호 선택",
       "inviteGenerate": "초대 링크 생성",
       "inviteCopy": "링크 복사",
       "inviteCopied": "복사됨",
       "inviteError": "초대 링크 생성에 실패했습니다.",
       "editTitle": "가족 편집",
-      "groupLabel": "소속 그룹"
+      "groupLabel": "소속 그룹",
+      "familyTitleLabel": "가족 칭호",
+      "customTitleLabel": "커스텀 칭호",
+      "customTitlePlaceholder": "칭호를 입력하세요",
+      "familyTitle": {
+        "dad": "아빠",
+        "mom": "엄마",
+        "grandfather": "할아버지",
+        "grandmother": "할머니",
+        "uncle": "삼촌",
+        "aunt": "고모",
+        "other": "그 외 가족",
+        "custom": "커스텀"
+      }
     },
     "group": {
       "title": "앨범 그룹 목록",

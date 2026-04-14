@@ -1,8 +1,8 @@
 -- name: CreateInviteToken :one
 INSERT INTO
-    invite_tokens (token, family_id, group_id, created_by_user_id, expires_at)
+    invite_tokens (token, family_id, group_id, created_by_user_id, expires_at, family_title, custom_family_title)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
     *;
 

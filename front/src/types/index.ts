@@ -35,12 +35,18 @@ export interface Family {
   updated_at: string
 }
 
+export type FamilyTitleType = 'dad' | 'mom' | 'grandfather' | 'grandmother' | 'uncle' | 'aunt' | 'other' | 'custom'
+
+export const FAMILY_TITLE_OPTIONS: FamilyTitleType[] = ['dad', 'mom', 'grandfather', 'grandmother', 'uncle', 'aunt', 'other', 'custom']
+
 export interface Member {
   id: number
   name: string
   username: string
   family_id: number
   group_id: number
+  family_title: FamilyTitleType | null
+  custom_family_title: string | null
 }
 
 export interface Group {

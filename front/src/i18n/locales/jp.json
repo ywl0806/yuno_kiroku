@@ -129,12 +129,27 @@
       "inviteNamePlaceholder": "招待する家族の名前",
       "inviteGroupLabel": "アルバムグループ",
       "inviteGroupPlaceholder": "グループを選択",
+      "inviteTitleLabel": "家族の呼び方",
+      "inviteTitlePlaceholder": "呼び方を選択",
       "inviteGenerate": "招待リンクを生成",
       "inviteCopy": "リンクをコピー",
       "inviteCopied": "コピーしました",
       "inviteError": "招待リンクの作成に失敗しました。",
       "editTitle": "家族編集",
-      "groupLabel": "所属グループ"
+      "groupLabel": "所属グループ",
+      "familyTitleLabel": "家族の呼び方",
+      "customTitleLabel": "カスタム呼び方",
+      "customTitlePlaceholder": "呼び方を入力してください",
+      "familyTitle": {
+        "dad": "パパ",
+        "mom": "ママ",
+        "grandfather": "おじいちゃん",
+        "grandmother": "おばあちゃん",
+        "uncle": "おじさん",
+        "aunt": "おばさん",
+        "other": "その他家族",
+        "custom": "カスタム"
+      }
     },
     "group": {
       "title": "アルバムグループ一覧",

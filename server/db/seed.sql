@@ -21,16 +21,16 @@ INSERT INTO
     )
 VALUES
     (1, 'admin', 'admin', 'password', 1, 1),
-    (2, 'lee', 'lee', 'password', 1, 2),
-    (3, 'muraoka', 'muraoka', 'password', 1, 3);
+    (2, 'yongwoo', 'lee', 'password', 1, 2),
+    (3, 'yukina', 'muraoka', 'password', 1, 3);
 
 INSERT INTO
     albums (id, family_id, name)
 VALUES
-    (1, 1, 'album 공용'),
-    (2, 1, 'album lee'),
-    (3, 1, 'album muraoka'),
-    (4, 1, 'album admin');
+    (1, 1, '공용'),
+    (2, 1, 'lee'),
+    (3, 1, 'muraoka'),
+    (4, 1, 'admin');
 
 INSERT INTO
     album_groups_permissions (album_id, group_id, permission)

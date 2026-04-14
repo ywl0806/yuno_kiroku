@@ -13,10 +13,10 @@ type UserStore interface {
 	CreateUserOAuth(ctx context.Context, params db.CreateUserOAuthParams) (db.User, error)
 	FindUserByUsername(ctx context.Context, username string) (db.User, error)
 	FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error)
-	FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error)
-	FindUserByID(ctx context.Context, id int32) (db.User, error)
+	FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.User, error)
+	FindUserByID(ctx context.Context, id int32, familyID int32) (db.User, error)
 	UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error)
-	UpdateUserGroup(ctx context.Context, arg db.UpdateUserGroupParams) (db.User, error)
+	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.User, error)
 }
 
 type userStore struct {
@@ -40,7 +40,7 @@ func (s *userStore) FindUserByUsername(ctx context.Context, username string) (db
 	return wrapErr(s.queries.FindUserByUsername(ctx, username))
 }
 
-func (s *userStore) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error) {
+func (s *userStore) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.User, error) {
 	return wrapErr(s.queries.FindMembersByFamilyID(ctx, familyID))
 }
 
@@ -51,14 +51,16 @@ func (s *userStore) FindUserByProvider(ctx context.Context, provider, providerUs
 	}))
 }
 
-func (s *userStore) FindUserByID(ctx context.Context, id int32) (db.User, error) {
-	return wrapErr(s.queries.FindUserByID(ctx, id))
+func (s *userStore) FindUserByID(ctx context.Context, id int32, familyID int32) (db.User, error) {
+	return wrapErr(s.queries.FindUserByID(ctx, db.FindUserByIDParams{
+		ID:       id,
+		FamilyID: familyID,
+	}))
 }
-
 func (s *userStore) UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error) {
 	return wrapErr(s.queries.UpdateUserName(ctx, arg))
 }
 
-func (s *userStore) UpdateUserGroup(ctx context.Context, arg db.UpdateUserGroupParams) (db.User, error) {
-	return wrapErr(s.queries.UpdateUserGroup(ctx, arg))
+func (s *userStore) UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.User, error) {
+	return wrapErr(s.queries.UpdateMember(ctx, arg))
 }

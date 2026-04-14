@@ -19,12 +19,12 @@ func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, gr
 	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
 }
 
-func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.FindMembersByFamilyIDRow, error) {
-	return s.userStore.FindMembersByFamilyID(ctx, familyID)
+func (s *UserService) GetUserByID(ctx context.Context, userID, familyID int32) (db.User, error) {
+	return s.userStore.FindUserByID(ctx, userID, familyID)
 }
 
-func (s *UserService) GetMe(ctx context.Context, userID int32) (db.User, error) {
-	return s.userStore.FindUserByID(ctx, userID)
+func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.User, error) {
+	return s.userStore.FindMembersByFamilyID(ctx, familyID)
 }
 
 func (s *UserService) UpdateMe(ctx context.Context, userID int32, name string) (db.User, error) {
@@ -34,11 +34,13 @@ func (s *UserService) UpdateMe(ctx context.Context, userID int32, name string) (
 	})
 }
 
-func (s *UserService) UpdateMemberGroup(ctx context.Context, memberID int32, groupID int32, familyID int32) (db.User, error) {
-	return s.userStore.UpdateUserGroup(ctx, db.UpdateUserGroupParams{
-		GroupID:  groupID,
-		ID:       memberID,
-		FamilyID: familyID,
+func (s *UserService) UpdateMember(ctx context.Context, memberID, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
+	return s.userStore.UpdateMember(ctx, db.UpdateMemberParams{
+		GroupID:           groupID,
+		FamilyTitle:       sql.NullString{String: familyTitle, Valid: familyTitle != ""},
+		CustomFamilyTitle: sql.NullString{String: customFamilyTitle, Valid: customFamilyTitle != ""},
+		ID:                memberID,
+		FamilyID:          familyID,
 	})
 }
 
@@ -67,7 +69,7 @@ func (s *UserService) FindUserByProvider(ctx context.Context, provider, provider
 }
 
 // FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. familyID/groupID로 가입할 가족·그룹을 지정한다 (미지정 시 1,1).
-func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32) (db.User, error) {
+func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
 	user, err := s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 	if err == nil && user.ID != 0 {
 		return user, nil
@@ -80,13 +82,15 @@ func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, provi
 	}
 	username := provider + "_" + providerUserID
 	params := db.CreateUserOAuthParams{
-		Name:           sql.NullString{String: displayName, Valid: displayName != ""},
-		Username:       username,
-		Password:       "",
-		FamilyID:       familyID,
-		GroupID:        groupID,
-		Provider:       sql.NullString{String: provider, Valid: true},
-		ProviderUserID: sql.NullString{String: providerUserID, Valid: true},
+		Name:              sql.NullString{String: displayName, Valid: displayName != ""},
+		Username:          username,
+		Password:          "",
+		FamilyID:          familyID,
+		GroupID:           groupID,
+		Provider:          sql.NullString{String: provider, Valid: true},
+		ProviderUserID:    sql.NullString{String: providerUserID, Valid: true},
+		FamilyTitle:       sql.NullString{String: familyTitle, Valid: familyTitle != ""},
+		CustomFamilyTitle: sql.NullString{String: customFamilyTitle, Valid: customFamilyTitle != ""},
 	}
 	return s.userStore.CreateUserOAuth(ctx, params)
 }

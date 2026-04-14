@@ -84,14 +84,16 @@ type IdentityFaceImg struct {
 }
 
 type InviteToken struct {
-	ID              int32
-	Token           string
-	FamilyID        int32
-	GroupID         int32
-	CreatedByUserID int32
-	ExpiresAt       time.Time
-	UsedAt          sql.NullTime
-	CreatedAt       time.Time
+	ID                int32
+	Token             string
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
+	FamilyID          int32
+	GroupID           int32
+	CreatedByUserID   int32
+	ExpiresAt         time.Time
+	UsedAt            sql.NullTime
+	CreatedAt         time.Time
 }
 
 type Kid struct {
@@ -148,15 +150,17 @@ type UploadBatch struct {
 }
 
 type User struct {
-	ID             int32
-	Name           sql.NullString
-	Username       string
-	Password       string
-	FamilyID       int32
-	GroupID        int32
-	IdentityID     sql.NullInt32
-	Provider       sql.NullString
-	ProviderUserID sql.NullString
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                int32
+	Name              sql.NullString
+	Username          string
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
+	Password          string
+	FamilyID          int32
+	GroupID           int32
+	IdentityID        sql.NullInt32
+	Provider          sql.NullString
+	ProviderUserID    sql.NullString
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }

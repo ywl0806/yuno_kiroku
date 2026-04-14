@@ -26,7 +26,9 @@ func NewInviteHandler(inviteService *services.InviteService) *InviteHandler {
 
 // CreateInviteRequest 초대 토큰 생성 요청
 type CreateInviteRequest struct {
-	GroupID int32 `json:"group_id" validate:"required"`
+	GroupID           int32  `json:"group_id" validate:"required"`
+	FamilyTitle       string `json:"family_title"`
+	CustomFamilyTitle string `json:"custom_family_title"`
 }
 
 // @Description 초대 토큰 생성
@@ -48,7 +50,7 @@ func (h *InviteHandler) CreateInvite(c echo.Context) error {
 	}
 	authUser := middlewares.GetAuthUser(c)
 
-	invite, err := h.inviteService.CreateInviteToken(c.Request().Context(), authUser.FamilyId, req.GroupID, authUser.ID)
+	invite, err := h.inviteService.CreateInviteToken(c.Request().Context(), authUser.FamilyId, req.GroupID, authUser.ID, req.FamilyTitle, req.CustomFamilyTitle)
 	if err != nil {
 		return err
 	}

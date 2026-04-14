@@ -36,34 +36,53 @@ type UpdateMeRequest struct {
 	Name string `json:"name"`
 }
 
-type UpdateMemberGroupRequest struct {
-	GroupID int32 `json:"group_id"`
+type UpdateMemberRequest struct {
+	GroupID           int32  `json:"group_id"`
+	FamilyTitle       string `json:"family_title"`
+	CustomFamilyTitle string `json:"custom_family_title"`
 }
 
 type MemberResponse struct {
-	ID       int32  `json:"id"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	FamilyID int32  `json:"family_id"`
-	GroupID  int32  `json:"group_id"`
+	ID                int32   `json:"id"`
+	Name              string  `json:"name"`
+	Username          string  `json:"username"`
+	FamilyID          int32   `json:"family_id"`
+	GroupID           int32   `json:"group_id"`
+	FamilyTitle       *string `json:"family_title"`
+	CustomFamilyTitle *string `json:"custom_family_title"`
 }
 
-func NewMemberResponse(row *db.FindMembersByFamilyIDRow) *MemberResponse {
+func NewMemberResponse(user *db.User) *MemberResponse {
+	var familyTitle *string
+	if user.FamilyTitle.Valid {
+		familyTitle = &user.FamilyTitle.String
+	}
+	var customFamilyTitle *string
+	if user.CustomFamilyTitle.Valid {
+		customFamilyTitle = &user.CustomFamilyTitle.String
+	}
 	return &MemberResponse{
-		ID:       row.ID,
-		Name:     row.Name.String,
-		Username: row.Username,
-		FamilyID: row.FamilyID,
-		GroupID:  row.GroupID,
+		ID:                user.ID,
+		Name:              user.Name.String,
+		Username:          user.Username,
+		FamilyID:          user.FamilyID,
+		GroupID:           user.GroupID,
+		FamilyTitle:       familyTitle,
+		CustomFamilyTitle: customFamilyTitle,
 	}
 }
 
+type UpdateMemberFamilyTitleRequest struct {
+	FamilyTitle       string `json:"family_title"`
+	CustomFamilyTitle string `json:"custom_family_title"`
+}
+
 type CreateUserRequest struct {
-	Name      string `json:"name" validate:"required"`
-	Username  string `json:"username" validate:"required"`
-	Password  string `json:"password" validate:"required,min=6"`
-	FamilyID  int32  `json:"family_id" validate:"required"`
-	GroupID   int32  `json:"group_id" validate:"required"`
+	Name     string `json:"name" validate:"required"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required,min=6"`
+	FamilyID int32  `json:"family_id" validate:"required"`
+	GroupID  int32  `json:"group_id" validate:"required"`
 }
 
 func (CreateUserRequest) Bind(c echo.Context, params *db.CreateUserParams) error {

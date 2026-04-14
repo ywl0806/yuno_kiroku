@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY, -- 사용자 ID
     name VARCHAR(255), -- 표시 이름
     username VARCHAR(255) NOT NULL UNIQUE, -- 로그인 아이디
+    family_title VARCHAR(20) DEFAULT NULL, -- 가족 칭호
+    custom_family_title VARCHAR(100) DEFAULT NULL, -- 커스텀 가족 칭호
     password VARCHAR(255) NOT NULL, -- 비밀번호(해시)
     family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
     group_id INTEGER NOT NULL REFERENCES groups (id), -- 소속 그룹 ID
@@ -59,6 +61,8 @@ CREATE TABLE IF NOT EXISTS kids (
 CREATE TABLE IF NOT EXISTS invite_tokens (
     id SERIAL PRIMARY KEY, -- 초대 토큰 ID
     token VARCHAR(64) NOT NULL UNIQUE, -- 초대 토큰 값
+    family_title VARCHAR(20) DEFAULT NULL, -- 가족 칭호
+    custom_family_title VARCHAR(100) DEFAULT NULL, -- 커스텀 가족 칭호
     family_id INTEGER NOT NULL REFERENCES families (id), -- 초대 대상 가족 ID
     group_id INTEGER NOT NULL REFERENCES groups (id), -- 초대 대상 그룹 ID
     created_by_user_id INTEGER NOT NULL REFERENCES users (id), -- 초대 생성 사용자 ID
@@ -163,6 +167,21 @@ CREATE TABLE IF NOT EXISTS face_detections (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
+-- 얼굴 인식 배치 작업 테이블
+CREATE TABLE IF NOT EXISTS face_recognition_jobs (
+    id               SERIAL PRIMARY KEY,
+    media_item_id    INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+    family_id        INTEGER NOT NULL REFERENCES families(id),
+    view_storage_key VARCHAR(512) NOT NULL,
+    status           VARCHAR(2) NOT NULL DEFAULT '01',
+    -- '01': pending, '02': processing, '03': completed, '09': failed
+    attempt_count    INTEGER NOT NULL DEFAULT 0,
+    last_error       TEXT,
+    completed_at     TIMESTAMP,
+    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING ivfflat (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_face_detections_media_item_id ON face_detections (media_item_id);
@@ -263,22 +282,6 @@ CREATE INDEX IF NOT EXISTS idx_face_detections_identity_id_media_item_id ON face
 
 -- Resize Worker에서 storage_key로 media_item_id를 빠르게 조회하기 위한 인덱스
 CREATE INDEX IF NOT EXISTS idx_media_files_storage_key ON media_files (storage_key);
-
--- 얼굴 인식 배치 작업 테이블
-CREATE TABLE IF NOT EXISTS face_recognition_jobs (
-    id               SERIAL PRIMARY KEY,
-    media_item_id    INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
-    family_id        INTEGER NOT NULL REFERENCES families(id),
-    view_storage_key VARCHAR(512) NOT NULL,
-    status           VARCHAR(2) NOT NULL DEFAULT '01',
-    -- '01': pending, '02': processing, '03': completed, '09': failed
-    attempt_count    INTEGER NOT NULL DEFAULT 0,
-    last_error       TEXT,
-    completed_at     TIMESTAMP,
-    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 -- media_item당 하나의 job만 존재 (중복 삽입 방지)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_frj_media_item_id ON face_recognition_jobs (media_item_id);
 -- pending job 배치 fetch 최적화 (status='01'인 항목만 인덱싱)

@@ -7,24 +7,27 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
 const createInviteToken = `-- name: CreateInviteToken :one
 INSERT INTO
-    invite_tokens (token, family_id, group_id, created_by_user_id, expires_at)
+    invite_tokens (token, family_id, group_id, created_by_user_id, expires_at, family_title, custom_family_title)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING
-    id, token, family_id, group_id, created_by_user_id, expires_at, used_at, created_at
+    id, token, family_title, custom_family_title, family_id, group_id, created_by_user_id, expires_at, used_at, created_at
 `
 
 type CreateInviteTokenParams struct {
-	Token           string
-	FamilyID        int32
-	GroupID         int32
-	CreatedByUserID int32
-	ExpiresAt       time.Time
+	Token             string
+	FamilyID          int32
+	GroupID           int32
+	CreatedByUserID   int32
+	ExpiresAt         time.Time
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
 }
 
 func (q *Queries) CreateInviteToken(ctx context.Context, arg CreateInviteTokenParams) (InviteToken, error) {
@@ -34,11 +37,15 @@ func (q *Queries) CreateInviteToken(ctx context.Context, arg CreateInviteTokenPa
 		arg.GroupID,
 		arg.CreatedByUserID,
 		arg.ExpiresAt,
+		arg.FamilyTitle,
+		arg.CustomFamilyTitle,
 	)
 	var i InviteToken
 	err := row.Scan(
 		&i.ID,
 		&i.Token,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.FamilyID,
 		&i.GroupID,
 		&i.CreatedByUserID,
@@ -51,7 +58,7 @@ func (q *Queries) CreateInviteToken(ctx context.Context, arg CreateInviteTokenPa
 
 const getInviteTokenByToken = `-- name: GetInviteTokenByToken :one
 SELECT
-    id, token, family_id, group_id, created_by_user_id, expires_at, used_at, created_at
+    id, token, family_title, custom_family_title, family_id, group_id, created_by_user_id, expires_at, used_at, created_at
 FROM
     invite_tokens
 WHERE
@@ -66,6 +73,8 @@ func (q *Queries) GetInviteTokenByToken(ctx context.Context, token string) (Invi
 	err := row.Scan(
 		&i.ID,
 		&i.Token,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.FamilyID,
 		&i.GroupID,
 		&i.CreatedByUserID,

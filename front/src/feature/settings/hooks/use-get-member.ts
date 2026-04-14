@@ -3,13 +3,13 @@ import { MyAxiosWithAuth } from '@/lib/my-axios'
 import { Member } from '@/types'
 import { useQuery } from '@tanstack/react-query'
 
-export const useGetMembers = () => {
+export const useGetMember = (id: number) => {
   return useQuery({
-    queryKey: ['members'],
+    queryKey: ['member', id],
     queryFn: async () => {
-      const response = await MyAxiosWithAuth.get<Member[]>(API_ROUTES.USER.MEMBERS)
+      const response = await MyAxiosWithAuth.get<Member>(API_ROUTES.USER.MEMBER(id))
       return response.data
     },
-    staleTime: 1000 * 60 * 1,
+    staleTime: 1000 * 60 * 5,
   })
 }

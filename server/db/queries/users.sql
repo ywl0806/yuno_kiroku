@@ -1,10 +1,6 @@
 -- name: FindMembersByFamilyID :many
 SELECT
-    id,
-    name,
-    username,
-    family_id,
-    group_id
+    *
 FROM
     users
 WHERE
@@ -49,9 +45,9 @@ RETURNING
 
 -- name: CreateUserOAuth :one
 INSERT INTO
-    users (name, username, password, family_id, group_id, provider, provider_user_id)
+    users (name, username, password, family_id, group_id, provider, provider_user_id, family_title, custom_family_title)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
     *;
 
@@ -61,7 +57,8 @@ SELECT
 FROM
     users
 WHERE
-    id = $1;
+    id = $1
+    AND family_id = $2;
 
 -- name: UpdateUserName :one
 UPDATE users
@@ -73,13 +70,15 @@ WHERE
 RETURNING
     *;
 
--- name: UpdateUserGroup :one
+-- name: UpdateMember :one
 UPDATE users
 SET
     group_id = $1,
+    family_title = $2,
+    custom_family_title = $3,
     updated_at = CURRENT_TIMESTAMP
 WHERE
-    id = $2
-    AND family_id = $3
+    id = $4
+    AND family_id = $5
 RETURNING
     *;

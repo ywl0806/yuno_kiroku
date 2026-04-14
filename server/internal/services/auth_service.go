@@ -77,16 +77,29 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	}, nil
 }
 
-// ResolveInviteState state가 유효한 초대 토큰이면 해당 family_id, group_id 반환; 아니면 에러 반환
-func (s *AuthService) ResolveInviteState(ctx context.Context, state string) (familyID, groupID int32, err error) {
+// InviteState 초대 토큰에서 추출한 가입 정보
+type InviteState struct {
+	FamilyID          int32
+	GroupID           int32
+	FamilyTitle       string
+	CustomFamilyTitle string
+}
+
+// ResolveInviteState state가 유효한 초대 토큰이면 해당 가입 정보 반환; 아니면 에러 반환
+func (s *AuthService) ResolveInviteState(ctx context.Context, state string) (*InviteState, error) {
 	if state == "" {
-		return 0, 0, apperr.NewBadRequestError("message.validate.required", map[string]string{"field": "message-item.invite_token"})
+		return nil, apperr.NewBadRequestError("message.validate.required", map[string]string{"field": "message-item.invite_token"})
 	}
-	fid, gid, err := s.inviteService.GetValidInviteToken(ctx, state)
+	fid, gid, familyTitle, customFamilyTitle, err := s.inviteService.GetValidInviteToken(ctx, state)
 	if err != nil {
-		return 0, 0, apperr.NewBadRequestError("message.invalid", map[string]string{"field": "message-item.invite_token"})
+		return nil, apperr.NewBadRequestError("message.invalid", map[string]string{"field": "message-item.invite_token"})
 	}
-	return fid, gid, nil
+	return &InviteState{
+		FamilyID:          fid,
+		GroupID:           gid,
+		FamilyTitle:       familyTitle,
+		CustomFamilyTitle: customFamilyTitle,
+	}, nil
 }
 
 // GetLineAuthURL LINE 로그인 URL 반환. 미설정 시 empty string, false
@@ -112,12 +125,12 @@ func (s *AuthService) ProcessLineCallback(ctx context.Context, code, state strin
 		log.Println("LINE profile error:", err)
 		return nil, err
 	}
-	familyID, groupID, err := s.ResolveInviteState(ctx, state)
+	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, familyID, groupID)
+	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, inviteState.FamilyID, inviteState.GroupID, inviteState.FamilyTitle, inviteState.CustomFamilyTitle)
 	if err != nil {
 		log.Println("FindOrCreateUserOAuth LINE error:", err)
 		return nil, err
@@ -151,12 +164,12 @@ func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state stri
 		log.Println("Kakao profile error:", err)
 		return nil, err
 	}
-	familyID, groupID, err := s.ResolveInviteState(ctx, state)
+	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
 		log.Println("ResolveInviteState Kakao error:", err)
 		return nil, err
 	}
-	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, familyID, groupID)
+	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, inviteState.FamilyID, inviteState.GroupID, inviteState.FamilyTitle, inviteState.CustomFamilyTitle)
 	if err != nil {
 		log.Println("FindOrCreateUserOAuth Kakao error:", err)
 		return nil, err

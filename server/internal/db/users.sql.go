@@ -16,7 +16,7 @@ INSERT INTO
 VALUES
     ($1, $2, $3, $4, $5)
 RETURNING
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -40,6 +40,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
@@ -54,21 +56,23 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 
 const createUserOAuth = `-- name: CreateUserOAuth :one
 INSERT INTO
-    users (name, username, password, family_id, group_id, provider, provider_user_id)
+    users (name, username, password, family_id, group_id, provider, provider_user_id, family_title, custom_family_title)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 `
 
 type CreateUserOAuthParams struct {
-	Name           sql.NullString
-	Username       string
-	Password       string
-	FamilyID       int32
-	GroupID        int32
-	Provider       sql.NullString
-	ProviderUserID sql.NullString
+	Name              sql.NullString
+	Username          string
+	Password          string
+	FamilyID          int32
+	GroupID           int32
+	Provider          sql.NullString
+	ProviderUserID    sql.NullString
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
 }
 
 func (q *Queries) CreateUserOAuth(ctx context.Context, arg CreateUserOAuthParams) (User, error) {
@@ -80,12 +84,16 @@ func (q *Queries) CreateUserOAuth(ctx context.Context, arg CreateUserOAuthParams
 		arg.GroupID,
 		arg.Provider,
 		arg.ProviderUserID,
+		arg.FamilyTitle,
+		arg.CustomFamilyTitle,
 	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
@@ -100,11 +108,7 @@ func (q *Queries) CreateUserOAuth(ctx context.Context, arg CreateUserOAuthParams
 
 const findMembersByFamilyID = `-- name: FindMembersByFamilyID :many
 SELECT
-    id,
-    name,
-    username,
-    family_id,
-    group_id
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
@@ -113,29 +117,29 @@ ORDER BY
     id
 `
 
-type FindMembersByFamilyIDRow struct {
-	ID       int32
-	Name     sql.NullString
-	Username string
-	FamilyID int32
-	GroupID  int32
-}
-
-func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]FindMembersByFamilyIDRow, error) {
+func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]User, error) {
 	rows, err := q.db.QueryContext(ctx, findMembersByFamilyID, familyID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FindMembersByFamilyIDRow
+	var items []User
 	for rows.Next() {
-		var i FindMembersByFamilyIDRow
+		var i User
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Username,
+			&i.FamilyTitle,
+			&i.CustomFamilyTitle,
+			&i.Password,
 			&i.FamilyID,
 			&i.GroupID,
+			&i.IdentityID,
+			&i.Provider,
+			&i.ProviderUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -152,20 +156,28 @@ func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]
 
 const findUserByID = `-- name: FindUserByID :one
 SELECT
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
     id = $1
+    AND family_id = $2
 `
 
-func (q *Queries) FindUserByID(ctx context.Context, id int32) (User, error) {
-	row := q.db.QueryRowContext(ctx, findUserByID, id)
+type FindUserByIDParams struct {
+	ID       int32
+	FamilyID int32
+}
+
+func (q *Queries) FindUserByID(ctx context.Context, arg FindUserByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByID, arg.ID, arg.FamilyID)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
@@ -180,7 +192,7 @@ func (q *Queries) FindUserByID(ctx context.Context, id int32) (User, error) {
 
 const findUserByProvider = `-- name: FindUserByProvider :one
 SELECT
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
@@ -200,6 +212,8 @@ func (q *Queries) FindUserByProvider(ctx context.Context, arg FindUserByProvider
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
@@ -214,7 +228,7 @@ func (q *Queries) FindUserByProvider(ctx context.Context, arg FindUserByProvider
 
 const findUserByUsername = `-- name: FindUserByUsername :one
 SELECT
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 FROM
     users
 WHERE
@@ -228,6 +242,8 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
@@ -288,31 +304,43 @@ func (q *Queries) FindUsers(ctx context.Context) ([]FindUsersRow, error) {
 	return items, nil
 }
 
-const updateUserGroup = `-- name: UpdateUserGroup :one
+const updateMember = `-- name: UpdateMember :one
 UPDATE users
 SET
     group_id = $1,
+    family_title = $2,
+    custom_family_title = $3,
     updated_at = CURRENT_TIMESTAMP
 WHERE
-    id = $2
-    AND family_id = $3
+    id = $4
+    AND family_id = $5
 RETURNING
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 `
 
-type UpdateUserGroupParams struct {
-	GroupID  int32
-	ID       int32
-	FamilyID int32
+type UpdateMemberParams struct {
+	GroupID           int32
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
+	ID                int32
+	FamilyID          int32
 }
 
-func (q *Queries) UpdateUserGroup(ctx context.Context, arg UpdateUserGroupParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUserGroup, arg.GroupID, arg.ID, arg.FamilyID)
+func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateMember,
+		arg.GroupID,
+		arg.FamilyTitle,
+		arg.CustomFamilyTitle,
+		arg.ID,
+		arg.FamilyID,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,
@@ -333,7 +361,7 @@ SET
 WHERE
     id = $2
 RETURNING
-    id, name, username, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
 `
 
 type UpdateUserNameParams struct {
@@ -348,6 +376,8 @@ func (q *Queries) UpdateUserName(ctx context.Context, arg UpdateUserNameParams) 
 		&i.ID,
 		&i.Name,
 		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
 		&i.Password,
 		&i.FamilyID,
 		&i.GroupID,

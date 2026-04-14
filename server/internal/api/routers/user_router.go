@@ -22,5 +22,6 @@ func (ur *UserRouter) Register(root *echo.Group) {
 	userRouter.GET("/me", ur.userHandler.GetMe, guard.Handler)
 	userRouter.PUT("/me", ur.userHandler.UpdateMe, guard.Handler)
 	userRouter.GET("/members", ur.userHandler.GetMembers, guard.Handler)
-	userRouter.PUT("/:id/group", ur.userHandler.UpdateMemberGroup, guard.Handler)
+	userRouter.PUT("/:id", ur.userHandler.UpdateMember, guard.Handler)
+	userRouter.GET("/:id", ur.userHandler.GetMember, guard.Handler)
 }

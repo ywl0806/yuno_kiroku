@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 )
 
@@ -53,7 +53,7 @@ func (con *UserHandler) CreateUser(c echo.Context) error {
 // @Success 200 {object} models.MeResponse
 func (con *UserHandler) GetMe(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
-	user, err := con.userService.GetMe(c.Request().Context(), authUser.ID)
+	user, err := con.userService.GetUserByID(c.Request().Context(), authUser.ID, authUser.FamilyId)
 	if err != nil {
 		return err
 	}
@@ -80,33 +80,27 @@ func (con *UserHandler) UpdateMe(c echo.Context) error {
 }
 
 // @Tags User
-// @Description Update a member's group
-// @Router /user/{id}/group [put]
+// @Description Update a member
+// @Router /user/{id} [put]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Param id path int true "Member User ID"
-// @Param body body models.UpdateMemberGroupRequest true "Update Member Group Request"
+// @Param body body models.UpdateMemberRequest true "Update Member Request"
 // @Success 200 {object} models.MemberResponse
-func (con *UserHandler) UpdateMemberGroup(c echo.Context) error {
+func (con *UserHandler) UpdateMember(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	memberID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
 	}
-	req := new(models.UpdateMemberGroupRequest)
+	req := new(models.UpdateMemberRequest)
 	if err := c.Bind(req); err != nil {
 		return err
 	}
-	user, err := con.userService.UpdateMemberGroup(c.Request().Context(), int32(memberID), req.GroupID, authUser.FamilyId)
+	user, err := con.userService.UpdateMember(c.Request().Context(), int32(memberID), authUser.FamilyId, req.GroupID, req.FamilyTitle, req.CustomFamilyTitle)
 	if err != nil {
 		return err
 	}
-	return c.JSON(200, models.NewMemberResponse(&db.FindMembersByFamilyIDRow{
-		ID:       user.ID,
-		Name:     user.Name,
-		Username: user.Username,
-		FamilyID: user.FamilyID,
-		GroupID:  user.GroupID,
-	}))
+	return c.JSON(200, models.NewMemberResponse(&user))
 }
 
 // @Tags User
@@ -117,15 +111,35 @@ func (con *UserHandler) UpdateMemberGroup(c echo.Context) error {
 func (con *UserHandler) GetMembers(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 
-	members, err := con.userService.GetMembers(c.Request().Context(), authUser.FamilyId)
+	users, err := con.userService.GetMembers(c.Request().Context(), authUser.FamilyId)
 	if err != nil {
 		return err
 	}
 
-	responses := make([]models.MemberResponse, len(members))
-	for i, m := range members {
-		responses[i] = *models.NewMemberResponse(&m)
+	responses := make([]models.MemberResponse, len(users))
+	for i, u := range users {
+		responses[i] = *models.NewMemberResponse(&u)
 	}
 
 	return c.JSON(200, responses)
+}
+
+// @Tags User
+// @Description Get a member
+// @Router /user/{id} [get]
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Param id path int true "Member User ID"
+// @Success 200 {object} models.MemberResponse
+func (con *UserHandler) GetMember(c echo.Context) error {
+	authUser := middlewares.GetAuthUser(c)
+	memberID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+	}
+	user, err := con.userService.GetUserByID(c.Request().Context(), int32(memberID), authUser.FamilyId)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMemberResponse(&user))
+
 }
