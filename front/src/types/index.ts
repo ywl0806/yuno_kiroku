@@ -1,5 +1,12 @@
 import { UploadStatus } from '@/enums'
 
+export interface Tag {
+  id: number
+  family_id: number | null
+  name: string
+  is_preset: boolean
+}
+
 export interface MediaItem {
   id: string
   family_id: string
@@ -21,6 +28,8 @@ export interface MediaItem {
   updated_at: string
   created_by: string
   updated_by: string
+  is_liked: boolean
+  tags: Tag[]
 }
 
 export type MediaItemRange = {

@@ -2,8 +2,10 @@ import { cn } from '@/lib/utils'
 import { useGetAlbumOptions } from '@/feature/home/hooks/use-get-album-options'
 import { useGetIdentityOptions } from '@/feature/home/hooks/use-get-identity-options'
 import { useMediaItemsRange } from '@/feature/home/hooks/use-media-items-range'
+import { useGetTags } from '@/feature/tag/hooks/use-get-tags'
 import { SearchFilter } from '@/feature/search/hooks/use-search-media-items'
 import { MediaItemRange } from '@/types'
+import { Heart } from 'lucide-react'
 import { FC, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -17,6 +19,7 @@ export const SearchFilterPanel: FC<Props> = ({ filter, onFilterChange }) => {
   const { data: albumOptions } = useGetAlbumOptions()
   const { data: identityOptions } = useGetIdentityOptions()
   const { range } = useMediaItemsRange()
+  const { data: tags = [] } = useGetTags()
 
   const kidsOptions = useMemo(() => {
     return (identityOptions ?? [])
@@ -28,6 +31,23 @@ export const SearchFilterPanel: FC<Props> = ({ filter, onFilterChange }) => {
 
   return (
     <div className="space-y-4 p-4">
+      {/* 좋아요 토글 */}
+      <div>
+        <button
+          type="button"
+          onClick={() => onFilterChange({ ...filter, liked: !filter.liked })}
+          className={cn(
+            'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+            filter.liked
+              ? 'border-red-400 bg-red-50 text-red-500 dark:bg-red-950'
+              : 'border-border bg-background text-muted-foreground',
+          )}
+        >
+          <Heart className={cn('size-3.5', filter.liked ? 'fill-red-500 text-red-500' : '')} />
+          {t('tag.liked_filter')}
+        </button>
+      </div>
+
       {/* 달 선택 */}
       <div>
         <p className="mb-2 text-xs font-semibold text-muted-foreground">{t('search.period')}</p>
@@ -132,6 +152,38 @@ export const SearchFilterPanel: FC<Props> = ({ filter, onFilterChange }) => {
                   <span className={cn('text-xs', isSelected ? 'font-semibold text-primary' : 'text-muted-foreground')}>
                     {kid.name}
                   </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 태그 선택 */}
+      {tags.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">{t('tag.filter')}</p>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => {
+              const isSelected = filter.selectedTagIds.includes(tag.id)
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => {
+                    const next = isSelected
+                      ? filter.selectedTagIds.filter((id) => id !== tag.id)
+                      : [...filter.selectedTagIds, tag.id]
+                    onFilterChange({ ...filter, selectedTagIds: next })
+                  }}
+                  className={cn(
+                    'shrink-0 rounded-full border px-3 py-1 text-xs transition-colors',
+                    isSelected
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-muted-foreground',
+                  )}
+                >
+                  {tag.name}
                 </button>
               )
             })}

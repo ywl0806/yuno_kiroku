@@ -135,16 +135,7 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
-	if reqParams.AlbumID == nil && len(reqParams.IdentityIDs) == 0 {
-		homeItems, err := con.mediaItemService.GetMediaItemsByTakenAtHome(ctx, authUser.GroupId, *reqParams.From, *reqParams.To)
-		if err != nil {
-			log.Println("get media items by taken at home error: ", err)
-			return err
-		}
-		return c.JSON(200, models.NewMediaItemsResponseFromHome(homeItems))
-	}
-
-	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, authUser.GroupId, *reqParams.From, *reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs)
+	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, authUser.GroupId, authUser.ID, *reqParams.From, *reqParams.To)
 	if err != nil {
 		log.Println("get media items by taken at error: ", err)
 		return err
@@ -171,7 +162,7 @@ func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
-	result, err := con.mediaItemService.SearchMediaItems(ctx, authUser.GroupId, reqParams.From, reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs, reqParams.Page)
+	result, err := con.mediaItemService.SearchMediaItems(ctx, authUser.GroupId, authUser.ID, reqParams.From, reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs, reqParams.Liked, reqParams.TagIDs, reqParams.Page)
 	if err != nil {
 		log.Println("search media items error:", err)
 		return err
@@ -237,9 +228,10 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 		}
 	}
 
+	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
-	result, err := con.mediaItemService.GetMediaItemsByUploadBatch(ctx, uploadBatchID, page)
+	result, err := con.mediaItemService.GetMediaItemsByUploadBatch(ctx, uploadBatchID, authUser.ID, page)
 	if err != nil {
 		log.Println("get upload batch items error:", err)
 		return err

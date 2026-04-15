@@ -30,6 +30,8 @@ type Store struct {
 	Kid                  KidStore
 	IdentityFaceImg      IdentityFaceImgStore
 	FaceRecognitionJob   FaceRecognitionJobStore
+	Like                 LikeStore
+	Tag                  TagStore
 }
 
 // New Store 컨테이너 생성 (각 도메인 Store 구현체 주입)
@@ -50,6 +52,8 @@ func New(sqlDB *sql.DB, queries *db.Queries) *Store {
 		Kid:                  NewKidStore(queries),
 		IdentityFaceImg:      NewIdentityFaceImgStore(queries),
 		FaceRecognitionJob:   NewFaceRecognitionJobStore(queries),
+		Like:                 NewLikeStore(queries),
+		Tag:                  NewTagStore(queries),
 	}
 }
 

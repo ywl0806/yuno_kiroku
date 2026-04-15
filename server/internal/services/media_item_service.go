@@ -43,36 +43,13 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 	return err
 }
 
-// GetMediaItemsByTakenAtHome는 필터 없이 촬영 시간 범위 내의 미디어 아이템을 반환 (홈 전용 경량 쿼리)
-func (s *MediaItemService) GetMediaItemsByTakenAtHome(ctx context.Context, groupID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtHomeRow, error) {
-	params := db.GetMediaItemsByTakenAtHomeParams{
-		GroupID:     groupID,
-		TakenAtFrom: from,
-		TakenAtTo:   to,
-	}
-	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAtHome(ctx, params)
-	if err != nil {
-		log.Println("get media items by taken at home error:", err)
-		return nil, err
-	}
-	return mediaItems, nil
-}
-
 // GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환
-func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, from, to time.Time, albumID *int32, identityIDs []int32) ([]db.GetMediaItemsByTakenAtRow, error) {
-	if identityIDs == nil {
-		identityIDs = []int32{}
-	}
-	albumIDNull := sql.NullInt32{Valid: false}
-	if albumID != nil {
-		albumIDNull = sql.NullInt32{Int32: *albumID, Valid: true}
-	}
+func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
 	params := db.GetMediaItemsByTakenAtParams{
 		GroupID:     groupID,
 		TakenAtFrom: from,
 		TakenAtTo:   to,
-		AlbumID:     albumIDNull,
-		IdentityIds: identityIDs,
+		UserID:      userID,
 	}
 	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, params)
 	if err != nil {
@@ -119,9 +96,12 @@ type SearchMediaItemsResult struct {
 }
 
 // SearchMediaItems는 검색 조건으로 미디어 아이템을 페이지 단위로 반환
-func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, from, to *time.Time, albumID *int32, identityIDs []int32, page int) (*SearchMediaItemsResult, error) {
+func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID, userID int32, from, to *time.Time, albumID *int32, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
 	if identityIDs == nil {
 		identityIDs = []int32{}
+	}
+	if tagIDs == nil {
+		tagIDs = []int32{}
 	}
 	albumIDNull := sql.NullInt32{Valid: false}
 	if albumID != nil {
@@ -142,10 +122,13 @@ func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, 
 	// 1件多く取得してhas_nextを判定
 	params := db.SearchMediaItemsParams{
 		GroupID:     groupID,
+		UserID:      userID,
 		TakenAtFrom: fromNull,
 		TakenAtTo:   toNull,
 		AlbumID:     albumIDNull,
 		IdentityIds: identityIDs,
+		Liked:       liked,
+		TagIds:      tagIDs,
 		PageOffset:  offset,
 		PageSize:    int32(SearchPageSize) + 1,
 	}
@@ -314,12 +297,13 @@ type UploadBatchItemsResult struct {
 }
 
 // GetMediaItemsByUploadBatch는 특정 배치의 미디어 아이템을 페이지 단위로 반환합니다.
-func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, page int) (*UploadBatchItemsResult, error) {
+func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID int32, page int) (*UploadBatchItemsResult, error) {
 	if page < 1 {
 		page = 1
 	}
 	offset := int32((page - 1) * SearchPageSize)
 	items, err := s.mediaItemStore.GetMediaItemsByUploadBatchId(ctx, db.GetMediaItemsByUploadBatchIdParams{
+		UserID:        userID,
 		UploadBatchID: uploadBatchID,
 		PageOffset:    offset,
 		PageSize:      int32(SearchPageSize) + 1,

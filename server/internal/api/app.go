@@ -68,6 +68,8 @@ func Init(e *echo.Echo) {
 	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission, st)
 	groupService := services.NewGroupService(st.Family, st.Group)
 	kidService := services.NewKidService(st.Kid)
+	likeService := services.NewLikeService(st.Like)
+	tagService := services.NewTagService(st.Tag)
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
@@ -79,6 +81,8 @@ func Init(e *echo.Echo) {
 	groupHandler := handlers.NewGroupHandler(groupService)
 	kidHandler := handlers.NewKidHandler(kidService)
 	settingsHandler := handlers.NewSettingsHandler(groupService, userService, albumService, kidService, identityService)
+	likeHandler := handlers.NewLikeHandler(likeService)
+	tagHandler := handlers.NewTagHandler(tagService)
 
 	// root router
 	root := e.Group("/api")
@@ -98,6 +102,7 @@ func Init(e *echo.Echo) {
 	groupRouter := routers.NewGroupRouter(*groupHandler)
 	kidRouter := routers.NewKidRouter(*kidHandler)
 	settingsRouter := routers.NewSettingsRouter(*settingsHandler)
+	likeRouter := routers.NewLikeRouter(*likeHandler, *tagHandler)
 
 	e.Validator = validator.NewCustomValidator()
 
@@ -134,5 +139,6 @@ func Init(e *echo.Echo) {
 	groupRouter.Register(root)
 	kidRouter.Register(root)
 	settingsRouter.Register(root)
+	likeRouter.Register(root)
 
 }

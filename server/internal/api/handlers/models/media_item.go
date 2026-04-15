@@ -46,27 +46,60 @@ type MediaFileResponse struct {
 	Height      int32  `json:"height"`
 }
 
+type TagResponse struct {
+	ID       int32  `json:"id"`
+	FamilyID *int32 `json:"family_id"`
+	Name     string `json:"name"`
+	IsPreset bool   `json:"is_preset"`
+}
+
+func NewTagResponse(tag db.Tag) TagResponse {
+	var familyID *int32
+	if tag.FamilyID.Valid {
+		v := tag.FamilyID.Int32
+		familyID = &v
+	}
+	return TagResponse{
+		ID:       tag.ID,
+		FamilyID: familyID,
+		Name:     tag.Name,
+		IsPreset: tag.IsPreset,
+	}
+}
+
+func NewTagResponses(tags []db.Tag) []TagResponse {
+	if tags == nil {
+		return []TagResponse{}
+	}
+	result := make([]TagResponse, len(tags))
+	for i, t := range tags {
+		result[i] = NewTagResponse(t)
+	}
+	return result
+}
+
 type MediaItemResponse struct {
-	ID              int32     `json:"id"`
-	FamilyID        int32     `json:"family_id"`
-	AlbumID         int32     `json:"album_id"`
-	TakenAt         time.Time `json:"taken_at"`
-	FileName        string    `json:"file_name"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	OriginalUrl     string    `json:"original_url"`
-	OriginalWidth   int32     `json:"original_width"`
-	OriginalHeight  int32     `json:"original_height"`
-	ThumbnailUrl    string    `json:"thumbnail_url"`
-	ThumbnailWidth  int32     `json:"thumbnail_width"`
-	ThumbnailHeight int32     `json:"thumbnail_height"`
-	ViewUrl         string    `json:"view_url"`
-	ViewWidth       int32     `json:"view_width"`
-	ViewHeight      int32     `json:"view_height"`
+	ID              int32         `json:"id"`
+	FamilyID        int32         `json:"family_id"`
+	AlbumID         int32         `json:"album_id"`
+	TakenAt         time.Time     `json:"taken_at"`
+	FileName        string        `json:"file_name"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
+	OriginalUrl     string        `json:"original_url"`
+	OriginalWidth   int32         `json:"original_width"`
+	OriginalHeight  int32         `json:"original_height"`
+	ThumbnailUrl    string        `json:"thumbnail_url"`
+	ThumbnailWidth  int32         `json:"thumbnail_width"`
+	ThumbnailHeight int32         `json:"thumbnail_height"`
+	ViewUrl         string        `json:"view_url"`
+	ViewWidth       int32         `json:"view_width"`
+	ViewHeight      int32         `json:"view_height"`
+	IsLiked         bool          `json:"is_liked"`
+	Tags            []TagResponse `json:"tags"`
 }
 
 func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemResponse {
-
 	return &MediaItemResponse{
 		ID:              mediaItem.ID,
 		FamilyID:        mediaItem.FamilyID,
@@ -75,15 +108,17 @@ func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemRes
 		FileName:        mediaItem.FileName.String,
 		CreatedAt:       mediaItem.CreatedAt,
 		UpdatedAt:       mediaItem.UpdatedAt,
-		OriginalUrl:     internalutils.ParseStoragePath(mediaItem.OriginalStorageKey),
-		OriginalWidth:   mediaItem.OriginalWidth,
-		OriginalHeight:  mediaItem.OriginalHeight,
-		ThumbnailUrl:    internalutils.ParseStoragePath(mediaItem.ThumbnailStorageKey),
-		ThumbnailWidth:  mediaItem.ThumbnailWidth,
-		ThumbnailHeight: mediaItem.ThumbnailHeight,
-		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey),
-		ViewWidth:       mediaItem.ViewWidth,
-		ViewHeight:      mediaItem.ViewHeight,
+		OriginalUrl:     internalutils.ParseStoragePath(mediaItem.OriginalStorageKey.String),
+		OriginalWidth:   mediaItem.OriginalWidth.Int32,
+		OriginalHeight:  mediaItem.OriginalHeight.Int32,
+		ThumbnailUrl:    internalutils.ParseStoragePath(mediaItem.ThumbnailStorageKey.String),
+		ThumbnailWidth:  mediaItem.ThumbnailWidth.Int32,
+		ThumbnailHeight: mediaItem.ThumbnailHeight.Int32,
+		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey.String),
+		ViewWidth:       mediaItem.ViewWidth.Int32,
+		ViewHeight:      mediaItem.ViewHeight.Int32,
+		IsLiked:         mediaItem.IsLiked.Int32 > 0,
+		Tags:            []TagResponse{},
 	}
 }
 
@@ -94,36 +129,6 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 	}
 	return &mediaItemResponses
 }
-
-func NewMediaItemResponseFromHome(mediaItem *db.GetMediaItemsByTakenAtHomeRow) *MediaItemResponse {
-	return &MediaItemResponse{
-		ID:              mediaItem.ID,
-		FamilyID:        mediaItem.FamilyID,
-		AlbumID:         mediaItem.AlbumID,
-		TakenAt:         mediaItem.TakenAt,
-		FileName:        mediaItem.FileName.String,
-		CreatedAt:       mediaItem.CreatedAt,
-		UpdatedAt:       mediaItem.UpdatedAt,
-		OriginalUrl:     internalutils.ParseStoragePath(mediaItem.OriginalStorageKey),
-		OriginalWidth:   mediaItem.OriginalWidth,
-		OriginalHeight:  mediaItem.OriginalHeight,
-		ThumbnailUrl:    internalutils.ParseStoragePath(mediaItem.ThumbnailStorageKey),
-		ThumbnailWidth:  mediaItem.ThumbnailWidth,
-		ThumbnailHeight: mediaItem.ThumbnailHeight,
-		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey),
-		ViewWidth:       mediaItem.ViewWidth,
-		ViewHeight:      mediaItem.ViewHeight,
-	}
-}
-
-func NewMediaItemsResponseFromHome(mediaItems []db.GetMediaItemsByTakenAtHomeRow) *[]MediaItemResponse {
-	mediaItemResponses := make([]MediaItemResponse, len(mediaItems))
-	for i, mediaItem := range mediaItems {
-		mediaItemResponses[i] = *NewMediaItemResponseFromHome(&mediaItem)
-	}
-	return &mediaItemResponses
-}
-
 
 type UploadBatchStatus struct {
 	ID           int32  `json:"id"`
@@ -201,23 +206,23 @@ func NewUploadBatchItemResponse(item *db.GetMediaItemsByUploadBatchIdRow) *Media
 		FileName:        item.FileName.String,
 		CreatedAt:       item.CreatedAt,
 		UpdatedAt:       item.UpdatedAt,
-		OriginalUrl:     internalutils.ParseStoragePath(item.OriginalStorageKey),
-		OriginalWidth:   item.OriginalWidth,
-		OriginalHeight:  item.OriginalHeight,
-		ThumbnailUrl:    internalutils.ParseStoragePath(item.ThumbnailStorageKey),
-		ThumbnailWidth:  item.ThumbnailWidth,
-		ThumbnailHeight: item.ThumbnailHeight,
-		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey),
-		ViewWidth:       item.ViewWidth,
-		ViewHeight:      item.ViewHeight,
+		OriginalUrl:     internalutils.ParseStoragePath(item.OriginalStorageKey.String),
+		OriginalWidth:   item.OriginalWidth.Int32,
+		OriginalHeight:  item.OriginalHeight.Int32,
+		ThumbnailUrl:    internalutils.ParseStoragePath(item.ThumbnailStorageKey.String),
+		ThumbnailWidth:  item.ThumbnailWidth.Int32,
+		ThumbnailHeight: item.ThumbnailHeight.Int32,
+		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey.String),
+		ViewWidth:       item.ViewWidth.Int32,
+		ViewHeight:      item.ViewHeight.Int32,
+		IsLiked:         item.IsLiked.Int32 > 0,
+		Tags:            []TagResponse{},
 	}
 }
 
 type GetMediaItemsRequest struct {
-	From        *time.Time `query:"from" validate:"required"`
-	To          *time.Time `query:"to" validate:"required"`
-	IdentityIDs []int32    `query:"identity_ids"`
-	AlbumID     *int32     `query:"album_id"`
+	From *time.Time `query:"from" validate:"required"`
+	To   *time.Time `query:"to" validate:"required"`
 }
 
 type SearchMediaItemsRequest struct {
@@ -225,6 +230,8 @@ type SearchMediaItemsRequest struct {
 	To          *time.Time `query:"to"`
 	IdentityIDs []int32    `query:"identity_ids"`
 	AlbumID     *int32     `query:"album_id"`
+	Liked       bool       `query:"liked"`
+	TagIDs      []int32    `query:"tag_ids"`
 	Page        int        `query:"page"`
 }
 
@@ -243,14 +250,16 @@ func NewSearchMediaItemResponse(item *db.SearchMediaItemsRow) *MediaItemResponse
 		FileName:        item.FileName.String,
 		CreatedAt:       item.CreatedAt,
 		UpdatedAt:       item.UpdatedAt,
-		OriginalUrl:     internalutils.ParseStoragePath(item.OriginalStorageKey),
-		OriginalWidth:   item.OriginalWidth,
-		OriginalHeight:  item.OriginalHeight,
-		ThumbnailUrl:    internalutils.ParseStoragePath(item.ThumbnailStorageKey),
-		ThumbnailWidth:  item.ThumbnailWidth,
-		ThumbnailHeight: item.ThumbnailHeight,
-		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey),
-		ViewWidth:       item.ViewWidth,
-		ViewHeight:      item.ViewHeight,
+		OriginalUrl:     internalutils.ParseStoragePath(item.OriginalStorageKey.String),
+		OriginalWidth:   item.OriginalWidth.Int32,
+		OriginalHeight:  item.OriginalHeight.Int32,
+		ThumbnailUrl:    internalutils.ParseStoragePath(item.ThumbnailStorageKey.String),
+		ThumbnailWidth:  item.ThumbnailWidth.Int32,
+		ThumbnailHeight: item.ThumbnailHeight.Int32,
+		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey.String),
+		ViewWidth:       item.ViewWidth.Int32,
+		ViewHeight:      item.ViewHeight.Int32,
+		IsLiked:         item.IsLiked.Int32 > 0,
+		Tags:            []TagResponse{},
 	}
 }

@@ -49,3 +49,20 @@ VALUES
     (3, 3, 'W'),
     (4, 1, 'R'),
     (4, 1, 'W');
+
+INSERT INTO tags (name, is_preset) VALUES
+    ('생일',      true),
+    ('여행',      true),
+    ('졸업',      true),
+    ('운동회',    true),
+    ('크리스마스', true),
+    ('일상',      true),
+    ('처음',      true),
+    ('가족모임',  true),
+    ('학교',      true),
+    ('방학',      true),
+    ('명절',      true),
+    ('외식',      true),
+    ('입학',      true),
+    ('졸업식',    true),
+    ('생일파티',  true);

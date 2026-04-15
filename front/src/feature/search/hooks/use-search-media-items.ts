@@ -7,6 +7,8 @@ export type SearchFilter = {
   selectedAlbumId: number | null
   selectedIdentityIds: number[]
   selectedRange: MediaItemRange | null
+  liked: boolean
+  selectedTagIds: number[]
 }
 
 type SearchResponse = {
@@ -17,7 +19,11 @@ type SearchResponse = {
 
 export const useSearchMediaItems = (filter: SearchFilter) => {
   const hasFilter =
-    filter.selectedAlbumId !== null || filter.selectedIdentityIds.length > 0 || filter.selectedRange !== null
+    filter.selectedAlbumId !== null ||
+    filter.selectedIdentityIds.length > 0 ||
+    filter.selectedRange !== null ||
+    filter.liked ||
+    filter.selectedTagIds.length > 0
 
   return useInfiniteQuery({
     queryKey: ['search-media-items', filter],
@@ -34,6 +40,8 @@ export const useSearchMediaItems = (filter: SearchFilter) => {
           ...(to ? { to: to.toISOString() } : {}),
           ...(filter.selectedIdentityIds.length > 0 ? { identity_ids: filter.selectedIdentityIds } : {}),
           ...(filter.selectedAlbumId ? { album_id: filter.selectedAlbumId } : {}),
+          ...(filter.liked ? { liked: true } : {}),
+          ...(filter.selectedTagIds.length > 0 ? { tag_ids: filter.selectedTagIds } : {}),
         },
       })
       return response.data

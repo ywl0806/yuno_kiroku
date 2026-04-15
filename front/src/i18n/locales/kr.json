@@ -71,6 +71,20 @@
     "ageLabel_months": "{{months}}개월",
     "ageLabel_years": "{{years}}살"
   },
+  "like": {
+    "like": "좋아요",
+    "unlike": "좋아요 취소"
+  },
+  "tag": {
+    "title": "태그",
+    "add": "태그 추가",
+    "create_custom": "새 태그 만들기",
+    "name": "태그 이름",
+    "liked_filter": "좋아요한 사진만",
+    "filter": "태그",
+    "no_tags": "태그 없음",
+    "delete_confirm": "정말 삭제하시겠습니까?"
+  },
   "search": {
     "title": "검색",
     "period": "기간",

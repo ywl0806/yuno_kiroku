@@ -196,15 +196,15 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, groupID int32) ([]GetMe
 const getMediaItemThumbnailsByUploadBatchId = `-- name: GetMediaItemThumbnailsByUploadBatchId :many
 SELECT
     mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
-    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
-    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
-    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
-    COALESCE(mf_orig.width, 0)   AS original_width,
-    COALESCE(mf_orig.height, 0)  AS original_height,
-    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
-    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
-    COALESCE(mf_view.width, 0)   AS view_width,
-    COALESCE(mf_view.height, 0)  AS view_height
+    mf_orig.storage_key AS original_storage_key,
+    mf_thumb.storage_key AS thumbnail_storage_key,
+    mf_view.storage_key AS view_storage_key,
+    mf_orig.width AS original_width,
+    mf_orig.height AS original_height,
+    mf_thumb.width AS thumbnail_width,
+    mf_thumb.height AS thumbnail_height,
+    mf_view.width AS view_width,
+    mf_view.height AS view_height
 FROM media_items AS mi
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
@@ -226,15 +226,15 @@ type GetMediaItemThumbnailsByUploadBatchIdRow struct {
 	FileName               sql.NullString
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	OriginalStorageKey     string
-	ThumbnailStorageKey    string
-	ViewStorageKey         string
-	OriginalWidth          int32
-	OriginalHeight         int32
-	ThumbnailWidth         int32
-	ThumbnailHeight        int32
-	ViewWidth              int32
-	ViewHeight             int32
+	OriginalStorageKey     sql.NullString
+	ThumbnailStorageKey    sql.NullString
+	ViewStorageKey         sql.NullString
+	OriginalWidth          sql.NullInt32
+	OriginalHeight         sql.NullInt32
+	ThumbnailWidth         sql.NullInt32
+	ThumbnailHeight        sql.NullInt32
+	ViewWidth              sql.NullInt32
+	ViewHeight             sql.NullInt32
 }
 
 func (q *Queries) GetMediaItemThumbnailsByUploadBatchId(ctx context.Context, uploadBatchID int32) ([]GetMediaItemThumbnailsByUploadBatchIdRow, error) {
@@ -284,59 +284,39 @@ func (q *Queries) GetMediaItemThumbnailsByUploadBatchId(ctx context.Context, upl
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
     mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
-    COALESCE(original_media_file.storage_key, '') AS original_storage_key,
-    COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
-    COALESCE(view_media_file.storage_key, '') AS view_storage_key,
-    COALESCE(original_media_file.width, 0) AS original_width,
-    COALESCE(original_media_file.height, 0) AS original_height,
-    COALESCE(thumbnail_media_file.width, 0) AS thumbnail_width,
-    COALESCE(thumbnail_media_file.height, 0) AS thumbnail_height,
-    COALESCE(view_media_file.width, 0) AS view_width,
-    COALESCE(view_media_file.height, 0) AS view_height
+    mf_orig.storage_key AS original_storage_key,
+    mf_thumb.storage_key AS thumbnail_storage_key,
+    mf_view.storage_key AS view_storage_key,
+    mf_orig.width AS original_width,
+    mf_orig.height AS original_height,
+    mf_thumb.width AS thumbnail_width,
+    mf_thumb.height AS thumbnail_height,
+    mf_view.width AS view_width,
+    mf_view.height AS view_height,
+    mil.id AS is_liked
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN LATERAL (
-        SELECT storage_key, width, height, media_item_id
-        FROM media_files
-        WHERE role = '01'
-    ) AS original_media_file ON original_media_file.media_item_id = mi.id
-    LEFT JOIN LATERAL (
-        SELECT storage_key, width, height, media_item_id
-        FROM media_files
-        WHERE role = '02'
-    ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
-    LEFT JOIN LATERAL (
-        SELECT storage_key, width, height, media_item_id
-        FROM media_files
-        WHERE role = '03'
-    ) AS view_media_file ON view_media_file.media_item_id = mi.id
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+    LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
+    LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
+    LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
 WHERE
-    agp.group_id = $1::int
+    agp.group_id = $2::int
     AND agp.permission = 'R'
-    AND mi.taken_at >= $2::timestamp
-    AND mi.taken_at <= $3::timestamp
-    AND mi.upload_status = '03' -- 03: completed
-    AND ($4::int IS NULL OR mi.album_id = $4::int)
-    AND (
-        cardinality($5::int[]) = 0
-        OR EXISTS (
-            SELECT 1 FROM face_detections fd
-            WHERE fd.media_item_id = mi.id
-              AND fd.identity_id = ANY($5::int[])
-        )
-    )
+    AND mi.taken_at >= $3::timestamp
+    AND mi.taken_at <= $4::timestamp
+    AND mi.upload_status = '03'
 ORDER BY
     mi.taken_at DESC
 `
 
 type GetMediaItemsByTakenAtParams struct {
+	UserID      int32
 	GroupID     int32
 	TakenAtFrom time.Time
 	TakenAtTo   time.Time
-	AlbumID     sql.NullInt32
-	IdentityIds []int32
 }
 
 type GetMediaItemsByTakenAtRow struct {
@@ -351,24 +331,24 @@ type GetMediaItemsByTakenAtRow struct {
 	FileName               sql.NullString
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	OriginalStorageKey     string
-	ThumbnailStorageKey    string
-	ViewStorageKey         string
-	OriginalWidth          int32
-	OriginalHeight         int32
-	ThumbnailWidth         int32
-	ThumbnailHeight        int32
-	ViewWidth              int32
-	ViewHeight             int32
+	OriginalStorageKey     sql.NullString
+	ThumbnailStorageKey    sql.NullString
+	ViewStorageKey         sql.NullString
+	OriginalWidth          sql.NullInt32
+	OriginalHeight         sql.NullInt32
+	ThumbnailWidth         sql.NullInt32
+	ThumbnailHeight        sql.NullInt32
+	ViewWidth              sql.NullInt32
+	ViewHeight             sql.NullInt32
+	IsLiked                sql.NullInt32
 }
 
 func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsByTakenAtParams) ([]GetMediaItemsByTakenAtRow, error) {
 	rows, err := q.db.QueryContext(ctx, getMediaItemsByTakenAt,
+		arg.UserID,
 		arg.GroupID,
 		arg.TakenAtFrom,
 		arg.TakenAtTo,
-		arg.AlbumID,
-		pq.Array(arg.IdentityIds),
 	)
 	if err != nil {
 		return nil, err
@@ -398,108 +378,7 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.ThumbnailHeight,
 			&i.ViewWidth,
 			&i.ViewHeight,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getMediaItemsByTakenAtHome = `-- name: GetMediaItemsByTakenAtHome :many
-SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
-    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
-    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
-    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
-    COALESCE(mf_orig.width, 0)   AS original_width,
-    COALESCE(mf_orig.height, 0)  AS original_height,
-    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
-    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
-    COALESCE(mf_view.width, 0)   AS view_width,
-    COALESCE(mf_view.height, 0)  AS view_height
-FROM
-    media_items AS mi
-    INNER JOIN albums AS a ON mi.album_id = a.id
-    INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
-    LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
-    LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
-WHERE
-    agp.group_id = $1::int
-    AND agp.permission = 'R'
-    AND mi.taken_at >= $2::timestamp
-    AND mi.taken_at <= $3::timestamp
-    AND mi.upload_status = '03'
-ORDER BY
-    mi.taken_at DESC
-`
-
-type GetMediaItemsByTakenAtHomeParams struct {
-	GroupID     int32
-	TakenAtFrom time.Time
-	TakenAtTo   time.Time
-}
-
-type GetMediaItemsByTakenAtHomeRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
-	UploadBatchID          int32
-	UploadStatus           string
-	TakenLocationLatitude  sql.NullFloat64
-	TakenLocationLongitude sql.NullFloat64
-	TakenAt                time.Time
-	FileName               sql.NullString
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
-	OriginalStorageKey     string
-	ThumbnailStorageKey    string
-	ViewStorageKey         string
-	OriginalWidth          int32
-	OriginalHeight         int32
-	ThumbnailWidth         int32
-	ThumbnailHeight        int32
-	ViewWidth              int32
-	ViewHeight             int32
-}
-
-func (q *Queries) GetMediaItemsByTakenAtHome(ctx context.Context, arg GetMediaItemsByTakenAtHomeParams) ([]GetMediaItemsByTakenAtHomeRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMediaItemsByTakenAtHome, arg.GroupID, arg.TakenAtFrom, arg.TakenAtTo)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetMediaItemsByTakenAtHomeRow
-	for rows.Next() {
-		var i GetMediaItemsByTakenAtHomeRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.FamilyID,
-			&i.AlbumID,
-			&i.UploadBatchID,
-			&i.UploadStatus,
-			&i.TakenLocationLatitude,
-			&i.TakenLocationLongitude,
-			&i.TakenAt,
-			&i.FileName,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.OriginalStorageKey,
-			&i.ThumbnailStorageKey,
-			&i.ViewStorageKey,
-			&i.OriginalWidth,
-			&i.OriginalHeight,
-			&i.ThumbnailWidth,
-			&i.ThumbnailHeight,
-			&i.ViewWidth,
-			&i.ViewHeight,
+			&i.IsLiked,
 		); err != nil {
 			return nil, err
 		}
@@ -517,26 +396,29 @@ func (q *Queries) GetMediaItemsByTakenAtHome(ctx context.Context, arg GetMediaIt
 const getMediaItemsByUploadBatchId = `-- name: GetMediaItemsByUploadBatchId :many
 SELECT
     mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
-    COALESCE(mf_orig.storage_key, '')  AS original_storage_key,
-    COALESCE(mf_thumb.storage_key, '') AS thumbnail_storage_key,
-    COALESCE(mf_view.storage_key, '')  AS view_storage_key,
-    COALESCE(mf_orig.width, 0)   AS original_width,
-    COALESCE(mf_orig.height, 0)  AS original_height,
-    COALESCE(mf_thumb.width, 0)  AS thumbnail_width,
-    COALESCE(mf_thumb.height, 0) AS thumbnail_height,
-    COALESCE(mf_view.width, 0)   AS view_width,
-    COALESCE(mf_view.height, 0)  AS view_height
+    mf_orig.storage_key AS original_storage_key,
+    mf_thumb.storage_key AS thumbnail_storage_key,
+    mf_view.storage_key AS view_storage_key,
+    mf_orig.width AS original_width,
+    mf_orig.height AS original_height,
+    mf_thumb.width AS thumbnail_width,
+    mf_thumb.height AS thumbnail_height,
+    mf_view.width AS view_width,
+    mf_view.height AS view_height,
+    mil.id AS is_liked
 FROM media_items AS mi
+LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
-WHERE mi.upload_batch_id = $1::int AND mi.upload_status = '03'
+WHERE mi.upload_batch_id = $2::int AND mi.upload_status = '03'
 ORDER BY mi.taken_at ASC
-LIMIT $3::int
-OFFSET $2::int
+LIMIT $4::int
+OFFSET $3::int
 `
 
 type GetMediaItemsByUploadBatchIdParams struct {
+	UserID        int32
 	UploadBatchID int32
 	PageOffset    int32
 	PageSize      int32
@@ -554,19 +436,25 @@ type GetMediaItemsByUploadBatchIdRow struct {
 	FileName               sql.NullString
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	OriginalStorageKey     string
-	ThumbnailStorageKey    string
-	ViewStorageKey         string
-	OriginalWidth          int32
-	OriginalHeight         int32
-	ThumbnailWidth         int32
-	ThumbnailHeight        int32
-	ViewWidth              int32
-	ViewHeight             int32
+	OriginalStorageKey     sql.NullString
+	ThumbnailStorageKey    sql.NullString
+	ViewStorageKey         sql.NullString
+	OriginalWidth          sql.NullInt32
+	OriginalHeight         sql.NullInt32
+	ThumbnailWidth         sql.NullInt32
+	ThumbnailHeight        sql.NullInt32
+	ViewWidth              sql.NullInt32
+	ViewHeight             sql.NullInt32
+	IsLiked                sql.NullInt32
 }
 
 func (q *Queries) GetMediaItemsByUploadBatchId(ctx context.Context, arg GetMediaItemsByUploadBatchIdParams) ([]GetMediaItemsByUploadBatchIdRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMediaItemsByUploadBatchId, arg.UploadBatchID, arg.PageOffset, arg.PageSize)
+	rows, err := q.db.QueryContext(ctx, getMediaItemsByUploadBatchId,
+		arg.UserID,
+		arg.UploadBatchID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -595,6 +483,7 @@ func (q *Queries) GetMediaItemsByUploadBatchId(ctx context.Context, arg GetMedia
 			&i.ThumbnailHeight,
 			&i.ViewWidth,
 			&i.ViewHeight,
+			&i.IsLiked,
 		); err != nil {
 			return nil, err
 		}
@@ -711,61 +600,70 @@ func (q *Queries) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([
 const searchMediaItems = `-- name: SearchMediaItems :many
 SELECT
     mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
-    COALESCE(original_media_file.storage_key, '') AS original_storage_key,
-    COALESCE(thumbnail_media_file.storage_key, '') AS thumbnail_storage_key,
-    COALESCE(view_media_file.storage_key, '') AS view_storage_key,
-    COALESCE(original_media_file.width, 0) AS original_width,
-    COALESCE(original_media_file.height, 0) AS original_height,
-    COALESCE(thumbnail_media_file.width, 0) AS thumbnail_width,
-    COALESCE(thumbnail_media_file.height, 0) AS thumbnail_height,
-    COALESCE(view_media_file.width, 0) AS view_width,
-    COALESCE(view_media_file.height, 0) AS view_height
+    mf_orig.storage_key AS original_storage_key,
+    mf_thumb.storage_key AS thumbnail_storage_key,
+    mf_view.storage_key AS view_storage_key,
+    mf_orig.width AS original_width,
+    mf_orig.height AS original_height,
+    mf_thumb.width AS thumbnail_width,
+    mf_thumb.height AS thumbnail_height,
+    mf_view.width AS view_width,
+    mf_view.height AS view_height,
+    mil.id AS is_liked
 FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN LATERAL (
-        SELECT storage_key, width, height, media_item_id
-        FROM media_files
-        WHERE role = '01'
-    ) AS original_media_file ON original_media_file.media_item_id = mi.id
-    LEFT JOIN LATERAL (
-        SELECT storage_key, width, height, media_item_id
-        FROM media_files
-        WHERE role = '02'
-    ) AS thumbnail_media_file ON thumbnail_media_file.media_item_id = mi.id
-    LEFT JOIN LATERAL (
-        SELECT storage_key, width, height, media_item_id
-        FROM media_files
-        WHERE role = '03'
-    ) AS view_media_file ON view_media_file.media_item_id = mi.id
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+    LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
+    LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
+    LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
 WHERE
-    agp.group_id = $1::int
+    agp.group_id = $2::int
     AND agp.permission = 'R'
     AND mi.upload_status = '03'
-    AND ($2::timestamp IS NULL OR mi.taken_at >= $2::timestamp)
-    AND ($3::timestamp IS NULL OR mi.taken_at <= $3::timestamp)
-    AND ($4::int IS NULL OR mi.album_id = $4::int)
+    AND ($3::timestamp IS NULL OR mi.taken_at >= $3::timestamp)
+    AND ($4::timestamp IS NULL OR mi.taken_at <= $4::timestamp)
+    AND ($5::int IS NULL OR mi.album_id = $5::int)
     AND (
-        cardinality($5::int[]) = 0
+        cardinality($6::int[]) = 0
         OR EXISTS (
             SELECT 1 FROM face_detections fd
             WHERE fd.media_item_id = mi.id
-              AND fd.identity_id = ANY($5::int[])
+              AND fd.identity_id = ANY($6::int[])
+        )
+    )
+    AND (
+        NOT $7::boolean
+        OR EXISTS (
+            SELECT 1 FROM media_item_likes mil
+            WHERE mil.media_item_id = mi.id
+              AND mil.user_id = $1::int
+        )
+    )
+    AND (
+        cardinality($8::int[]) = 0
+        OR EXISTS (
+            SELECT 1 FROM media_item_tags mit
+            WHERE mit.media_item_id = mi.id
+              AND mit.tag_id = ANY($8::int[])
         )
     )
 ORDER BY
     mi.taken_at DESC
-LIMIT $7::int
-OFFSET $6::int
+LIMIT $10::int
+OFFSET $9::int
 `
 
 type SearchMediaItemsParams struct {
+	UserID      int32
 	GroupID     int32
 	TakenAtFrom sql.NullTime
 	TakenAtTo   sql.NullTime
 	AlbumID     sql.NullInt32
 	IdentityIds []int32
+	Liked       bool
+	TagIds      []int32
 	PageOffset  int32
 	PageSize    int32
 }
@@ -782,24 +680,28 @@ type SearchMediaItemsRow struct {
 	FileName               sql.NullString
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	OriginalStorageKey     string
-	ThumbnailStorageKey    string
-	ViewStorageKey         string
-	OriginalWidth          int32
-	OriginalHeight         int32
-	ThumbnailWidth         int32
-	ThumbnailHeight        int32
-	ViewWidth              int32
-	ViewHeight             int32
+	OriginalStorageKey     sql.NullString
+	ThumbnailStorageKey    sql.NullString
+	ViewStorageKey         sql.NullString
+	OriginalWidth          sql.NullInt32
+	OriginalHeight         sql.NullInt32
+	ThumbnailWidth         sql.NullInt32
+	ThumbnailHeight        sql.NullInt32
+	ViewWidth              sql.NullInt32
+	ViewHeight             sql.NullInt32
+	IsLiked                sql.NullInt32
 }
 
 func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsParams) ([]SearchMediaItemsRow, error) {
 	rows, err := q.db.QueryContext(ctx, searchMediaItems,
+		arg.UserID,
 		arg.GroupID,
 		arg.TakenAtFrom,
 		arg.TakenAtTo,
 		arg.AlbumID,
 		pq.Array(arg.IdentityIds),
+		arg.Liked,
+		pq.Array(arg.TagIds),
 		arg.PageOffset,
 		arg.PageSize,
 	)
@@ -831,6 +733,7 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 			&i.ThumbnailHeight,
 			&i.ViewWidth,
 			&i.ViewHeight,
+			&i.IsLiked,
 		); err != nil {
 			return nil, err
 		}

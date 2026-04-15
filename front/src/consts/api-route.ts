@@ -87,5 +87,15 @@ export const API_ROUTES = {
     UPLOAD_BATCH_STATUS: '/media-item/upload-batch/status',
     UPLOAD_BATCHES: '/media-item/upload-batch',
     UPLOAD_BATCH_ITEMS: (id: number) => `/media-item/upload-batch/${id}/items`,
+    LIKE: (id: number) => `/media-item/${id}/like`,
+    TAGS: (id: number) => `/media-item/${id}/tag`,
+    TAG_REMOVE: (id: number, tagId: number) => `/media-item/${id}/tag/${tagId}`,
+  },
+
+  // Tag
+  TAG: {
+    LIST: '/tag',
+    CREATE: '/tag',
+    DELETE: (id: number) => `/tag/${id}`,
   },
 }

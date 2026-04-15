@@ -71,6 +71,20 @@
     "ageLabel_months": "{{months}}ヶ月",
     "ageLabel_years": "{{years}}歳"
   },
+  "like": {
+    "like": "いいね",
+    "unlike": "いいね取り消し"
+  },
+  "tag": {
+    "title": "タグ",
+    "add": "タグを追加",
+    "create_custom": "新しいタグを作成",
+    "name": "タグ名",
+    "liked_filter": "いいねした写真のみ",
+    "filter": "タグ",
+    "no_tags": "タグなし",
+    "delete_confirm": "本当に削除しますか？"
+  },
   "search": {
     "title": "検索",
     "period": "期間",

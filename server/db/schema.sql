@@ -288,3 +288,36 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_frj_media_item_id ON face_recognition_jobs
 CREATE INDEX IF NOT EXISTS idx_frj_status_created ON face_recognition_jobs (status, created_at) WHERE status = '01';
 -- family_id별 job 조회 최적화
 CREATE INDEX IF NOT EXISTS idx_frj_family_id_status ON face_recognition_jobs (family_id, status);
+
+-- 좋아요 테이블
+CREATE TABLE IF NOT EXISTS media_item_likes (
+    id            SERIAL PRIMARY KEY,
+    media_item_id INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (media_item_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_likes_user_id ON media_item_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_likes_media_item_id ON media_item_likes(media_item_id);
+
+-- 태그 테이블 (family_id=NULL이면 시스템 프리셋)
+CREATE TABLE IF NOT EXISTS tags (
+    id         SERIAL PRIMARY KEY,
+    family_id  INTEGER REFERENCES families(id) ON DELETE CASCADE,
+    name       VARCHAR(50) NOT NULL,
+    is_preset  BOOLEAN NOT NULL DEFAULT false,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_tags_family_id ON tags(family_id);
+
+-- 사진-태그 N:M 관계
+CREATE TABLE IF NOT EXISTS media_item_tags (
+    media_item_id INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+    tag_id        INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    tagged_by     INTEGER NOT NULL REFERENCES users(id),
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (media_item_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS idx_media_item_tags_tag_id ON media_item_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_media_item_tags_media_item_id ON media_item_tags(media_item_id);

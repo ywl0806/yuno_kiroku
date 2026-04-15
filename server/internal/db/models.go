@@ -133,11 +133,34 @@ type MediaItem struct {
 	UpdatedAt              time.Time
 }
 
+type MediaItemLike struct {
+	ID          int32
+	MediaItemID int32
+	UserID      int32
+	CreatedAt   time.Time
+}
+
+type MediaItemTag struct {
+	MediaItemID int32
+	TagID       int32
+	TaggedBy    int32
+	CreatedAt   time.Time
+}
+
 type RefreshToken struct {
 	ID        int32
 	Token     string
 	ExpiresAt time.Time
 	UserID    int32
+	CreatedAt time.Time
+}
+
+type Tag struct {
+	ID        int32
+	FamilyID  sql.NullInt32
+	Name      string
+	IsPreset  bool
+	CreatedBy sql.NullInt32
 	CreatedAt time.Time
 }
 

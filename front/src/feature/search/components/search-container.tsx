@@ -13,6 +13,8 @@ export const SearchContainer = () => {
     selectedAlbumId: null,
     selectedIdentityIds: [],
     selectedRange: null,
+    liked: false,
+    selectedTagIds: [],
   })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
@@ -34,7 +36,11 @@ export const SearchContainer = () => {
   )
 
   const hasFilter =
-    filter.selectedAlbumId !== null || filter.selectedIdentityIds.length > 0 || filter.selectedRange !== null
+    filter.selectedAlbumId !== null ||
+    filter.selectedIdentityIds.length > 0 ||
+    filter.selectedRange !== null ||
+    filter.liked ||
+    filter.selectedTagIds.length > 0
 
   return (
     <div className="flex h-full flex-col">
