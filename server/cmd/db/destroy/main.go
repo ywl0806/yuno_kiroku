@@ -14,6 +14,11 @@ func main() {
 
 	databaseURL := viper.GetString("DATABASE_URL")
 
+	env := viper.GetString("APP_ENV")
+	if !(env == "local" || env == "dev") {
+		log.Fatal("This command is only available in development and local environment")
+	}
+
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatal(err)

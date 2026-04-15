@@ -7,8 +7,8 @@ INSERT INTO
     groups (id, family_id, name, is_admin)
 VALUES
     (1, 1, 'admin', true),
-    (2, 1, 'lee', false),
-    (3, 1, 'muraoka', false);
+    (2, 1, '이가', false),
+    (3, 1, '村岡家', false);
 
 INSERT INTO
     users (
@@ -51,18 +51,11 @@ VALUES
     (4, 1, 'W');
 
 INSERT INTO tags (name, is_preset) VALUES
-    ('생일',      true),
-    ('여행',      true),
-    ('졸업',      true),
-    ('운동회',    true),
-    ('크리스마스', true),
-    ('일상',      true),
-    ('처음',      true),
-    ('가족모임',  true),
-    ('학교',      true),
-    ('방학',      true),
-    ('명절',      true),
-    ('외식',      true),
-    ('입학',      true),
-    ('졸업식',    true),
-    ('생일파티',  true);
+    ('誕生日',      true),
+    ('旅行',      true),
+    ('卒業',      true),
+    ('運動会',    true),
+    ('クリスマス', true),
+    ('日常',      true),
+    ('初めて',      true),
+    ('公園',  true);

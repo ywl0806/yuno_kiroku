@@ -36,7 +36,7 @@ func Init(e *echo.Echo) {
 	imageUploader := services.NewImageUploader(storageService)
 
 	var faceDispatcher services.FaceRecognitionDispatcher
-	if viper.GetString("APP_MODE") == "local_dev" {
+	if viper.GetString("APP_ENV") == "local" {
 		faceDispatcher = services.NewLocalFaceRecognitionDispatcher(st.FaceRecognitionJob)
 	} else {
 		cfg, cfgErr := config.LoadDefaultConfig(context.Background())

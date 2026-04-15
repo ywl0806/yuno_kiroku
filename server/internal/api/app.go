@@ -29,7 +29,7 @@ func Init(e *echo.Echo) {
 	i18n.Init()
 
 	// DB 초기화
-	sqlDB, dbTx, err := db.Init(viper.GetString("APP_MODE") == "dev" || viper.GetString("APP_MODE") == "local" || viper.GetString("APP_MODE") == "local_dev")
+	sqlDB, dbTx, err := db.Init(viper.GetString("APP_ENV") == "dev" || viper.GetString("APP_ENV") == "local")
 	if err != nil {
 		log.Fatalf("Failed to initialize DB: %v", err)
 	}

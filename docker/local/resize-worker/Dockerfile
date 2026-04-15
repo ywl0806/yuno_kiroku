@@ -28,7 +28,7 @@ COPY . .
 EXPOSE 1325
 
 # air 설정 파일 복사
-COPY .air.resize-worker.toml /app/.air.resize-worker.toml
+COPY .air.resize.toml /app/.air.resize.toml
 
 # air 설정 파일을 사용하여 개발 서버 실행
-CMD ["air", "-c", ".air.resize-worker.toml"]
+CMD ["air", "-c", ".air.resize.toml"]
