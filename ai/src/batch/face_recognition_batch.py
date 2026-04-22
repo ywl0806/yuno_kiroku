@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 STORAGE_TYPE = os.environ.get("STORAGE_TYPE", "minio")
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://minio:9000")
-STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "my-bucket")
+MEDIA_BUCKET_NAME = os.environ.get("MEDIA_BUCKET_NAME", "my-bucket")
 MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER", "root")
 MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD", "password")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
@@ -61,7 +61,7 @@ def download_image(s3_client, key: str) -> str:
     """S3에서 이미지를 임시 파일로 다운로드하고 경로 반환"""
     ext = key.rsplit(".", 1)[-1] if "." in key else "jpg"
     tmp = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
-    s3_client.download_fileobj(STORAGE_BUCKET, key, tmp)
+    s3_client.download_fileobj(MEDIA_BUCKET_NAME, key, tmp)
     tmp.close()
     return tmp.name
 

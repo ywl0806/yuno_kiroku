@@ -42,25 +42,25 @@ YUNO는 가족 단위의 사진을 공유하고, 얼굴 인식 기반으로 자�
   original/ prefix → PutObject 이벤트
       │
       ▼
-[ Resize Lambda (Go + libvips) ]
+[ Resize Lambda (Go + libvips) ]  ← Function URL 공개 (ECS 콜백 수신용)
   - 리사이즈: view(2048px), thumbnail(512px)
+  - DB: media_items status=03 (사진 조회 가능)
   - DB: face_recognition_jobs INSERT
-  - SQS: SendMessage (wake-up signal)
+  - ECS: ListTasks → 미실행 시 RunTask (직접 트리거, SQS 없음)
       │
       ▼
-[ SQS: face-recognition-queue ]
-      │  Lambda Trigger (SQS Event Source)
-      ▼
-[ trigger-ecs Lambda ]
-  - ECS 실행 중 여부 확인
-  - 실행 중 → 종료 (ECS가 알아서 DB 폴링 중)
-  - 미실행 → ECS RunTask
-      │
-      ▼
-[ ECS Fargate Spot Task: Python AI ]
+[ ECS Fargate Spot Task: Python AI ]  ← 얼굴 감지만 수행
   - Supabase에서 pending job 배치 fetch
-  - 얼굴인식 → identity 매칭 → DB 저장
-  - 더 이상 job 없으면 Task 종료 (비용 절감)
+  - view 이미지 다운로드 → InsightFace 얼굴 감지 → 512차원 임베딩 계산
+  - 결과를 Resize Lambda Function URL로 콜백
+      │  POST /face-recognition/complete { job_id, faces }
+      ▼
+[ Resize Lambda — Function URL 콜백 처리 ]
+  - pgvector 코사인 유사도 → identity 매칭/생성
+  - face_detections INSERT
+  - 얼굴 크롭(512×512) → S3 identities/ 저장
+  - identity_face_imgs INSERT
+  - face_recognition_jobs status=completed
       │
       ▼
 [ Supabase PostgreSQL + pgvector ]
@@ -70,7 +70,7 @@ YUNO는 가족 단위의 사진을 공유하고, 얼굴 인식 기반으로 자�
 
 - Lambda: 요청 없으면 과금 없음
 - ECS: 처리할 job이 있을 때만 Task 기동, 완료 후 자동 종료
-- EventBridge Scheduler 없음 (SQS 이벤트 기반으로 즉각 트리거)
+- SQS / trigger-ecs Lambda 없음 → Resize Lambda가 ECS RunTask 직접 호출
 - VPC 없음 → NAT Gateway 비용 없음 (Supabase는 공용 인터넷으로 접근)
 
 ---
@@ -121,9 +121,9 @@ YUNO는 가족 단위의 사진을 공유하고, 얼굴 인식 기반으로 자�
 | 컴포넌트          | Phase 1                          | Phase 2                      |
 | ----------------- | -------------------------------- | ---------------------------- |
 | **API Server**    | Lambda + API Gateway             | 동일                         |
-| **Resize Worker** | Lambda (Go + libvips)            | 동일                         |
-| **AI Worker**     | ECS Fargate Spot (On-demand)     | ECS Fargate Service (상시)   |
-| **Queue**         | SQS (wake-up signal)             | SQS (job queue)              |
+| **Resize Worker** | Lambda (Go + libvips)\nFunction URL 공개 | 동일               |
+| **AI Worker**     | ECS Fargate Spot (On-demand)\n얼굴 감지 + 임베딩만 수행 | ECS Fargate Service (상시) |
+| **ECS → Lambda 콜백** | Function URL (HTTP) | 동일                    |
 | **Job Store**     | face_recognition_jobs (Supabase) | face_recognition_jobs (RDS)  |
 | **Database**      | Supabase (pgvector 포함)         | RDS PostgreSQL 17 + pgvector |
 | **Storage**       | S3                               | 동일                         |
@@ -138,25 +138,30 @@ YUNO는 가족 단위의 사진을 공유하고, 얼굴 인식 기반으로 자�
 ```
 ① POST /media-item/upload-batch        → batch_id 발급
 ② POST /media-item/presigned-url       → media_item_id + Presigned PUT URL
-   └─ API Lambda: media_items (status=01), media_files (role=01) DB 생성
+   └─ API Lambda: media_items (status=01), media_files (role=original) DB 생성
 ③ 클라이언트: PUT {presigned_url}      → S3 직접 업로드
-   └─ S3: original/{familyId}/{albumId}/{date}/{uuid}.jpg
-④ S3 PutObject 이벤트 → Resize Lambda
-   └─ 리사이즈 → S3 view/, thumbnail/ 업로드
-   └─ DB: media_files 생성, media_items.status = '02'
+   └─ S3: original/{familyId}/{mediaItemId}.jpg
+④ S3 PutObject 이벤트 → Resize Lambda (POST /resize)
+   └─ media_items.status = '02' (processing)
+   └─ 원본 다운로드 → EXIF 파싱 → 리사이즈
+   └─ S3 view/, thumbnail/ 업로드
+   └─ DB: media_files 생성 (view, thumbnail)
+   └─ media_items.status = '03' (completed) ← 이 시점부터 사진 조회 가능
    └─ DB: face_recognition_jobs INSERT (status='01')
-   └─ SQS: SendMessage (wake-up signal)
-⑤ SQS → trigger-ecs Lambda (Phase 1)
-   └─ ECS 실행 중 확인 → 없으면 RunTask
-⑥ ECS Fargate Task: Python AI
+   └─ ECS: ListTasks → 미실행 시 RunTask (직접 트리거, SQS 없음)
+⑤ ECS Fargate Task: Python AI (얼굴 감지만 수행)
    └─ face_recognition_jobs에서 배치 fetch (FOR UPDATE SKIP LOCKED)
    └─ S3 view 이미지 다운로드
-   └─ InsightFace(buffalo_s) 얼굴 인식 → 512차원 ArcFace 임베딩
-   └─ pgvector 코사인 유사도 → identity 매칭 (임계값 0.5)
-   └─ face_detections, identity_face_imgs 저장
-   └─ 얼굴 크롭(512×512) → S3 identities/ 업로드
-   └─ media_items.status = '03' (completed)
-   └─ pending job 없으면 Task 자동 종료 (Phase 1)
+   └─ InsightFace(buffalo_s) 얼굴 감지 → 512차원 ArcFace 임베딩 계산
+   └─ Resize Lambda Function URL 콜백
+      POST /face-recognition/complete { job_id, faces: [{ face_location, embedding }] }
+⑥ Resize Lambda — Function URL 콜백 처리
+   └─ pgvector 코사인 유사도 → identity 매칭/신규 생성 (임계값 0.5)
+   └─ face_detections INSERT (위치 + 임베딩)
+   └─ S3 view 이미지에서 얼굴 크롭(512×512) → S3 identities/ 업로드
+   └─ identity_face_imgs INSERT
+   └─ face_recognition_jobs.status = '03' (completed)
+   └─ pending job 없으면 ECS Task 자동 종료 (Phase 1)
 ⑦ 클라이언트: GET /media-item/upload-batch/status (폴링)
 ```
 
@@ -225,12 +230,15 @@ Region: ap-northeast-1 (도쿄)
   [ Supabase ]  ← Lambda / ECS가 공용 인터넷으로 접근 (TLS)
 
 AWS:
-  [ API Gateway ]           → Go API Lambda (VPC 없음)
-  [ S3 ]                    → Resize Lambda (VPC 없음)
-  [ SQS ]                   → trigger-ecs Lambda (VPC 없음)
-  [ ECS Fargate Spot Task ] → Supabase, S3 접근 (인터넷)
-  [ CloudFront + OAC ]      ← 클라이언트 이미지 요청
-  [ ECR ]                   → Lambda / ECS Docker 이미지
+  [ API Gateway ]                    → Go API Lambda (VPC 없음)
+  [ S3 PutObject 이벤트 ]            → Resize Lambda (VPC 없음)
+  [ Resize Lambda Function URL ]     ← ECS가 얼굴 감지 결과 콜백
+  [ ECS Fargate Spot Task ]          → Supabase, S3, Resize Lambda Function URL 접근 (인터넷)
+  [ CloudFront + OAC ]               ← 클라이언트 이미지 요청
+  [ ECR ]                            → Lambda / ECS Docker 이미지
+
+SQS / trigger-ecs Lambda 없음:
+  Resize Lambda가 ECS RunTask를 직접 호출 (ECSFaceRecognitionDispatcher)
 ```
 
 VPC 없음 → Lambda 콜드 스타트 빠름, NAT Gateway 비용 없음
@@ -255,10 +263,10 @@ VPC 없음 → Lambda 콜드 스타트 빠름, NAT Gateway 비용 없음
 ### 보안 그룹 (Phase 2)
 
 ```
-sg-api-lambda:   Outbound → sg-rds:5432, S3 VPC Endpoint, 인터넷:443
-sg-resize-lambda: Outbound → sg-rds:5432, S3 VPC Endpoint, SQS:443
-sg-ecs-ai:       Outbound → sg-rds:5432, S3 VPC Endpoint, SQS:443
-sg-rds:          Inbound  ← sg-api-lambda, sg-resize-lambda, sg-ecs-ai (5432)
+sg-api-lambda:    Outbound → sg-rds:5432, S3 VPC Endpoint, 인터넷:443
+sg-resize-lambda: Outbound → sg-rds:5432, S3 VPC Endpoint, ECS API:443, 인터넷:443
+sg-ecs-ai:        Outbound → sg-rds:5432, S3 VPC Endpoint, Resize Lambda Function URL:443
+sg-rds:           Inbound  ← sg-api-lambda, sg-resize-lambda, sg-ecs-ai (5432)
 ```
 
 ---

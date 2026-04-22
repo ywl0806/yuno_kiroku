@@ -38,6 +38,12 @@ ai-batch:
 	docker compose up -d ai-batch
 
 init:
-	make run
+	make up
 	make migrate
 	make seed
+
+build-api-lambda:
+	cd server && \
+	GOOS=linux GOARCH=arm64 go build -o bootstrap cmd/lambda/api/main.go && \
+	zip function.zip bootstrap && \
+	rm bootstrap

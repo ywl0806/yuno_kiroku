@@ -13,20 +13,18 @@ func NewStorageProvider() *StorageProvider {
 
 	storageType := viper.GetString("STORAGE_TYPE")
 
+	if storageType == "" {
+		storageType = "s3"
+	}
+
 	switch storageType {
 	case "local":
-		rootDir := viper.GetString("STORAGE_ROOT_DIR")
-
-		if rootDir == "" {
-			panic("storage root dir is not set")
-		}
-
 		return &StorageProvider{
-			storageService: storage.NewLocalStorageService(rootDir),
+			storageService: storage.NewLocalStorageService("uploads"),
 		}
 	case "s3",
 		"minio":
-		bucket := viper.GetString("STORAGE_BUCKET")
+		bucket := viper.GetString("MEDIA_BUCKET_NAME")
 
 		if bucket == "" {
 			panic("storage bucket is not set")

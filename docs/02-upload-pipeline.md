@@ -57,14 +57,13 @@
 
 ### 전이 조건
 
-| 전이        | 조건                                 | 담당 컴포넌트       |
-| ----------- | ------------------------------------ | ------------------- |
-| 생성 → `01` | Presigned URL 발급 요청              | API Lambda          |
-| `01` → `02` | Resize Lambda 완료                   | Resize Lambda       |
-| `02` → `03` | AI 처리 완료 (얼굴 없거나 정상 처리) | ECS AI Task         |
-| `02` → `04` | 처리 실패 3회 초과                   | Resize Lambda / ECS |
-| `02` → `05` | 중복 사진 감지 (pgvector 유사도)     | ECS AI Task         |
-| `04` → `01` | attempt_count < 3 → 자동 재시도      | ECS AI Task         |
+| 전이        | 조건                                        | 담당 컴포넌트               |
+| ----------- | ------------------------------------------- | --------------------------- |
+| 생성 → `01` | Presigned URL 발급 요청                     | API Lambda                  |
+| `01` → `02` | Resize Lambda 시작 (S3 이벤트 수신)         | Resize Lambda               |
+| `02` → `03` | 리사이즈 완료 — **이 시점부터 사진 조회 가능** | Resize Lambda             |
+| `03` → `04` | 처리 실패                                   | Resize Lambda               |
+| ─           | (face_recognition_jobs가 별도 상태 추적)    | Resize Lambda (콜백 처리)   |
 
 ---
 
@@ -73,54 +72,57 @@
 ### 전체 시퀀스 다이어그램
 
 ```
-클라이언트     API Lambda      S3        Resize Lambda   SQS    trigger-ecs λ   ECS AI
-    │              │            │               │           │          │            │
-    │ POST /batch  │            │               │           │          │            │
-    │─────────────▶│            │               │           │          │            │
-    │ { batch_id } │            │               │           │          │            │
-    │◀─────────────│            │               │           │          │            │
-    │              │            │               │           │          │            │
-    │ POST /presigned-url       │               │           │          │            │
-    │─────────────▶│            │               │           │          │            │
-    │              │ INSERT     │               │           │          │            │
-    │              │ media_items│               │           │          │            │
-    │              │ media_files│               │           │          │            │
-    │              │ PresignPut │               │           │          │            │
-    │              │───────────▶│               │           │          │            │
-    │ { media_item_id,          │               │           │          │            │
-    │   presigned_url }         │               │           │          │            │
-    │◀─────────────│            │               │           │          │            │
-    │              │            │               │           │          │            │
-    │ PUT (직접 업로드)         │               │           │          │            │
-    │───────────────────────────▶               │           │          │            │
-    │ 200 OK       │            │               │           │          │            │
-    │◀───────────────────────────               │           │          │            │
-    │              │            │               │           │          │            │
-    │              │            │ PutObject 이벤트           │          │            │
-    │              │            │──────────────▶│           │          │            │
-    │              │            │◀──────────────│ 원본 다운로드         │            │
-    │              │            │◀──────────────│ view/thumb 업로드    │            │
-    │              │ UPDATE status=02           │           │          │            │
-    │              │ INSERT face_recognition_jobs           │          │            │
-    │              │◀──────────────────────────│           │          │            │
-    │              │            │               │ SendMessage          │            │
-    │              │            │               │──────────▶│          │            │
-    │              │            │               │           │ SQS Trigger           │
-    │              │            │               │           │─────────▶│            │
-    │              │            │               │           │   ECS running 확인    │
-    │              │            │               │           │   없으면 RunTask      │
-    │              │            │               │           │          │──────────▶│
-    │              │            │               │           │          │  job fetch │
-    │              │            │◀──────────────────────────────────────────────────│
-    │              │            │◀────────────────────── 얼굴 크롭 업로드 ──────────│
-    │              │ UPDATE status=03/04/05                                         │
-    │              │◀───────────────────────────────────────────────────────────────│
-    │              │            │               │           │          │  job 없으면│
-    │              │            │               │           │          │  Task 종료 │
-    │ GET /batch/status (폴링)  │               │           │          │            │
-    │─────────────▶│            │               │           │          │            │
-    │ { is_completed: true }    │               │           │          │            │
-    │◀─────────────│            │               │           │          │            │
+클라이언트     API Lambda      S3        Resize Lambda              ECS AI (Python)
+    │              │            │               │                          │
+    │ POST /batch  │            │               │                          │
+    │─────────────▶│            │               │                          │
+    │ { batch_id } │            │               │                          │
+    │◀─────────────│            │               │                          │
+    │              │            │               │                          │
+    │ POST /presigned-url       │               │                          │
+    │─────────────▶│            │               │                          │
+    │              │ INSERT     │               │                          │
+    │              │ media_items│               │                          │
+    │              │ media_files│               │                          │
+    │              │ PresignPut │               │                          │
+    │              │───────────▶│               │                          │
+    │ { media_item_id,          │               │                          │
+    │   presigned_url }         │               │                          │
+    │◀─────────────│            │               │                          │
+    │              │            │               │                          │
+    │ PUT (직접 업로드)         │               │                          │
+    │───────────────────────────▶               │                          │
+    │ 200 OK       │            │               │                          │
+    │◀───────────────────────────               │                          │
+    │              │            │               │                          │
+    │              │            │ PutObject 이벤트 (prefix: original/)     │
+    │              │            │──────────────▶│                          │
+    │              │            │◀──────────────│ 원본 다운로드             │
+    │              │            │◀──────────────│ view/thumbnail 업로드    │
+    │              │            │               │ UPDATE status=02→03      │
+    │              │            │               │ INSERT face_recognition_jobs
+    │              │            │               │ ECS ListTasks            │
+    │              │            │               │─────────────────────────▶│ RunTask
+    │              │            │               │                          │ (미실행 시)
+    │              │            │               │                          │
+    │              │            │               │                  job fetch (DB 폴링)
+    │              │            │◀─────────────────────────────────────────│ view 다운로드
+    │              │            │               │                          │ 얼굴 감지 + 임베딩
+    │              │            │               │◀─────────────────────────│
+    │              │            │               │  POST /face-recognition/complete (Function URL)
+    │              │            │               │  { job_id, faces: [{face_location, embedding}] }
+    │              │            │               │                          │
+    │              │            │               │ identity 매칭 (pgvector) │
+    │              │            │               │ face_detections INSERT   │
+    │              │            │◀──────────────│ 얼굴 크롭 업로드 (identities/)
+    │              │            │               │ identity_face_imgs INSERT│
+    │              │            │               │ job status=completed     │
+    │              │            │               │                          │ job 없으면
+    │              │            │               │                          │ Task 자동 종료
+    │ GET /batch/status (폴링)  │               │                          │
+    │─────────────▶│            │               │                          │
+    │ { is_completed: true }    │               │                          │
+    │◀─────────────│            │               │                          │
 ```
 
 ### DB 선 생성 전략
@@ -139,86 +141,52 @@ S3 업로드 전에 DB 레코드를 먼저 생성하여 고아 파일(orphan fil
 
 ---
 
-## 4. SQS 기반 ECS 트리거 (Phase 1)
+## 4. ECS 직접 트리거 (Phase 1)
 
 ### 설계 원칙
 
-- **SQS 메시지는 wake-up signal** — 실제 job 데이터는 DB(`face_recognition_jobs`)에 저장
-- Resize Lambda 1회 실행 → SQS 메시지 1개 발송 (media_item_id 포함)
-- ECS가 이미 실행 중이면 trigger-ecs Lambda는 아무것도 하지 않고 종료
-- ECS Task는 DB를 폴링하여 pending job을 모두 처리하고 스스로 종료
+- **SQS / trigger-ecs Lambda 없음** — Resize Lambda가 ECS RunTask를 직접 호출
+- **ECS는 얼굴 감지만** — 임베딩 계산 후 결과를 Resize Lambda Function URL로 콜백
+- **후처리는 Resize Lambda** — identity 매칭, face_detections INSERT, 얼굴 크롭, DB 업데이트
+- ECS가 이미 실행 중이면 RunTask 스킵 (ListTasks로 확인)
+- ECS Task는 DB에서 pending job을 모두 처리하고 스스로 종료
 
 ```
-Resize Lambda
-    └─ SQS.SendMessage({ media_item_id: 1234 })
+Resize Lambda (ECSFaceRecognitionDispatcher)
+    └─ DB: face_recognition_jobs INSERT
+    └─ ECS: ListTasks → running_count > 0이면 스킵
+    └─ ECS: RunTask (Fargate Spot) → 미실행 시에만
 
-SQS Event → trigger-ecs Lambda
-    └─ ecs.list_tasks(cluster=CLUSTER, family=AI_TASK_FAMILY)
-    └─ if running_count > 0:
-    │      return  ← ECS가 DB 폴링 중이므로 별도 조치 불필요
-    └─ if running_count == 0:
-           ecs.run_task(...)  ← ECS Task 새로 기동
-
-ECS AI Task (Python)
+ECS AI Task (Python) — 얼굴 감지만 수행
     └─ while True:
     │      jobs = fetch_pending_jobs(limit=50)
     │      if not jobs: break  ← pending 없으면 Task 종료
-    │      process_jobs(jobs)
+    │      for job in jobs:
+    │          image = s3.download(job.view_storage_key)
+    │          faces = insightface.detect(image)  ← 감지 + 임베딩만
+    │          POST {RESIZE_LAMBDA_FUNCTION_URL}/face-recognition/complete
+    │               { job_id, faces: [{ face_location, embedding }] }
     └─ sys.exit(0)  ← 자연 종료 → ECS Task 완료 상태
-```
 
-### trigger-ecs Lambda 코드
-
-```python
-import boto3
-
-ecs = boto3.client('ecs')
-
-def handler(event, context):
-    # SQS 메시지 수신 (auto-delete)
-    # 실제 job 데이터는 DB에 있으므로 메시지 내용 사용 안 함
-
-    # ECS 실행 중인 Task 확인
-    response = ecs.list_tasks(
-        cluster=ECS_CLUSTER_ARN,
-        family=AI_TASK_FAMILY,
-        desiredStatus='RUNNING',
-    )
-    running_count = len(response['taskArns'])
-
-    if running_count > 0:
-        # ECS Task가 이미 DB를 폴링 중 → 추가 조치 불필요
-        return {'message': f'ECS already running ({running_count} tasks)'}
-
-    # stuck job 회수 (30분 이상 processing 상태인 job → pending으로 복구)
-    recover_stuck_jobs()
-
-    # ECS Task 새로 기동
-    ecs.run_task(
-        cluster=ECS_CLUSTER_ARN,
-        taskDefinition=TASK_DEF_ARN,
-        launchType='FARGATE',
-        capacityProviderStrategy=[
-            {'capacityProvider': 'FARGATE_SPOT', 'weight': 1}
-        ],
-        networkConfiguration={
-            'awsvpcConfiguration': {
-                'subnets': SUBNET_IDS,
-                'securityGroups': [SG_ECS_AI],
-                'assignPublicIp': 'ENABLED',  # VPC 없으므로 인터넷 접근용
-            }
-        },
-    )
-    return {'message': 'ECS task started'}
+Resize Lambda — Function URL 콜백 (/face-recognition/complete)
+    └─ goroutine으로 비동기 처리:
+    │      for face in faces:
+    │          advisory lock (family 단위)
+    │          pgvector 코사인 유사도 → identity 매칭/생성
+    │          face_detections INSERT
+    │          view 이미지 크롭(512×512) → S3 identities/ 저장
+    │          identity_face_imgs INSERT
+    │      face_recognition_jobs status=completed
+    └─ 즉시 200 OK 반환 (ECS 대기 없이)
 ```
 
 ### Phase 2 전환 시 변경
 
-Phase 2에서는 ECS Service가 SQS를 직접 폴링하므로 trigger-ecs Lambda가 불필요해진다.
+Phase 2에서는 ECS Service가 상시 가동되므로 RunTask 직접 호출 방식이 변경된다.
 
 ```
-Phase 1: SQS → trigger-ecs Lambda → ECS RunTask (On-demand)
-Phase 2: SQS → ECS Service (상시 가동, SQS ReceiveMessage 폴링)
+Phase 1: Resize Lambda → ECS RunTask (On-demand) → Function URL 콜백
+Phase 2: ECS Service 상시 가동 (SQS 폴링) → Function URL 콜백 (유지)
 ```
 
 ---
@@ -426,8 +394,17 @@ CPU:    2 vCPU
 메모리:  8 GB (ArcFace 모델 ~2GB + 배치 이미지)
 실행방식 (Phase 1): Fargate Spot, On-demand Task (job 없으면 자동 종료)
 실행방식 (Phase 2): Fargate Service, 상시 가동 + SQS Auto Scaling
-병렬처리: ThreadPoolExecutor(max_workers=10)
 배치크기: 50 jobs/실행
+
+역할: 얼굴 감지 + 임베딩 계산만 수행
+  → 결과를 Resize Lambda Function URL로 콜백
+  → identity 매칭, DB 업데이트, 얼굴 크롭은 Resize Lambda가 처리
+
+콜백 엔드포인트:
+  POST {RESIZE_LAMBDA_FUNCTION_URL}/face-recognition/complete
+    { job_id: int, faces: [{ face_location: {top,right,bottom,left}, embedding: [512]float }] }
+  POST {RESIZE_LAMBDA_FUNCTION_URL}/face-recognition/fail
+    { job_id: int, error: string }
 ```
 
 ### Supabase (Phase 1 DB)

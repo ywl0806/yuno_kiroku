@@ -21,12 +21,11 @@ RUN go build -tags lambda.norpc -ldflags="-s -w" -o bootstrap ./cmd/lambda/resiz
 # ---- Runtime Stage ----
 FROM public.ecr.aws/lambda/provided:al2023
 
-# libvips 런타임 라이브러리 설치
-RUN dnf install -y \
-    vips \
-    libheif \
-    && dnf clean all
-
-COPY --from=builder /app/bootstrap /var/task/bootstrap
+COPY --from=builder /usr/lib/aarch64-linux-gnu/libvips.so* /usr/lib64/
+COPY --from=builder /usr/lib/aarch64-linux-gnu/libheif.so* /usr/lib64/
+COPY --from=builder /usr/lib/aarch64-linux-gnu/libglib-2.0.so* /usr/lib64/
+COPY --from=builder /usr/lib/aarch64-linux-gnu/libgobject-2.0.so* /usr/lib64/
+COPY --from=builder /usr/lib/aarch64-linux-gnu/libexpat.so* /usr/lib64/
+COPY --from=builder /app/bootstrap /var/runtime/bootstrap
 
 CMD ["bootstrap"]

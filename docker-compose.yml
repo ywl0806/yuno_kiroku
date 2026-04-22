@@ -14,12 +14,10 @@ services:
       - minio
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
-      AI_API_URL: http://ai:8000
       STORAGE_TYPE: minio
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-      STORAGE_BUCKET: my-bucket
       AWS_REGION: us-east-1
 
     networks:
@@ -39,7 +37,7 @@ services:
     build:
       context: ai
       dockerfile: ../docker/local/ai/Dockerfile
-    command: ["python", "-m", "src.batch.face_recognition_batch"]
+    command: [ "python", "-m", "src.batch.face_recognition_batch" ]
     volumes:
       - ./ai:/app
     environment:
@@ -76,7 +74,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-      STORAGE_BUCKET: my-bucket
+
       AWS_REGION: us-east-1
       PORT: "1325"
     volumes:
@@ -114,19 +112,16 @@ services:
     networks:
       - app-net
     entrypoint: >
-      /bin/sh -c "
-      until mc alias set myminio http://minio:9000 root password; do
+      /bin/sh -c " until mc alias set myminio http://minio:9000 root password;
+      do
         echo 'MinIO 연결 대기 중...';
         sleep 2;
-      done;
-      mc mb --ignore-existing myminio/my-bucket;
-      mc anonymous set download myminio/my-bucket;
-      mc event add myminio/my-bucket arn:minio:sqs::1:webhook --event put --prefix original/ || true;
-      mc cors set --config-file /dev/stdin myminio/my-bucket << 'EOF'
+      done; mc mb --ignore-existing myminio/my-bucket; mc anonymous set download
+      myminio/my-bucket; mc event add myminio/my-bucket arn:minio:sqs::1:webhook
+      --event put --prefix original/ || true; mc cors set --config-file
+      /dev/stdin myminio/my-bucket << 'EOF'
       {\"CORSRules\":[{\"AllowedHeaders\":[\"*\"],\"AllowedMethods\":[\"GET\",\"PUT\"],\"AllowedOrigins\":[\"http://localhost:5155\"],\"ExposeHeaders\":[\"ETag\"]}]}
-      EOF
-      echo '버킷, CORS 및 이벤트 설정 완료';
-      "
+      EOF echo '버킷, CORS 및 이벤트 설정 완료'; "
 
 networks:
   app-net:

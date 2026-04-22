@@ -6,23 +6,23 @@
 
 ## 使用技術
 
-| カテゴリ | ライブラリ | バージョン |
-|----------|-----------|-----------|
-| 言語 | Go | 1.24.0 |
-| Webフレームワーク | Echo | 4.11.4 |
-| DB | PostgreSQL | 17 |
-| ベクトル検索 | pgvector | - |
-| SQLコード生成 | sqlc | - |
-| DBマイグレーション | golang-migrate | 4.19.0 |
-| バリデーション | go-playground/validator | v10 |
-| JWT | golang-jwt | v5.3.0 |
-| AWSクライアント | aws-sdk-go-v2 | - |
-| 画像処理 | govips (libvips) | v2 |
-| UUID | google/uuid | - |
-| 設定管理 | viper | - |
-| EXIFデータ | goexif | - |
-| APIドキュメント | swaggo (Swagger) | - |
-| ホットリロード | air | - |
+| カテゴリ           | ライブラリ              | バージョン |
+| ------------------ | ----------------------- | ---------- |
+| 言語               | Go                      | 1.24.0     |
+| Webフレームワーク  | Echo                    | 4.11.4     |
+| DB                 | PostgreSQL              | 17         |
+| ベクトル検索       | pgvector                | -          |
+| SQLコード生成      | sqlc                    | -          |
+| DBマイグレーション | golang-migrate          | 4.19.0     |
+| バリデーション     | go-playground/validator | v10        |
+| JWT                | golang-jwt              | v5.3.0     |
+| AWSクライアント    | aws-sdk-go-v2           | -          |
+| 画像処理           | govips (libvips)        | v2         |
+| UUID               | google/uuid             | -          |
+| 設定管理           | viper                   | -          |
+| EXIFデータ         | goexif                  | -          |
+| APIドキュメント    | swaggo (Swagger)        | -          |
+| ホットリロード     | air                     | -          |
 
 ---
 
@@ -79,51 +79,51 @@ DB (PostgreSQL / sqlc生成コード)
 
 ### 認証
 
-| メソッド | パス | 説明 |
-|----------|------|------|
-| POST | `/auth/login` | ログイン |
-| GET | `/auth/callback/line` | LINEコールバック |
-| GET | `/auth/callback/kakao` | Kakaoコールバック |
-| POST | `/auth/refresh` | トークンリフレッシュ |
+| メソッド | パス                   | 説明                 |
+| -------- | ---------------------- | -------------------- |
+| POST     | `/auth/login`          | ログイン             |
+| GET      | `/auth/callback/line`  | LINEコールバック     |
+| GET      | `/auth/callback/kakao` | Kakaoコールバック    |
+| POST     | `/auth/refresh`        | トークンリフレッシュ |
 
 ### ユーザー
 
-| メソッド | パス | 説明 |
-|----------|------|------|
-| GET | `/users/me` | プロフィール取得 |
-| PUT | `/users/me` | プロフィール更新 |
+| メソッド | パス        | 説明             |
+| -------- | ----------- | ---------------- |
+| GET      | `/users/me` | プロフィール取得 |
+| PUT      | `/users/me` | プロフィール更新 |
 
 ### メディア
 
-| メソッド | パス | 説明 |
-|----------|------|------|
-| POST | `/media-items` | 写真・動画アップロード |
-| GET | `/media-items` | 日付範囲で取得 |
-| POST | `/media-items/batch` | バッチアップロード |
+| メソッド | パス                 | 説明                   |
+| -------- | -------------------- | ---------------------- |
+| POST     | `/media-items`       | 写真・動画アップロード |
+| GET      | `/media-items`       | 日付範囲で取得         |
+| POST     | `/media-items/batch` | バッチアップロード     |
 
 ### アルバム
 
-| メソッド | パス | 説明 |
-|----------|------|------|
-| GET | `/albums` | アルバム一覧 |
-| POST | `/albums` | アルバム作成 |
-| GET | `/albums/:id` | アルバム詳細 |
-| PUT | `/albums/:id` | アルバム更新 |
+| メソッド | パス          | 説明         |
+| -------- | ------------- | ------------ |
+| GET      | `/albums`     | アルバム一覧 |
+| POST     | `/albums`     | アルバム作成 |
+| GET      | `/albums/:id` | アルバム詳細 |
+| PUT      | `/albums/:id` | アルバム更新 |
 
 ### 顔認識・ID管理
 
-| メソッド | パス | 説明 |
-|----------|------|------|
-| GET | `/identities` | 識別済み人物一覧 |
-| POST | `/identities` | 人物作成 |
-| GET | `/face-detections` | 顔検出データ取得 |
+| メソッド | パス               | 説明             |
+| -------- | ------------------ | ---------------- |
+| GET      | `/identities`      | 識別済み人物一覧 |
+| POST     | `/identities`      | 人物作成         |
+| GET      | `/face-detections` | 顔検出データ取得 |
 
 ### 招待
 
-| メソッド | パス | 説明 |
-|----------|------|------|
-| POST | `/invites` | 招待トークン生成 |
-| GET | `/invites/:token` | 招待トークン検証 |
+| メソッド | パス              | 説明             |
+| -------- | ----------------- | ---------------- |
+| POST     | `/invites`        | 招待トークン生成 |
+| GET      | `/invites/:token` | 招待トークン検証 |
 
 ---
 
@@ -131,18 +131,18 @@ DB (PostgreSQL / sqlc生成コード)
 
 ### 主要テーブル
 
-| テーブル名 | 説明 |
-|-----------|------|
-| `families` | 家族組織 |
-| `groups` | 家族内のグループ（父方・母方など） |
-| `users` | ユーザーアカウント（OAuthサポート） |
-| `albums` | 写真アルバム（グループ権限付き） |
-| `media_items` | 写真・動画アイテム |
-| `media_files` | ファイル実体（オリジナル・サムネイル・閲覧用） |
-| `identities` | 顔認識で識別された人物 |
-| `face_detections` | 顔検出データ（512次元埋め込みベクトル） |
-| `invite_tokens` | 招待リンクトークン |
-| `refresh_tokens` | JWTリフレッシュトークン |
+| テーブル名        | 説明                                           |
+| ----------------- | ---------------------------------------------- |
+| `families`        | 家族組織                                       |
+| `groups`          | 家族内のグループ（父方・母方など）             |
+| `users`           | ユーザーアカウント（OAuthサポート）            |
+| `albums`          | 写真アルバム（グループ権限付き）               |
+| `media_items`     | 写真・動画アイテム                             |
+| `media_files`     | ファイル実体（オリジナル・サムネイル・閲覧用） |
+| `identities`      | 顔認識で識別された人物                         |
+| `face_detections` | 顔検出データ（512次元埋め込みベクトル）        |
+| `invite_tokens`   | 招待リンクトークン                             |
+| `refresh_tokens`  | JWTリフレッシュトークン                        |
 
 ### pgvector による顔認識
 
@@ -157,12 +157,12 @@ CREATE INDEX ON face_detections
 
 ### media_files のロール
 
-| ロール | 説明 |
-|--------|------|
-| `original` | 元の高解像度ファイル |
-| `thumbnail` | 一覧表示用サムネイル |
-| `view` | ビュー用に最適化されたファイル |
-| `live` | Live Photoなど動的コンテンツ |
+| ロール      | 説明                           |
+| ----------- | ------------------------------ |
+| `original`  | 元の高解像度ファイル           |
+| `thumbnail` | 一覧表示用サムネイル           |
+| `view`      | ビュー用に最適化されたファイル |
+| `live`      | Live Photoなど動的コンテンツ   |
 
 ---
 
@@ -222,12 +222,11 @@ go test ./...
 
 主要な環境変数:
 
-| 変数名 | 説明 |
-|--------|------|
-| `DATABASE_URL` | PostgreSQL接続URL |
-| `AI_API_URL` | AIサービスのURL |
-| `LINE_CLIENT_ID` | LINE OAuthクライアントID |
+| 変数名               | 説明                               |
+| -------------------- | ---------------------------------- |
+| `DATABASE_URL`       | PostgreSQL接続URL                  |
+| `LINE_CLIENT_ID`     | LINE OAuthクライアントID           |
 | `LINE_CLIENT_SECRET` | LINE OAuthクライアントシークレット |
-| `KAKAO_CLIENT_ID` | Kakao OAuthクライアントID |
-| `S3_BUCKET` | S3バケット名 |
-| `JWT_SECRET` | JWTシークレットキー |
+| `KAKAO_CLIENT_ID`    | Kakao OAuthクライアントID          |
+| `S3_BUCKET`          | S3バケット名                       |
+| `JWT_SECRET`         | JWTシークレットキー                |
