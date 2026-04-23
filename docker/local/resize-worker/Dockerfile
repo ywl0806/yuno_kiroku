@@ -1,7 +1,6 @@
 FROM golang:1.24-alpine
 
 # libvips 및 빌드 도구 설치
-# community 저장소 활성화 (libvips는 community 저장소에 있음)
 RUN apk add --no-cache \
     vips-dev \
     vips \

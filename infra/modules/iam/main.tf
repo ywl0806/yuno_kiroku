@@ -67,7 +67,7 @@ resource "aws_iam_role" "resize_lambda" {
 
 resource "aws_iam_role_policy" "resize_lambda_s3" {
     name = "s3-media-access"
-    role = aws_iam_role.api_lambda.id
+    role = aws_iam_role.resize_lambda.id
     policy = jsonencode({
         Version = "2012-10-17"
         Statement = [

@@ -6,5 +6,5 @@ import (
 )
 
 func ParseStoragePath(storageKey string) string {
-	return utils.ParsePath(viper.GetString("MEDIA_URL")+"/"+viper.GetString("MEDIA_BUCKET_NAME"), storageKey)
+	return utils.ParsePath(viper.GetString("MEDIA_URL"), storageKey)
 }

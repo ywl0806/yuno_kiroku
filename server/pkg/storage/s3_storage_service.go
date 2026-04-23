@@ -55,7 +55,7 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 
 		// 외부 공개 호스트가 있으면 해당 엔드포인트로 presign 클라이언트 별도 생성
 		// (서명의 host 헤더가 클라이언트가 실제 요청하는 호스트와 일치해야 함)
-		if storageServiceHost := viper.GetString("MEDIA_URL"); storageServiceHost != "" {
+		if storageServiceHost := viper.GetString("STORAGE_SERVICE_HOST"); storageServiceHost != "" {
 			externalClient := s3.NewFromConfig(cfg, func(o *s3.Options) {
 				o.BaseEndpoint = aws.String(storageServiceHost)
 				o.UsePathStyle = true

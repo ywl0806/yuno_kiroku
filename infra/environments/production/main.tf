@@ -117,6 +117,10 @@ module "lambda" {
     LINE_CHANNEL_SECRET = var.line_channel_secret
     KAKAO_CLIENT_ID     = var.kakao_client_id
     KAKAO_CLIENT_SECRET = var.kakao_client_secret
+    ECS_CLUSTER_ARN     = module.ecs.cluster_arn
+    ECS_TASK_DEF_ARN    = module.ecs.task_definition_arn
+    ECS_SUBNETS         = join(",", data.aws_subnets.public.ids)
+    ECS_SECURITY_GROUPS = module.ecs.security_group_id
   }
 }
 

@@ -9,3 +9,7 @@ output "api_lambda_function_name" {
 output "api_lambda_function_invoke_arn" {
   value = aws_lambda_function.api.invoke_arn
 }
+
+output "resize_lambda_function_url" {
+  value = aws_lambda_function_url.resize.function_url
+}

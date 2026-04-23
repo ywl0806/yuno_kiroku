@@ -21,7 +21,7 @@ import (
 	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 )
 
-func Init(e *echo.Echo) {
+func Init(e *echo.Echo) *workerServices.ResizeService {
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("DB 연결 실패: %v", err)
@@ -76,4 +76,6 @@ func Init(e *echo.Echo) {
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(200, "OK")
 	})
+
+	return resizeService
 }
