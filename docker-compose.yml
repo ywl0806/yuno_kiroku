@@ -62,6 +62,17 @@ services:
     networks:
       - app-net
 
+  queue:
+    image: softwaremill/elasticmq-native:1.6.7
+    container_name: queue
+    ports:
+      - "9324:9324"
+      - "9325:9325"
+    volumes:
+      - ./docker/local/elasticmq.conf:/opt/elasticmq.conf
+    networks:
+      - app-net
+
   resize-worker:
     build:
       context: server
@@ -76,12 +87,16 @@ services:
       MINIO_ROOT_PASSWORD: password
 
       AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      SQS_QUEUE_URL: http://queue:9324/000000000000/face-recognition
       PORT: "1325"
     volumes:
       - ./server:/app
     depends_on:
       - postgres
       - minio
+      - queue
     networks:
       - app-net
 

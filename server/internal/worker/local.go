@@ -27,7 +27,7 @@ func InitLocal(e *echo.Echo) {
 
 	storageService := providers.NewStorageProvider().StorageService()
 	imageUploader := services.NewImageUploader(storageService)
-	faceDispatcher := services.NewLocalFaceRecognitionDispatcher(st.FaceRecognitionJob)
+	faceDispatcher := services.NewSQSFaceRecognitionDispatcher(nil, "")
 
 	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
 	faceRecognitionService := workerServices.NewFaceRecognitionService(

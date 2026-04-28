@@ -6,24 +6,34 @@ import (
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/ywl0806/yuno_kiroku/internal/store"
+	"github.com/spf13/viper"
 )
 
 // ECSFaceRecognitionDispatcher 프로덕션용: job 삽입 후 ECS task 트리거
 type SQSFaceRecognitionDispatcher struct {
-	jobStore  store.FaceRecognitionJobStore
 	sqsClient *sqs.Client
 	queueUrl  string
 }
 
 func NewSQSFaceRecognitionDispatcher(
-	jobStore store.FaceRecognitionJobStore,
 	sqsClient *sqs.Client,
 	queueUrl string,
 ) *SQSFaceRecognitionDispatcher {
+	if sqsClient == nil {
+		cfg, err := config.LoadDefaultConfig(context.Background())
+		if err != nil {
+			log.Fatalf("AWS 설정 로드 실패: %v", err)
+		}
+		sqsClient = sqs.NewFromConfig(cfg)
+	}
+
+	if queueUrl == "" {
+		queueUrl = viper.GetString("SQS_QUEUE_URL")
+	}
+
 	return &SQSFaceRecognitionDispatcher{
-		jobStore:  jobStore,
 		sqsClient: sqsClient,
 		queueUrl:  queueUrl,
 	}
