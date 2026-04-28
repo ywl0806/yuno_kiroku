@@ -32,3 +32,8 @@ variable "vpc_id" {
   type        = string
   description = "ECS Task가 실행될 VPC ID"
 }
+
+variable "face_recognition_queue_url" {
+  type        = string
+  description = "Face Recognition Queue URL"
+}

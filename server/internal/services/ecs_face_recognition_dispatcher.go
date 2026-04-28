@@ -37,9 +37,13 @@ func NewECSFaceRecognitionDispatcher(
 	}
 }
 
-func (d *ECSFaceRecognitionDispatcher) Dispatch(ctx context.Context, params db.CreateFaceRecognitionJobParams) error {
+func (d *ECSFaceRecognitionDispatcher) Dispatch(ctx context.Context, params FaceRecognitionJobParams) error {
 	// 1. job INSERT
-	if _, err := d.jobStore.CreateFaceRecognitionJob(ctx, params); err != nil {
+	if _, err := d.jobStore.CreateFaceRecognitionJob(ctx, db.CreateFaceRecognitionJobParams{
+		MediaItemID:    params.MediaItemID,
+		FamilyID:       params.FamilyID,
+		ViewStorageKey: params.ViewStorageKey,
+	}); err != nil {
 		return err
 	}
 

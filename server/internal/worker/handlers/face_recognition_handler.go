@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"log"
 	"net/http"
 
@@ -45,15 +44,10 @@ func (h *FaceRecognitionHandler) Complete(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
-
-	go func() {
-		backgroundContext := context.Background()
-		if err := h.faceRecognitionService.Complete(backgroundContext, req.JobID, req.Faces); err != nil {
-			log.Printf("얼굴 인식 처리 실패 [job_id=%d]: %v", req.JobID, err)
-		} else {
-			log.Printf("얼굴 인식 처리 완료 [job_id=%d]", req.JobID)
-		}
-		backgroundContext.Done()
-	}()
-	return c.JSON(http.StatusOK, map[string]string{"status": "processing"})
+	if err := h.faceRecognitionService.Complete(c.Request().Context(), req.JobID, req.Faces); err != nil {
+		log.Printf("얼굴 인식 처리 실패 [job_id=%d]: %v", req.JobID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "processing failed"})
+	}
+	log.Printf("얼굴 인식 처리 완료 [job_id=%d]", req.JobID)
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }

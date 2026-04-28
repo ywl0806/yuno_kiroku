@@ -16,8 +16,6 @@ RUN pip install -r requirements.txt
 COPY models/ /root/.insightface/models/
 
 # 나머지 소스 코드 복사
-COPY . .
+COPY src/ ./src/
 
-EXPOSE 8000
-
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--reload", "--port", "8000"]
+CMD ["python", "-m", "src.batch.local"]

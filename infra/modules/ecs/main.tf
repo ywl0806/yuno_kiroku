@@ -38,7 +38,7 @@ resource "aws_ecs_task_definition" "ai" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "2048" # 2 vCPU
-  memory                   = "8192" # 8 GB
+  memory                   = "4096" # 4 GB
   task_role_arn            = var.ecs_task_role_arn
   execution_role_arn       = var.ecs_task_execution_role_arn
 
@@ -53,7 +53,12 @@ resource "aws_ecs_task_definition" "ai" {
       image     = var.ai_image_uri
       essential = true
 
-
+      environment = [
+        {
+          name  = "SQS_QUEUE_URL"
+          value = var.face_recognition_queue_url
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -86,4 +91,61 @@ resource "aws_security_group" "ecs_ai" {
   }
 
   tags = merge(var.common_tags, { Name = "yuno-ecs-ai-${var.env}" })
+}
+
+# ── App Auto Scaling ───────────────────────────────────────
+
+resource "aws_appautoscaling_target" "ai_task" {
+  resource_id = aws_ecs_cluster.main.id
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace = "ecs"
+  min_capacity = 1
+  max_capacity = 10
+}
+
+resource "aws_appautoscaling_policy" "ai_task" {
+  name = "yuno-ai-task-scale-out-${var.env}"
+  policy_type = "StepScaling"
+  resource_id = aws_appautoscaling_target.ai_task.resource_id
+  scalable_dimension = aws_appautoscaling_target.ai_task.scalable_dimension
+  service_namespace = aws_appautoscaling_target.ai_task.service_namespace
+
+  step_scaling_policy_configuration {
+    # 정확한 태스크 수를 기준으로 스케일 아웃
+    adjustment_type = "ExactCapacity"
+    cooldown = 300
+    # 최대 동시 실행 태스크 수를 기준으로 스케일 아웃
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      scaling_adjustment = 1
+      metric_interval_lower_bound = 1
+      metric_interval_upper_bound = 20
+    }
+
+    step_adjustment {
+      scaling_adjustment = 2
+      metric_interval_lower_bound = 20
+      metric_interval_upper_bound = 40
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "ai_task_scale_in" {
+  name = "yuno-ai-task-scale-in-${var.env}"
+  policy_type = "StepScaling"
+  resource_id = aws_appautoscaling_target.ai_task.resource_id
+  scalable_dimension = aws_appautoscaling_target.ai_task.scalable_dimension
+  service_namespace = aws_appautoscaling_target.ai_task.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type = "ExactCapacity"
+    cooldown = 300
+    metric_aggregation_type = "Maximum"
+    
+    step_adjustment {
+      scaling_adjustment = 0
+      metric_interval_upper_bound = 0
+    }
+  }
 }

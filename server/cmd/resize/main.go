@@ -17,7 +17,7 @@ func main() {
 	}
 
 	e := echo.New()
-	worker.Init(e)
+	worker.InitLocal(e)
 
 	fmt.Printf("Resize Worker 시작: :%s\n", port)
 	e.Logger.Fatal(e.Start(":" + port))

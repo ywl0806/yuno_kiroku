@@ -86,7 +86,7 @@ resource "aws_iam_role_policy" "resize_lambda_s3" {
     })
 }
 resource "aws_iam_role_policy" "resize_lambda_ecs" {
-  name = "ecs-runtask"
+  name = "sqs-face-recognition-access"
   role = aws_iam_role.resize_lambda.id
 
   policy = jsonencode({
@@ -94,22 +94,8 @@ resource "aws_iam_role_policy" "resize_lambda_ecs" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["ecs:RunTask", "ecs:ListTasks", "ecs:DescribeTasks"]
-        Resource = "*"
-      },
-      # ECS RunTask 시 task-role/execution-role을 전달하기 위한 PassRole
-      {
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
-        Resource = [
-          aws_iam_role.ecs_task.arn,
-          aws_iam_role.ecs_task_execution.arn,
-        ]
-        Condition = {
-          StringLike = {
-            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
-          }
-        }
+        Action   = ["sqs:SendMessage"]
+        Resource = var.face_recognition_queue_arn
       }
     ]
   })
@@ -118,6 +104,39 @@ resource "aws_iam_role_policy" "resize_lambda_ecs" {
 resource "aws_iam_role_policy_attachment" "resize_lambda_logs" {
   role       = aws_iam_role.resize_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# ── Face Recognition Lambda Role ─────────────────────────────────
+
+resource "aws_iam_role" "face_recognition_lambda" {
+    name               = "yuno-face-recognition-lambda-role-${var.env}"
+    assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+    tags               = var.common_tags
+}
+
+resource "aws_iam_role_policy" "face_recognition_lambda_s3" {
+    name = "s3-media-access"
+    role = aws_iam_role.face_recognition_lambda.id
+    policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+            {
+                Effect = "Allow"
+                Action = ["s3:GetObject", "s3:PutObject"]
+                Resource = "${var.media_bucket_arn}/*"
+            },
+            {
+                Effect = "Allow"
+                Action = ["s3:ListBucket"]
+                Resource = var.media_bucket_arn
+            }
+        ]
+    })
+}
+
+resource "aws_iam_role_policy_attachment" "face_recognition_lambda_logs" {
+    role       = aws_iam_role.face_recognition_lambda.name
+    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 # ── github actions ci/cd ──────────────────────────────────────────
@@ -143,7 +162,8 @@ resource "aws_iam_role_policy" "github_actions_ci_cd_lambda" {
                 ]
                 Resource = [
                     "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-api-${var.env}",
-                    "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-resize-${var.env}"
+                    "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-resize-${var.env}",
+                    "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-face-recognition-${var.env}"
                 ]
             },
             {
@@ -185,6 +205,15 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = var.media_bucket_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = var.face_recognition_queue_arn
       }
     ]
   })
@@ -223,6 +252,22 @@ resource "aws_iam_role_policy" "ecs_task_execution_ecr" {
         Effect   = "Allow"
         Action   = ["ecr:GetAuthorizationToken"]
         Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_execution_ssm" {
+  name = "ssm-read"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameters"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter/yuno/*"
       }
     ]
   })

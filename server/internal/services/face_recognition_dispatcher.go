@@ -9,7 +9,7 @@ import (
 
 // FaceRecognitionDispatcher face_recognition_job을 생성하고 처리 트리거를 발행합니다.
 type FaceRecognitionDispatcher interface {
-	Dispatch(ctx context.Context, params db.CreateFaceRecognitionJobParams) error
+	Dispatch(ctx context.Context, params FaceRecognitionJobParams) error
 }
 
 // LocalFaceRecognitionDispatcher 로컬 개발용: job만 DB에 삽입 (Docker 컨테이너가 폴링)
@@ -21,7 +21,17 @@ func NewLocalFaceRecognitionDispatcher(jobStore store.FaceRecognitionJobStore) *
 	return &LocalFaceRecognitionDispatcher{jobStore: jobStore}
 }
 
-func (d *LocalFaceRecognitionDispatcher) Dispatch(ctx context.Context, params db.CreateFaceRecognitionJobParams) error {
-	_, err := d.jobStore.CreateFaceRecognitionJob(ctx, params)
+type FaceRecognitionJobParams struct {
+	MediaItemID    int32
+	FamilyID       int32
+	ViewStorageKey string
+}
+
+func (d *LocalFaceRecognitionDispatcher) Dispatch(ctx context.Context, params FaceRecognitionJobParams) error {
+	_, err := d.jobStore.CreateFaceRecognitionJob(ctx, db.CreateFaceRecognitionJobParams{
+		MediaItemID:    params.MediaItemID,
+		FamilyID:       params.FamilyID,
+		ViewStorageKey: params.ViewStorageKey,
+	})
 	return err
 }

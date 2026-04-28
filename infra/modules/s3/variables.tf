@@ -9,7 +9,7 @@ variable "media_cors_origins" {
   default     = ["*"]
 }
 
-variable "tags" {
+variable "common_tags" {
   type        = map(string)
   description = "버킷 태그"
   default     = {}

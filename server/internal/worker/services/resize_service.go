@@ -168,7 +168,7 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	}
 
 	// 6. face_recognition_job 디스패치
-	if err = s.faceDispatcher.Dispatch(ctx, db.CreateFaceRecognitionJobParams{
+	if err = s.faceDispatcher.Dispatch(ctx, services.FaceRecognitionJobParams{
 		MediaItemID:    mediaItemID,
 		FamilyID:       familyID,
 		ViewStorageKey: viewKey,

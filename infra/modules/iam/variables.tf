@@ -33,3 +33,8 @@ variable "aws_account_id" {
     type = string
     description = "AWS 계정 ID"
 }
+
+variable "face_recognition_queue_arn" {
+    type = string
+    description = "Face Recognition Queue ARN"
+}

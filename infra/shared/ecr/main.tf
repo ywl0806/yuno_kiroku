@@ -1,5 +1,5 @@
 locals {
-  repositories = ["yuno-resize", "yuno-ai"]
+  repositories = ["yuno-resize", "yuno-ai", "yuno-face-recognition"]
 }
 
 resource "aws_ecr_repository" "repos" {

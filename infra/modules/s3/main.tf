@@ -2,7 +2,7 @@
 
 resource "aws_s3_bucket" "media" {
     bucket = "yuno-media-${var.env}"
-    tags = var.tags
+    tags = var.common_tags
 }
 
 resource "aws_s3_bucket_public_access_block" "media" {
@@ -117,7 +117,7 @@ resource "aws_s3_bucket_policy" "frontend" {
 
 resource "aws_s3_bucket" "lambda_zip_bucket" {
     bucket = "yuno-lambda-zip-${var.env}"
-    tags = var.tags
+    tags = var.common_tags
 }
 
 resource "aws_s3_bucket_public_access_block" "lambda_zip_bucket" {

@@ -13,7 +13,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
-RUN go build -tags lambda.norpc -o /main ./cmd/lambda/resize
+RUN go build -tags lambda.norpc -o /main ./cmd/lambda/face-recognition
 
 # ---------- Runtime stage ----------
 FROM debian:bookworm-slim

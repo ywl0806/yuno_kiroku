@@ -62,6 +62,7 @@ module "iam" {
   ecr_repository_arns = values(data.terraform_remote_state.ecr.outputs.repository_arns)
   aws_region = "ap-northeast-1"
   aws_account_id = data.aws_caller_identity.current.account_id
+  face_recognition_queue_arn = module.sqs.queue_arn
 }
 
 # ── S3 ────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ module "s3" {
   media_cors_origins = ["https://${var.domain_name}"]
   frontend_distribution_arn = module.cloudfront.frontend_distribution_arn
   media_distribution_arn = module.cloudfront.media_distribution_arn
-  tags = local.common_tags
+  common_tags = local.common_tags
 }
 
 # ── CloudFront ────────────────────────────────────────────────
@@ -96,8 +97,10 @@ module "lambda" {
   source = "../../modules/lambda"
   env = local.env
   api_lambda_role_arn = module.iam.api_lambda_role_arn
-  resize_lambda_role_arn = module.iam.resize_lambda_role_arn
-  resize_ecr_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-resize"]}:${local.env}"
+  resize_lambda_role_arn           = module.iam.resize_lambda_role_arn
+  resize_ecr_image_uri             = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-resize"]}:${local.env}"
+  face_recognition_lambda_role_arn = module.iam.face_recognition_lambda_role_arn
+  face_recognition_ecr_image_uri   = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-face-recognition"]}:${local.env}"
   media_bucket_id = module.s3.media_bucket_id
   media_bucket_arn = module.s3.media_bucket_arn
   common_tags = local.common_tags
@@ -145,6 +148,7 @@ module "ecs" {
   ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
   vpc_id = data.aws_vpc.default.id
   ai_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-ai"]}:${local.env}"
+  face_recognition_queue_url = module.sqs.queue_url
 }
 
 # ── API Gateway ────────────────────────────────────────────────
@@ -171,4 +175,24 @@ module "route53" {
   media_cf_domain       = module.cloudfront.media_distribution_domain
   api_gw_domain_target  = module.api_gateway.custom_domain_target
   api_gw_domain_zone_id = module.api_gateway.custom_domain_zone_id
+}
+
+# ── SQS ────────────────────────────────────────────────────────
+
+module "sqs" {
+  source = "../../modules/sqs"
+  env = local.env
+  common_tags = local.common_tags
+}
+
+
+# ── CloudWatch ────────────────────────────────────────────────
+
+module "cloudwatch" {
+  source = "../../modules/cloudwatch"
+  env = local.env
+  common_tags = local.common_tags
+  ai_task_scale_out_policy_arn = module.ecs.ai_task_scale_out_policy_arn
+  ai_task_scale_in_policy_arn = module.ecs.ai_task_scale_in_policy_arn
+  face_recognition_queue_name = module.sqs.queue_name
 }

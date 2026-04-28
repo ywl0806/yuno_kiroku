@@ -8,8 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	awsecs "github.com/aws/aws-sdk-go-v2/service/ecs"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/viper"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -17,22 +15,17 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
-	"github.com/ywl0806/yuno_kiroku/internal/worker/handlers"
 	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 )
 
-func Init(e *echo.Echo) *workerServices.ResizeService {
+func InitResize() *workerServices.ResizeService {
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("DB 연결 실패: %v", err)
 	}
+	st := store.New(conn, db.New(conn))
 
-	queries := db.New(conn)
-	st := store.New(conn, queries)
-
-	storageProvider := providers.NewStorageProvider()
-	storageService := storageProvider.StorageService()
-
+	storageService := providers.NewStorageProvider().StorageService()
 	imageUploader := services.NewImageUploader(storageService)
 
 	var faceDispatcher services.FaceRecognitionDispatcher
@@ -53,29 +46,5 @@ func Init(e *echo.Echo) *workerServices.ResizeService {
 		)
 	}
 
-	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
-	faceRecognitionService := workerServices.NewFaceRecognitionService(
-		st,
-		st.FaceRecognitionJob,
-		st.MediaItem,
-		st.Face,
-		st.Identity,
-		st.IdentityFaceImg,
-		imageUploader,
-	)
-
-	resizeHandler := handlers.NewResizeHandler(resizeService)
-	faceRecognitionHandler := handlers.NewFaceRecognitionHandler(faceRecognitionService)
-
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
-	e.POST("/resize", resizeHandler.HandleMinioEvent)
-	e.POST("/face-recognition/complete", faceRecognitionHandler.Complete)
-	e.POST("/face-recognition/fail", faceRecognitionHandler.Fail)
-	e.GET("/health", func(c echo.Context) error {
-		return c.String(200, "OK")
-	})
-
-	return resizeService
+	return workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
 }
