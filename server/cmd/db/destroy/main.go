@@ -14,6 +14,11 @@ func main() {
 
 	databaseURL := viper.GetString("DATABASE_URL")
 
+	env := viper.GetString("APP_ENV")
+	if !(env == "local" || env == "dev") {
+		log.Fatal("This command is only available in development and local environment")
+	}
+
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -21,7 +26,7 @@ func main() {
 	defer db.Close()
 
 	log.Println("스키마 삭제중...")
-	_, err = db.Exec("DROP SCHEMA public CASCADE;")
+	_, err = db.Exec("DROP SCHEMA IF EXISTS public CASCADE;")
 	if err != nil {
 		log.Fatal(err)
 	}

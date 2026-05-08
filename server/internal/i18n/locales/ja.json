@@ -1,0 +1,57 @@
+{
+  "message": {
+    "internal": "サーバーエラーが発生しました",
+    "not_found": "{{.field}}が見つかりません",
+    "conflict": "{{.field}}はすでに存在します",
+    "invalid_reference": "{{.field}}が無効です",
+    "validation": "{{.field}}が無効です",
+    "unauthorized": "認証が必要です",
+    "forbidden": "権限がありません",
+    "authentication_failed": "認証に失敗しました。",
+    "invalid": "{{.field}}が無効です",
+
+    "validate": {
+      "required": "{{.field}}を入力してください。",
+      "required-select": "{{.field}}を選択してください。",
+      "integer": "{{.field}}は数値を入力してください。",
+      "max-value": "{{.field}}は{{.value}}以下で入力してください。",
+      "min-value": "{{.field}}は{{.value}}以上で入力してください。",
+      "max-int-length": "{{.field}}の整数桁数は{{.value}}桁以下で入力してください。",
+      "max-scale-length": "{{.field}}の小数点桁数は{{.value}}桁以下で入力してください。",
+      "max-length": "{{.field}}は{{.value}}文字以下で入力してください。",
+      "min-length": "{{.field}}は{{.value}}文字以上で入力してください。",
+      "max-byte-length": "{{.field}}は{{.value}}バイト以下で入力してください。",
+      "min-byte-length": "{{.field}}は{{.value}}バイト以上で入力してください。",
+      "date": "{{.field}}は日付を入力してください。",
+      "mask": "{{.field}}は「{{.rule}}」の形式で入力してください。",
+      "enum": "{{.field}}の値が不正です。",
+      "boolean": "{{.field}}の値が不正です。",
+      "forbidden-characters": "{{.field}}にこのシステムで使用できない文字が含まれています。",
+      "duplication": "{{.field}}が重複しているため、登録できません。"
+    },
+
+    "domain": {
+      "login-invited-user-only": "招待されたユーザーのみログイン可能です"
+    }
+  },
+  "field": {
+    "family": "家族",
+    "group": "グループ",
+    "user": "ユーザー",
+    "identity": "アイデンティティ",
+    "resource": "リソース",
+    "file": "ファイル",
+    "upload_batch_id": "アップロードバッチID",
+    "invite_token": "招待トークン"
+  },
+  "message-item": {
+    "family": "家族",
+    "group": "グループ",
+    "user": "ユーザー",
+    "identity": "アイデンティティ",
+    "resource": "リソース",
+    "file": "ファイル",
+    "upload_batch_id": "アップロードバッチID",
+    "invite_token": "招待トークン"
+  }
+}

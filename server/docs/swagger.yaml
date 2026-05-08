@@ -1,16 +1,52 @@
 basePath: /api
 definitions:
-  auth.LoginRequest:
+  handlers.CreateInviteRequest:
+    properties:
+      clan_group_id:
+        type: integer
+    required:
+    - clan_group_id
+    type: object
+  handlers.LoginRequest:
     properties:
       password:
+        example: password
         type: string
       username:
+        example: admin
         type: string
     required:
     - password
     - username
     type: object
-  user.CreateUserRequest:
+  handlers.LoginResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/models.LoginUserResponse'
+    type: object
+  models.AlbumResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.CreateInviteResponse:
+    properties:
+      expires_at:
+        type: string
+      invite_url:
+        type: string
+      token:
+        type: string
+    type: object
+  models.CreateUserRequest:
     properties:
       clan_group_id:
         type: integer
@@ -30,47 +66,346 @@ definitions:
     - password
     - username
     type: object
+  models.IdentityListResponse:
+    properties:
+      identities:
+        items:
+          $ref: '#/definitions/models.IdentityResponse'
+        type: array
+    type: object
+  models.IdentityResponse:
+    properties:
+      created_at:
+        type: string
+      group_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.LoginUserResponse:
+    properties:
+      clan_group_id:
+        type: integer
+      group_id:
+        type: integer
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+  models.UpdateIdentityByIdAndGroupIdRequest:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.ValidateInviteResponse:
+    properties:
+      clan_group_id:
+        type: integer
+      clan_group_name:
+        type: string
+      group_id:
+        type: integer
+      group_name:
+        type: string
+      valid:
+        type: boolean
+    type: object
+  services.MediaItemRange:
+    properties:
+      month:
+        type: integer
+      year:
+        type: integer
+    type: object
 info:
   contact: {}
 paths:
+  /album/write:
+    get:
+      description: Get albums for write
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AlbumResponse'
+            type: array
+      tags:
+      - Album
+  /auth/kakao:
+    get:
+      consumes:
+      - application/json
+      description: 카카오 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대 그룹
+        적용.
+      parameters:
+      - description: Invite Token (required)
+        in: query
+        name: invite_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to Kakao authorization page
+        "503":
+          description: Kakao login is not configured
+      summary: Kakao Login Redirect
+      tags:
+      - Auth
+  /auth/kakao/callback:
+    get:
+      consumes:
+      - application/json
+      description: 카카오 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로
+        리다이렉트.
+      parameters:
+      - description: Authorization code from Kakao
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State (invite_token required)
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to front /login with error query
+      summary: Kakao Login Callback
+      tags:
+      - Auth
+  /auth/line:
+    get:
+      consumes:
+      - application/json
+      description: LINE 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대
+        그룹 적용.
+      parameters:
+      - description: Invite Token (required)
+        in: query
+        name: invite_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to LINE authorization page
+        "503":
+          description: LINE login is not configured
+      summary: LINE Login Redirect
+      tags:
+      - Auth
+  /auth/line/callback:
+    get:
+      consumes:
+      - application/json
+      description: LINE 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로
+        리다이렉트.
+      parameters:
+      - description: Authorization code from LINE
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State (invite_token required)
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to front /login with error query
+      summary: LINE Login Callback
+      tags:
+      - Auth
   /auth/login:
     post:
       consumes:
       - application/json
-      description: login
+      description: 아이디/비밀번호 로그인. 성공 시 액세스 토큰과 리프레시 토큰(쿠키) 반환.
       parameters:
       - description: Login credentials
         in: body
         name: loginRequest
         required: true
         schema:
-          $ref: '#/definitions/auth.LoginRequest'
+          $ref: '#/definitions/handlers.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: User login
+            $ref: '#/definitions/handlers.LoginResponse'
+        "401":
+          description: Invalid username or password
+        "500":
+          description: Failed to generate token
+      summary: User Login
       tags:
-      - auth
-  /photo/upload:
+      - Auth
+  /identities:
+    get:
+      description: identity 목록을 조회
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityListResponse'
+      tags:
+      - Identity
+  /identity:
+    put:
+      description: identity를 수정
+      parameters:
+      - description: Update Identity Request
+        in: body
+        name: updateIdentityRequest
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateIdentityByIdAndGroupIdRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityResponse'
+      tags:
+      - Identity
+  /identity/{id}:
+    get:
+      description: identity를 조회
+      parameters:
+      - description: Identity ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.IdentityResponse'
+      tags:
+      - Identity
+  /invite:
+    post:
+      consumes:
+      - application/json
+      description: 초대 토큰 생성
+      parameters:
+      - description: Create Invite Request
+        in: body
+        name: createInviteRequest
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CreateInviteResponse'
+      summary: Create Invite Token
+      tags:
+      - Invite
+  /invite/validate:
+    get:
+      consumes:
+      - application/json
+      description: 초대 토큰 검증
+      parameters:
+      - description: Invite Token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ValidateInviteResponse'
+      summary: Validate Invite Token
+      tags:
+      - Invite
+  /media-item:
+    get:
+      description: 미디어 아이템 목록 조회
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: From
+        example: "2025-01-01"
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: To
+        example: "2025-01-01"
+        in: query
+        name: to
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+      tags:
+      - MediaItem
+  /media-item/image/upload:
     post:
       consumes:
       - multipart/form-data
-      description: 사진 업로드
+      description: 이미지 업로드
       parameters:
       - description: file
         in: formData
         name: file
         required: true
         type: file
-      - description: Clan Group ID
+      - description: Album ID
         in: query
-        name: clan_group_id
+        name: album_id
+        required: true
+        type: string
+      - description: Upload Batch ID
+        in: query
+        name: upload_batch_id
+        required: true
+        type: string
+      - description: Retry
+        example: "1"
+        in: query
+        name: retry
         type: string
       - description: Authorization
         example: bearer token
@@ -80,6 +415,66 @@ paths:
         required: true
         type: string
       responses: {}
+      tags:
+      - MediaItem
+  /media-item/range:
+    get:
+      description: 사진이 있는 년도와 월 목록 조회
+      parameters:
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.MediaItemRange'
+            type: array
+      tags:
+      - MediaItem
+  /media-item/upload-batch:
+    post:
+      description: 업로드 배치 생성
+      parameters:
+      - description: Album ID
+        in: query
+        name: album_id
+        required: true
+        type: string
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses: {}
+      tags:
+      - MediaItem
+  /media-item/upload-batch/status:
+    get:
+      description: 업로드 배치 상태 조회
+      parameters:
+      - description: Upload Batch ID
+        in: query
+        name: upload_batch_id
+        required: true
+        type: string
+      - description: Authorization
+        example: bearer token
+        format: bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses: {}
+      tags:
+      - MediaItem
   /user:
     post:
       description: create user
@@ -89,11 +484,13 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/user.CreateUserRequest'
+          $ref: '#/definitions/models.CreateUserRequest'
       responses:
         "200":
           description: OK
           schema:
             additionalProperties: true
             type: object
+      tags:
+      - User
 swagger: "2.0"

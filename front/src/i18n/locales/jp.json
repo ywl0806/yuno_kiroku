@@ -1,0 +1,205 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "delete": "削除",
+    "edit": "編集",
+    "loading": "読み込み中...",
+    "none": "なし",
+    "year": "年",
+    "month": "月",
+    "before": "前",
+    "after": "後"
+  },
+  "nav": {
+    "home": "ホーム",
+    "album": "アルバム",
+    "recent": "近況",
+    "search": "検索",
+    "upload": "追加",
+    "settings": "設定",
+    "logout": "ログアウト"
+  },
+  "auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "username": "ユーザー名",
+    "password": "パスワード",
+    "loginWithLine": "LINEでログイン",
+    "loginWithKakao": "カカオでログイン",
+    "loggingIn": "ログイン中...",
+    "error": {
+      "line_token": "LINEログインに失敗しました。",
+      "kakao_token": "カカオログインに失敗しました。",
+      "token": "トークン発行に失敗しました。",
+      "missing_code": "認証コードがありません。",
+      "missing_token": "トークンがありません。"
+    }
+  },
+  "upload": {
+    "back": "戻る",
+    "upload": "アップロード",
+    "addImage": "画像を追加",
+    "clear": "クリア",
+    "selectAlbum": "アルバム選択",
+    "selectAlbumHint": "アップロード先のアルバムを選択してください",
+    "changeAlbum": "アルバム変更",
+    "noImages": "写真を追加してください",
+    "alreadyUploaded": "すでにアップロードされています",
+    "uploadAnyway": "再アップロードする",
+    "uploadFailed": "アップロード失敗",
+    "reUpload": "再アップロード",
+    "progress": {
+      "uploading": "写真をアップロード中...",
+      "processing": "サーバーで処理中...",
+      "done": "アップロード完了！",
+      "statusUploading": "アップロード",
+      "statusProcessing": "処理中",
+      "statusCompleted": "完了",
+      "statusFailed": "失敗",
+      "statusDuplicate": "重複",
+      "leaveWarningTitle": "アップロード中断の警告",
+      "leaveWarningBody": "写真をアップロード中です。今移動するとアップロードがキャンセルされます。",
+      "leaveWarningStay": "アップロード継続",
+      "leaveWarningLeave": "移動",
+      "recoveryInProgress": "前回のアップロードを処理中...",
+      "recoveryDone": "前回のアップロード処理完了！"
+    }
+  },
+  "home": {
+    "filter": "フィルター",
+    "filterAll": "すべて",
+    "filterAlbum": "アルバム",
+    "filterKid": "子ども",
+    "ageLabel_months": "{{months}}ヶ月",
+    "ageLabel_years": "{{years}}歳"
+  },
+  "like": {
+    "like": "いいね",
+    "unlike": "いいね取り消し"
+  },
+  "tag": {
+    "title": "タグ",
+    "add": "タグを追加",
+    "create_custom": "新しいタグを作成",
+    "name": "タグ名",
+    "liked_filter": "いいねした写真のみ",
+    "filter": "タグ",
+    "no_tags": "タグなし",
+    "delete_confirm": "本当に削除しますか？"
+  },
+  "search": {
+    "title": "検索",
+    "period": "期間",
+    "allPeriod": "全期間",
+    "noResults": "検索結果がありません",
+    "selectFilter": "フィルターを選択すると写真が表示されます",
+    "loadMore": "もっと見る",
+    "loading": "読み込み中..."
+  },
+  "recent": {
+    "title": "最近のアップロード",
+    "count": "{{count}}枚",
+    "noUploads": "アップロードされた写真がありません",
+    "loadMore": "もっと見る",
+    "loading": "読み込み中..."
+  },
+  "page": { "settings": "設定", "logout": "ログアウト", "notFound": "ページが見つかりません" },
+  "settings": {
+    "title": "設定",
+    "menu": {
+      "app": "アプリ設定",
+      "account": "アカウント"
+    },
+    "app": {
+      "title": "アプリ設定",
+      "language": {
+        "title": "言語設定",
+        "korean": "한국어",
+        "japanese": "日本語"
+      }
+    },
+    "account": {
+      "title": "アカウント設定",
+      "account": "アカウント",
+      "nameLabel": "名前",
+      "namePlaceholder": "名前を入力",
+      "social": "ソーシャルアカウント",
+      "logout": "ログアウト"
+    },
+    "family": {
+      "title": "ファミリー",
+      "add": "ファミリーを追加",
+      "invite": {
+        "title": "招待リンク",
+        "description": "リンクを共有するとファミリーに参加できます。",
+        "copy": "リンクをコピー",
+        "copied": "コピーしました",
+        "error": "招待リンクを読み込めませんでした。"
+      }
+    },
+    "member": {
+      "title": "家族 一覧",
+      "invite": "家族を招待",
+      "inviteTitle": "家族を招待",
+      "inviteNameLabel": "名前",
+      "inviteNamePlaceholder": "招待する家族の名前",
+      "inviteGroupLabel": "アルバムグループ",
+      "inviteGroupPlaceholder": "グループを選択",
+      "inviteTitleLabel": "家族の呼び方",
+      "inviteTitlePlaceholder": "呼び方を選択",
+      "inviteGenerate": "招待リンクを生成",
+      "inviteCopy": "リンクをコピー",
+      "inviteCopied": "コピーしました",
+      "inviteError": "招待リンクの作成に失敗しました。",
+      "editTitle": "家族編集",
+      "groupLabel": "所属グループ",
+      "familyTitleLabel": "家族の呼び方",
+      "customTitleLabel": "カスタム呼び方",
+      "customTitlePlaceholder": "呼び方を入力してください",
+      "familyTitle": {
+        "dad": "パパ",
+        "mom": "ママ",
+        "grandfather": "おじいちゃん",
+        "grandmother": "おばあちゃん",
+        "uncle": "おじさん",
+        "aunt": "おばさん",
+        "other": "その他家族",
+        "custom": "カスタム"
+      }
+    },
+    "group": {
+      "title": "アルバムグループ一覧",
+      "add": "アルバムグループを追加",
+      "newTitle": "アルバムグループを追加",
+      "editTitle": "アルバムグループを編集",
+      "nameLabel": "グループ名",
+      "namePlaceholder": "名前を入力",
+      "deleteConfirm": "本当に削除しますか？"
+    },
+    "album": {
+      "title": "アルバム一覧",
+      "add": "アルバムを追加",
+      "newTitle": "アルバムを追加",
+      "editTitle": "アルバムを編集",
+      "nameLabel": "アルバム名",
+      "namePlaceholder": "名前を入力",
+      "permissionsLabel": "グループ権限",
+      "permRead": "読み取り",
+      "permWrite": "書き込み",
+      "deleteConfirm": "本当に削除しますか？"
+    },
+    "kid": {
+      "title": "子ども一覧",
+      "add": "子どもを追加",
+      "newTitle": "子どもを追加",
+      "editTitle": "子どもを編集",
+      "nameLabel": "名前",
+      "namePlaceholder": "名前を入力",
+      "birthDateLabel": "生年月日",
+      "faceLabel": "顔写真",
+      "deleteConfirm": "本当に削除しますか？"
+    }
+  }
+}

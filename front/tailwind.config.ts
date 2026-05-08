@@ -1,18 +1,5 @@
-const { default: colors } = require('./src/colors')
-
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
-  options: {
-    // https://purgecss.com/safelisting.html#patterns
-    safelist: {
-      standard: [/^bg-/, /^text-/],
-    },
-  },
-  theme: {
-    extend: {
-      colors,
-    },
-  },
+  safelist: [{ pattern: /^bg-/ }, { pattern: /^text-/ }],
   plugins: [],
 }

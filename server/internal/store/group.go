@@ -1,0 +1,46 @@
+package store
+
+import (
+	"context"
+
+	"github.com/ywl0806/yuno_kiroku/internal/db"
+)
+
+// GroupStore 그룹(가족 내 쪽) 데이터 접근 인터페이스
+type GroupStore interface {
+	FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error)
+	FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]db.Group, error)
+	CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error)
+	UpdateGroup(ctx context.Context, arg db.UpdateGroupParams) (db.Group, error)
+	DeleteGroup(ctx context.Context, id int32) error
+}
+
+type groupStore struct {
+	queries *db.Queries
+}
+
+// NewGroupStore GroupStore 구현체 생성
+func NewGroupStore(queries *db.Queries) GroupStore {
+	return &groupStore{queries: queries}
+}
+
+func (s *groupStore) FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error) {
+	row, err := s.queries.FindGroupByID(ctx, id)
+	return wrapErr(row, err, "field.group")
+}
+
+func (s *groupStore) FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]db.Group, error) {
+	return wrapErr(s.queries.FindGroupsByFamilyID(ctx, familyID))
+}
+
+func (s *groupStore) CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error) {
+	return wrapErr(s.queries.CreateGroup(ctx, arg))
+}
+
+func (s *groupStore) UpdateGroup(ctx context.Context, arg db.UpdateGroupParams) (db.Group, error) {
+	return wrapErr(s.queries.UpdateGroup(ctx, arg))
+}
+
+func (s *groupStore) DeleteGroup(ctx context.Context, id int32) error {
+	return s.queries.DeleteGroup(ctx, id)
+}

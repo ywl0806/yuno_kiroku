@@ -15,9 +15,39 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/login": {
-            "post": {
-                "description": "login",
+        "/album/write": {
+            "get": {
+                "description": "Get albums for write",
+                "tags": [
+                    "Album"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AlbumResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/kakao": {
+            "get": {
+                "description": "카카오 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대 그룹 적용.",
                 "consumes": [
                     "application/json"
                 ],
@@ -25,9 +55,145 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "Auth"
                 ],
-                "summary": "User login",
+                "summary": "Kakao Login Redirect",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite Token (required)",
+                        "name": "invite_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to Kakao authorization page"
+                    },
+                    "503": {
+                        "description": "Kakao login is not configured"
+                    }
+                }
+            }
+        },
+        "/auth/kakao/callback": {
+            "get": {
+                "description": "카카오 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로 리다이렉트.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Kakao Login Callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code from Kakao",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "State (invite_token required)",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to front /login with error query"
+                    }
+                }
+            }
+        },
+        "/auth/line": {
+            "get": {
+                "description": "LINE 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대 그룹 적용.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "LINE Login Redirect",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite Token (required)",
+                        "name": "invite_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to LINE authorization page"
+                    },
+                    "503": {
+                        "description": "LINE login is not configured"
+                    }
+                }
+            }
+        },
+        "/auth/line/callback": {
+            "get": {
+                "description": "LINE 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로 리다이렉트.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "LINE Login Callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code from LINE",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "State (invite_token required)",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to front /login with error query"
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "아이디/비밀번호 로그인. 성공 시 액세스 토큰과 리프레시 토큰(쿠키) 반환.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User Login",
                 "parameters": [
                     {
                         "description": "Login credentials",
@@ -35,7 +201,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.LoginRequest"
+                            "$ref": "#/definitions/handlers.LoginRequest"
                         }
                     }
                 ],
@@ -43,20 +209,200 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handlers.LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid username or password"
+                    },
+                    "500": {
+                        "description": "Failed to generate token"
+                    }
+                }
+            }
+        },
+        "/identities": {
+            "get": {
+                "description": "identity 목록을 조회",
+                "tags": [
+                    "Identity"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityListResponse"
                         }
                     }
                 }
             }
         },
-        "/photo/upload": {
+        "/identity": {
+            "put": {
+                "description": "identity를 수정",
+                "tags": [
+                    "Identity"
+                ],
+                "parameters": [
+                    {
+                        "description": "Update Identity Request",
+                        "name": "updateIdentityRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateIdentityByIdAndGroupIdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/{id}": {
+            "get": {
+                "description": "identity를 조회",
+                "tags": [
+                    "Identity"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Identity ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.IdentityResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/invite": {
             "post": {
-                "description": "사진 업로드",
+                "description": "초대 토큰 생성",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invite"
+                ],
+                "summary": "Create Invite Token",
+                "parameters": [
+                    {
+                        "description": "Create Invite Request",
+                        "name": "createInviteRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateInviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateInviteResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/invite/validate": {
+            "get": {
+                "description": "초대 토큰 검증",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invite"
+                ],
+                "summary": "Validate Invite Token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite Token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidateInviteResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/media-item": {
+            "get": {
+                "description": "미디어 아이템 목록 조회",
+                "tags": [
+                    "MediaItem"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2025-01-01",
+                        "description": "From",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2025-01-01",
+                        "description": "To",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/media-item/image/upload": {
+            "post": {
+                "description": "이미지 업로드",
                 "consumes": [
                     "multipart/form-data"
+                ],
+                "tags": [
+                    "MediaItem"
                 ],
                 "parameters": [
                     {
@@ -68,9 +414,108 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Clan Group ID",
-                        "name": "clan_group_id",
+                        "description": "Album ID",
+                        "name": "album_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Upload Batch ID",
+                        "name": "upload_batch_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "1",
+                        "description": "Retry",
+                        "name": "retry",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/media-item/range": {
+            "get": {
+                "description": "사진이 있는 년도와 월 목록 조회",
+                "tags": [
+                    "MediaItem"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.MediaItemRange"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/media-item/upload-batch": {
+            "post": {
+                "description": "업로드 배치 생성",
+                "tags": [
+                    "MediaItem"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Album ID",
+                        "name": "album_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "bearer",
+                        "example": "bearer token",
+                        "description": "Authorization",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/media-item/upload-batch/status": {
+            "get": {
+                "description": "업로드 배치 상태 조회",
+                "tags": [
+                    "MediaItem"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Upload Batch ID",
+                        "name": "upload_batch_id",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "string",
@@ -88,6 +533,9 @@ const docTemplate = `{
         "/user": {
             "post": {
                 "description": "create user",
+                "tags": [
+                    "User"
+                ],
                 "parameters": [
                     {
                         "description": "Create User Request",
@@ -95,7 +543,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.CreateUserRequest"
+                            "$ref": "#/definitions/models.CreateUserRequest"
                         }
                     }
                 ],
@@ -112,7 +560,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "auth.LoginRequest": {
+        "handlers.CreateInviteRequest": {
+            "type": "object",
+            "required": [
+                "clan_group_id"
+            ],
+            "properties": {
+                "clan_group_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.LoginRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -120,14 +579,58 @@ const docTemplate = `{
             ],
             "properties": {
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "password"
                 },
                 "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "handlers.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/models.LoginUserResponse"
+                }
+            }
+        },
+        "models.AlbumResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "user.CreateUserRequest": {
+        "models.CreateInviteResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "invite_url": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateUserRequest": {
             "type": "object",
             "required": [
                 "clan_group_id",
@@ -152,6 +655,96 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "models.IdentityListResponse": {
+            "type": "object",
+            "properties": {
+                "identities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.IdentityResponse"
+                    }
+                }
+            }
+        },
+        "models.IdentityResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LoginUserResponse": {
+            "type": "object",
+            "properties": {
+                "clan_group_id": {
+                    "type": "integer"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateIdentityByIdAndGroupIdRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ValidateInviteResponse": {
+            "type": "object",
+            "properties": {
+                "clan_group_id": {
+                    "type": "integer"
+                },
+                "clan_group_name": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "services.MediaItemRange": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         }

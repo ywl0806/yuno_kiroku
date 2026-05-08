@@ -1,12 +1,12 @@
-import { queryClient } from './lib/queryClient'
-import { router } from './router'
+import { queryClient } from '@/lib/query-client'
+import { router } from '@/router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen w-screen bg-clouds">
+      <div className="min-h-screen w-screen bg-background">
         <RouterProvider router={router} />
       </div>
     </QueryClientProvider>

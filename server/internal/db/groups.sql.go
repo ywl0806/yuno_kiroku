@@ -9,9 +9,51 @@ import (
 	"context"
 )
 
+const createGroup = `-- name: CreateGroup :one
+INSERT INTO
+    groups (family_id, is_admin, name)
+VALUES
+    ($1, $2, $3)
+RETURNING
+    id, family_id, is_admin, name, created_at, updated_at
+`
+
+type CreateGroupParams struct {
+	FamilyID int32
+	IsAdmin  bool
+	Name     string
+}
+
+func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error) {
+	row := q.db.QueryRowContext(ctx, createGroup, arg.FamilyID, arg.IsAdmin, arg.Name)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.IsAdmin,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteGroup = `-- name: DeleteGroup :exec
+DELETE FROM groups
+WHERE
+    id = $1
+`
+
+func (q *Queries) DeleteGroup(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteGroup, id)
+	return err
+}
+
 const findGroupByID = `-- name: FindGroupByID :one
 SELECT
     id,
+    family_id,
+    is_admin,
     name
 FROM
     groups
@@ -20,13 +62,91 @@ WHERE
 `
 
 type FindGroupByIDRow struct {
-	ID   int32
-	Name string
+	ID       int32
+	FamilyID int32
+	IsAdmin  bool
+	Name     string
 }
 
 func (q *Queries) FindGroupByID(ctx context.Context, id int32) (FindGroupByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, findGroupByID, id)
 	var i FindGroupByIDRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.IsAdmin,
+		&i.Name,
+	)
+	return i, err
+}
+
+const findGroupsByFamilyID = `-- name: FindGroupsByFamilyID :many
+SELECT
+    id, family_id, is_admin, name, created_at, updated_at
+FROM
+    groups
+WHERE
+    family_id = $1
+ORDER BY
+    id
+`
+
+func (q *Queries) FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]Group, error) {
+	rows, err := q.db.QueryContext(ctx, findGroupsByFamilyID, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Group
+	for rows.Next() {
+		var i Group
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.IsAdmin,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateGroup = `-- name: UpdateGroup :one
+UPDATE groups
+SET
+    name = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE
+    id = $2
+RETURNING
+    id, family_id, is_admin, name, created_at, updated_at
+`
+
+type UpdateGroupParams struct {
+	Name string
+	ID   int32
+}
+
+func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group, error) {
+	row := q.db.QueryRowContext(ctx, updateGroup, arg.Name, arg.ID)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.IsAdmin,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }

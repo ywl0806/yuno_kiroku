@@ -5,9 +5,9 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "tmp/main"
-  cmd = "go build -o ./tmp/main cmd/server/main.go"
+  cmd = "go build -o ./tmp/main cmd/api/main.go"
   delay = 0
-  exclude_dir = ["assets", "tmp", "vendor", "testdata","front/node_modules", "front", "firestore", "dist", "tmp", "uploads", "docs"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata","front/node_modules", "front", "dist", "tmp", "uploads", "docs"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
@@ -43,3 +43,7 @@ tmp_dir = "tmp"
 
 [run]
 cmd = "./tmp/main"
+
+[watch]
+  poll = true
+  poll_interval = 800

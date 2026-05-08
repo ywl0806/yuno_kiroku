@@ -9,10 +9,37 @@ import (
 	"time"
 )
 
-type ClanGroup struct {
+type Album struct {
 	ID        int32
-	GroupID   int32
-	IsAdmin   bool
+	FamilyID  int32
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type AlbumGroupsPermission struct {
+	AlbumID    int32
+	GroupID    int32
+	Permission string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type FaceDetection struct {
+	ID             int32
+	MediaItemID    int32
+	IdentityID     int32
+	LocationTop    int32
+	LocationRight  int32
+	LocationBottom int32
+	LocationLeft   int32
+	Embedding      interface{}
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type Family struct {
+	ID        int32
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -20,26 +47,91 @@ type ClanGroup struct {
 
 type Group struct {
 	ID        int32
+	FamilyID  int32
+	IsAdmin   bool
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-type Photo struct {
-	ID              int32
-	GroupID         int32
-	ClanGroupID     sql.NullInt32
-	ThumbnailUrl    string
-	OriginalUrl     sql.NullString
-	LiveUrl         sql.NullString
-	OriginalLiveUrl sql.NullString
-	Width           int32
-	Height          int32
-	Orientation     int32
-	PhotoCreatedAt  time.Time
-	FileName        string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+type Identity struct {
+	ID        int32
+	FamilyID  int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type IdentityFaceImg struct {
+	ID          int32
+	IdentityID  int32
+	MediaItemID int32
+	StorageKey  string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type InviteToken struct {
+	ID                int32
+	Token             string
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
+	FamilyID          int32
+	GroupID           int32
+	CreatedByUserID   int32
+	ExpiresAt         time.Time
+	UsedAt            sql.NullTime
+	CreatedAt         time.Time
+}
+
+type Kid struct {
+	ID         int32
+	Name       sql.NullString
+	BirthDate  sql.NullTime
+	IdentityID sql.NullInt32
+	FamilyID   int32
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type MediaFile struct {
+	ID          int32
+	MediaItemID int32
+	Role        string
+	StorageKey  string
+	MimeType    sql.NullString
+	Width       sql.NullInt32
+	Height      sql.NullInt32
+	FileSize    sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type MediaItem struct {
+	ID                     int32
+	FamilyID               int32
+	AlbumID                int32
+	UploadBatchID          int32
+	UploadStatus           string
+	TakenLocationLatitude  sql.NullFloat64
+	TakenLocationLongitude sql.NullFloat64
+	TakenAt                time.Time
+	FileName               sql.NullString
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+}
+
+type MediaItemLike struct {
+	ID          int32
+	MediaItemID int32
+	UserID      int32
+	CreatedAt   time.Time
+}
+
+type MediaItemTag struct {
+	MediaItemID int32
+	TagID       int32
+	TaggedBy    int32
+	CreatedAt   time.Time
 }
 
 type RefreshToken struct {
@@ -50,13 +142,35 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
+type Tag struct {
+	ID        int32
+	FamilyID  sql.NullInt32
+	Name      string
+	IsPreset  bool
+	CreatedBy sql.NullInt32
+	CreatedAt time.Time
+}
+
+type UploadBatch struct {
+	ID        int32
+	AlbumID   int32
+	UploadAt  time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type User struct {
-	ID          int32
-	Name        sql.NullString
-	Username    string
-	Password    string
-	GroupID     int32
-	ClanGroupID int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                int32
+	Name              sql.NullString
+	Username          string
+	FamilyTitle       sql.NullString
+	CustomFamilyTitle sql.NullString
+	Password          string
+	FamilyID          int32
+	GroupID           int32
+	IdentityID        sql.NullInt32
+	Provider          sql.NullString
+	ProviderUserID    sql.NullString
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }

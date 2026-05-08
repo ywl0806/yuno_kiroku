@@ -1,10 +1,15 @@
 export interface Photo {
-  _id: string;
+  id: string;
+  group_id: string;
+  album_id: string;
   thumbnail_url: string;
   original_url: string;
   live_url: string;
   original_live_url: string;
   file_name: string;
+  width: number;
+  height: number;
+  orientation: number;
   photo_created_at: string;
   created_at: string;
   updated_at: string;
