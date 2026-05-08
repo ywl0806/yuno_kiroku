@@ -2,7 +2,6 @@ import cv2
 from insightface.app import FaceAnalysis
 
 
-# ArcFace 모델 초기화 (싱글톤 패턴)
 _face_analyzer = None
 
 
@@ -10,11 +9,9 @@ def get_face_analyzer():
     """ArcFace 모델 싱글톤 인스턴스 반환"""
     global _face_analyzer
     if _face_analyzer is None:
-        # buffalo_s 모델 사용 (ArcFace, 512차원 임베딩)
-        # 다른 옵션: 'buffalo_l' (더 정확, 더 느림), 'buffalo_m' (중간)
         _face_analyzer = FaceAnalysis(
             providers=["CPUExecutionProvider"],  # GPU 사용시: ['CUDAExecutionProvider']
-            name="buffalo_s",
+            name="buffalo_l",
         )
         _face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
     return _face_analyzer

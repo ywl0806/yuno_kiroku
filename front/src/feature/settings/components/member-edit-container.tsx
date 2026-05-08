@@ -4,10 +4,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioList } from '@/components/ui/radio-list'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SettingsSubPageLayout } from '@/feature/settings/components/settings-sub-page-layout'
 import { useUpdateMember } from '@/feature/settings/hooks/use-update-member'
 import { FAMILY_TITLE_OPTIONS, Group, Member } from '@/types'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -44,80 +44,84 @@ export const MemberEditContainer = ({ memberId, member, groups }: Props) => {
     const familyTitle = form.watch('familyTitle')
 
     const handleSubmit = (data: FormValues) => {
-        updateMember({ id: memberId, groupId: selectedGroupId, familyTitle: data.familyTitle ?? '', customFamilyTitle: data.customFamilyTitle ?? '' }, { onSuccess: () => navigate(-1) })
+        updateMember(
+            { id: memberId, groupId: selectedGroupId, familyTitle: data.familyTitle ?? '', customFamilyTitle: data.customFamilyTitle ?? '' },
+            { onSuccess: () => navigate(-1) },
+        )
     }
 
     return (
-        <div className="mx-auto h-full max-w-[50rem] pt-4">
-            <div className="flex items-center gap-2 px-4 py-2">
-                <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-                    <ChevronLeft className="size-5" />
-                </button>
-                <span className="text-sm font-medium">{t('settings.member.editTitle')}</span>
-            </div>
+        <SettingsSubPageLayout title={t('settings.member.editTitle')}>
             <form onSubmit={form.handleSubmit(handleSubmit)}>
-                <div className="space-y-5 px-4 pt-6">
-                    <div className="space-y-1.5">
-                        <p className="text-sm font-medium">{member?.name || member?.username}</p>
-                    </div>
+                <div className="px-4 pt-3 space-y-3">
+                    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04] divide-y divide-stone-100">
+                        <div className="px-4 py-4">
+                            <p className="text-sm font-semibold text-stone-800">{member?.name || member?.username}</p>
+                        </div>
 
-                    <div className="space-y-1.5">
-                        <FormField
-                            control={form.control}
-                            name="familyTitle"
-                            render={({ field }) => (
-                                <div className="space-y-1.5">
-                                    <Label>{t('settings.member.familyTitleLabel')}</Label>
-                                    <Select value={field.value} onValueChange={field.onChange} disabled={isUpdating}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={t('settings.member.inviteTitlePlaceholder')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {FAMILY_TITLE_OPTIONS.map((option) => (
-                                                <SelectItem key={option} value={option}>
-                                                    {t(`settings.member.familyTitle.${option}`)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
-                    </div>
-
-                    {familyTitle === 'custom' && (
-                        <div className="space-y-1.5">
-                            <Label>{t('settings.member.customTitleLabel')}</Label>
+                        <div className="px-4 py-4 space-y-1.5">
                             <FormField
                                 control={form.control}
-                                name="customFamilyTitle"
+                                name="familyTitle"
                                 render={({ field }) => (
-                                    <Input
-                                        value={field.value ?? ''}
-                                        onChange={field.onChange}
-                                        placeholder={t('settings.member.customTitlePlaceholder')}
-                                        disabled={isUpdating}
-                                    />
+                                    <>
+                                        <Label>{t('settings.member.familyTitleLabel')}</Label>
+                                        <Select value={field.value} onValueChange={field.onChange} disabled={isUpdating}>
+                                            <SelectTrigger className="border-stone-200">
+                                                <SelectValue placeholder={t('settings.member.inviteTitlePlaceholder')} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {FAMILY_TITLE_OPTIONS.map((option) => (
+                                                    <SelectItem key={option} value={option}>
+                                                        {t(`settings.member.familyTitle.${option}`)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </>
                                 )}
                             />
                         </div>
-                    )}
 
-                    <div className="space-y-1.5">
-                        <Label>{t('settings.member.groupLabel')}</Label>
-                        <RadioList
-                            options={groups?.map((group) => ({ value: group.id, label: group.name })) ?? []}
-                            value={selectedGroupId}
-                            onChange={(val) => setSelectedGroupId(val as number)}
-                            disabled={isUpdating}
-                        />
+                        {familyTitle === 'custom' && (
+                            <div className="px-4 py-4 space-y-1.5">
+                                <Label>{t('settings.member.customTitleLabel')}</Label>
+                                <FormField
+                                    control={form.control}
+                                    name="customFamilyTitle"
+                                    render={({ field }) => (
+                                        <Input
+                                            value={field.value ?? ''}
+                                            onChange={field.onChange}
+                                            placeholder={t('settings.member.customTitlePlaceholder')}
+                                            disabled={isUpdating}
+                                            className="border-stone-200 focus-visible:ring-stone-400"
+                                        />
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        <div className="px-4 py-4 space-y-1.5">
+                            <Label>{t('settings.member.groupLabel')}</Label>
+                            <RadioList
+                                options={groups?.map((group) => ({ value: group.id, label: group.name })) ?? []}
+                                value={selectedGroupId}
+                                onChange={(val) => setSelectedGroupId(val as number)}
+                                disabled={isUpdating}
+                            />
+                        </div>
                     </div>
-                </div>
 
-                <div className="px-4 pt-6 flex justify-end mt-4">
-                    <Button type="submit" disabled={isUpdating}>{t('common.save')}</Button>
+                    <Button
+                        type="submit"
+                        className="w-full h-11 rounded-xl bg-stone-900 hover:bg-stone-800 font-medium mt-2"
+                        disabled={isUpdating}
+                    >
+                        {t('common.save')}
+                    </Button>
                 </div>
             </form>
-        </div>
+        </SettingsSubPageLayout>
     )
 }

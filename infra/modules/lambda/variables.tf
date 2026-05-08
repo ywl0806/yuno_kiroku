@@ -49,15 +49,6 @@ variable "api_lambda_zip_bucket_key" {
     description = "API Lambda Zip Bucket Key"
 }
 
-variable "face_recognition_lambda_role_arn" {
-    type        = string
-    description = "Face Recognition Lambda Role ARN"
-}
-
-variable "face_recognition_ecr_image_uri" {
-    type        = string
-    description = "Face Recognition Lambda ECR Image URI"
-}
 
 variable "app_env_vars" {
     type        = map(string)

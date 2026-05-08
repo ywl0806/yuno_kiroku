@@ -6,7 +6,6 @@ export const useLikeMutation = () => {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['search-media-items'] })
     queryClient.invalidateQueries({ queryKey: ['mediaItems'] })
-    console.log('hogehoge')
   }
 
   const likeMutation = useMutation({

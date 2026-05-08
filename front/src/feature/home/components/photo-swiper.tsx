@@ -12,8 +12,9 @@ SwiperCore.use([Controller])
 type Props = {
   date: string
   range: MediaItemRange[]
+  onScroll: (scrollTop: number) => void
 }
-export const PhotoSwiper: FC<Props> = ({ date, range }) => {
+export const PhotoSwiper: FC<Props> = ({ date, range, onScroll }) => {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null)
 
   const nav = useNavigate()
@@ -42,7 +43,7 @@ export const PhotoSwiper: FC<Props> = ({ date, range }) => {
       {range.map((ran) => {
         return (
           <SwiperSlide key={`${ran.year}-${ran.month}`}>
-            <PhotoGridContainer year={ran.year} month={ran.month} date={date} />
+            <PhotoGridContainer year={ran.year} month={ran.month} date={date} onScroll={onScroll} />
           </SwiperSlide>
         )
       })}

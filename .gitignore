@@ -7,3 +7,4 @@ tmp/
 /uploads
 .DS_Store
 terraform.tfvars
+.env.production

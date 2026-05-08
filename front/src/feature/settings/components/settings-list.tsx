@@ -1,23 +1,27 @@
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 export const SettingsList = ({ children }: { children: ReactNode }) => (
-  <div className="bg-white pl-2">{children}</div>
+  <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">{children}</div>
 )
 
 export const SettingsListItem = ({ to, children }: { to: string; children: ReactNode }) => (
-  <Link to={to}>
-    <div className="flex items-center justify-between border-b bg-white px-4 py-3 hover:bg-accent">{children}</div>
+  <Link to={to} className="group relative flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-stone-50 active:bg-stone-100">
+    <span className="text-sm font-medium text-stone-800">{children}</span>
+    <ChevronRight className="size-4 flex-shrink-0 text-stone-300 transition-transform group-hover:translate-x-0.5" />
+    <span className="absolute inset-x-4 bottom-0 h-px bg-stone-100 group-last:hidden" />
   </Link>
 )
 
 export const SettingsListAddButton = ({ to, label }: { to: string; label: string }) => (
-  <Button asChild variant="ghost" className="w-full justify-start gap-2 rounded-none bg-white px-4 py-3 text-sm text-blue-400 hover:text-foreground">
-    <Link to={to}>
-      <Plus className="size-4" />
-      {label}
-    </Link>
-  </Button>
+  <Link
+    to={to}
+    className="flex w-full items-center gap-2.5 px-4 py-3.5 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50 active:bg-amber-100"
+  >
+    <span className="flex size-5 items-center justify-center rounded-full bg-amber-100">
+      <Plus className="size-3 text-amber-600" strokeWidth={2.5} />
+    </span>
+    {label}
+  </Link>
 )

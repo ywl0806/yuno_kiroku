@@ -104,7 +104,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   return (
-    <div className="flex h-full flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4">
       <div className="sticky top-2 z-50 flex items-center justify-center gap-2">
         <div className="flex-1" />
         <div className="flex flex-1 items-center justify-center">

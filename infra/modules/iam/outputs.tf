@@ -6,10 +6,6 @@ output "resize_lambda_role_arn" {
     value = aws_iam_role.resize_lambda.arn
 }
 
-output "face_recognition_lambda_role_arn" {
-    value = aws_iam_role.face_recognition_lambda.arn
-}
-
 output "ecs_task_execution_role_arn" {
     value = aws_iam_role.ecs_task_execution.arn
 }

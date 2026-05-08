@@ -106,39 +106,6 @@ resource "aws_iam_role_policy_attachment" "resize_lambda_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# ── Face Recognition Lambda Role ─────────────────────────────────
-
-resource "aws_iam_role" "face_recognition_lambda" {
-    name               = "yuno-face-recognition-lambda-role-${var.env}"
-    assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
-    tags               = var.common_tags
-}
-
-resource "aws_iam_role_policy" "face_recognition_lambda_s3" {
-    name = "s3-media-access"
-    role = aws_iam_role.face_recognition_lambda.id
-    policy = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-            {
-                Effect = "Allow"
-                Action = ["s3:GetObject", "s3:PutObject"]
-                Resource = "${var.media_bucket_arn}/*"
-            },
-            {
-                Effect = "Allow"
-                Action = ["s3:ListBucket"]
-                Resource = var.media_bucket_arn
-            }
-        ]
-    })
-}
-
-resource "aws_iam_role_policy_attachment" "face_recognition_lambda_logs" {
-    role       = aws_iam_role.face_recognition_lambda.name
-    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
 # ── github actions ci/cd ──────────────────────────────────────────
 
 resource "aws_iam_role" "github_actions_ci_cd" {
@@ -163,7 +130,6 @@ resource "aws_iam_role_policy" "github_actions_ci_cd_lambda" {
                 Resource = [
                     "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-api-${var.env}",
                     "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-resize-${var.env}",
-                    "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:yuno-face-recognition-${var.env}"
                 ]
             },
             {

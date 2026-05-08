@@ -12,8 +12,9 @@ type SelectedDate = {
 type Props = {
   date: string
   range: MediaItemRange[]
+  hidden: boolean
 }
-export const HomeHeader: FC<Props> = ({ date, range }) => {
+export const HomeHeader: FC<Props> = ({ date, range, hidden }) => {
   const nav = useNavigate()
 
   const [selectedDate, setSelectedDate] = useState<SelectedDate>({
@@ -43,23 +44,28 @@ export const HomeHeader: FC<Props> = ({ date, range }) => {
   }, [date])
 
   return (
-    <div className="pt-5">
-      <div className="flex items-center justify-center gap-2 pt-2">
-        <DropdownYear
-          years={years}
-          selectedYear={selectedDate.year}
-          onChange={(changeYear) => {
-            setSelectedDate({ ...selectedDate, year: changeYear })
-            const newD = range.find((y) => y.year === changeYear)
-            if (newD) {
-              const newDStr = `${newD.year}-${newD.month}`
-              nav(`/${newDStr}`)
-            }
-          }}
-        />
+    <div>
+      {/* Year dropdown: CSS grid trick for smooth height animation */}
+      <div className={cn('grid transition-all duration-300 ease-in-out', hidden ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}>
+        <div className="overflow-hidden">
+          <div className={cn('flex items-center justify-center gap-2 pt-2 pb-1 transition-opacity duration-300', hidden ? 'opacity-0' : 'opacity-100')}>
+            <DropdownYear
+              years={years}
+              selectedYear={selectedDate.year}
+              onChange={(changeYear) => {
+                setSelectedDate({ ...selectedDate, year: changeYear })
+                const newD = range.find((y) => y.year === changeYear)
+                if (newD) {
+                  nav(`/${newD.year}-${newD.month}`)
+                }
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="z-99 h-full bg-background">
+      {/* Month tabs */}
+      <div className="bg-background">
         {range.length > 0 && (
           <div className="flex overflow-x-auto">
             {range.map((ran) => {
@@ -71,10 +77,9 @@ export const HomeHeader: FC<Props> = ({ date, range }) => {
                   type="button"
                   onClick={() => nav(`/${value}`)}
                   className={cn(
-                    'relative h-10 w-[20%] shrink-0 border-b-2 px-0 text-base transition-colors',
-                    isSelected
-                      ? 'border-primary font-medium text-primary'
-                      : 'border-transparent text-muted-foreground',
+                    'w-[20%] shrink-0 border-b-3 px-0 text-base transition-all duration-300',
+                    isSelected ? 'border-primary font-medium text-primary' : 'border-transparent text-muted-foreground',
+                    hidden ? 'h-8 text-sm' : 'h-10 text-base',
                   )}
                 >
                   {ran.month}

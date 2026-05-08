@@ -1,5 +1,5 @@
 locals {
-  env = "production"
+  env        = "production"
   aws_region = "ap-northeast-1"
 
   common_tags = {
@@ -25,5 +25,22 @@ locals {
     "KAKAO_CLIENT_SECRET",
   ])
 
+  # Lambda / ECS 공통 환경변수
+  # ECS 모듈 outputs(cluster_arn 등)은 순환 참조 방지를 위해 제외 → lambda 모듈 호출부에서 merge
+  shared_app_env = {
+    APP_ENV             = local.env
+    APP_URL             = "https://${var.domain_name}"
+    API_URL             = "https://api.${var.domain_name}"
+    MEDIA_URL           = "https://media.${var.domain_name}"
+    MEDIA_BUCKET_NAME   = module.s3.media_bucket_id
+    SQS_QUEUE_URL       = module.sqs.queue_url
+    STORAGE_TYPE        = "s3"
+    DATABASE_URL        = var.database_url
+    AUTH_SECRET_KEY     = var.auth_secret_key
+    LINE_CHANNEL_ID     = var.line_channel_id
+    LINE_CHANNEL_SECRET = var.line_channel_secret
+    KAKAO_CLIENT_ID     = var.kakao_client_id
+    KAKAO_CLIENT_SECRET = var.kakao_client_secret
+  }
 }
 

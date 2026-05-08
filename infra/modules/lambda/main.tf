@@ -68,40 +68,6 @@ resource "aws_lambda_function" "resize" {
 
 }
 
-# ── Face Recognition Lambda ──────────────────────────────────
-
-resource "aws_lambda_function" "face_recognition" {
-  function_name = "yuno-face-recognition-${var.env}"
-  role          = var.face_recognition_lambda_role_arn
-  package_type  = "Image"
-  image_uri     = var.face_recognition_ecr_image_uri
-  architectures = ["arm64"]
-  memory_size   = 1024
-  timeout       = 300
-
-  environment {
-    variables = var.app_env_vars
-  }
-
-  depends_on = [aws_cloudwatch_log_group.face_recognition]
-
-  tags = local.common_tags
-}
-
-# ── Face Recognition Lambda Function URL (ECS 콜백용, 인증 없음) ─
-
-resource "aws_lambda_function_url" "face_recognition" {
-  function_name      = aws_lambda_function.face_recognition.function_name
-  authorization_type = "NONE"
-
-  cors {
-    allow_origins = ["*"]
-    allow_methods = ["POST"]
-    allow_headers = ["content-type"]
-    max_age       = 0
-  }
-}
-
 # ── S3 → Resize Lambda 이벤트 트리거 ────────────────────────
 
 resource "aws_lambda_permission" "allow_s3_resize" {

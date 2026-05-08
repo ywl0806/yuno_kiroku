@@ -99,32 +99,13 @@ module "lambda" {
   api_lambda_role_arn = module.iam.api_lambda_role_arn
   resize_lambda_role_arn           = module.iam.resize_lambda_role_arn
   resize_ecr_image_uri             = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-resize"]}:${local.env}"
-  face_recognition_lambda_role_arn = module.iam.face_recognition_lambda_role_arn
-  face_recognition_ecr_image_uri   = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-face-recognition"]}:${local.env}"
   media_bucket_id = module.s3.media_bucket_id
   media_bucket_arn = module.s3.media_bucket_arn
   common_tags = local.common_tags
   api_lambda_zip_bucket_arn = module.s3.lambda_zip_bucket_arn
   api_lambda_zip_bucket_name = module.s3.lambda_zip_bucket_name
   api_lambda_zip_bucket_key = aws_s3_object.api_lambda_zip.key
-  app_env_vars = {
-    APP_ENV             = local.env
-    APP_URL             = "https://${var.domain_name}"
-    API_URL             = "https://api.${var.domain_name}"
-    MEDIA_URL           = "https://media.${var.domain_name}"
-    MEDIA_BUCKET_NAME   = module.s3.media_bucket_id
-    STORAGE_TYPE        = "s3"
-    DATABASE_URL        = var.database_url
-    AUTH_SECRET_KEY     = var.auth_secret_key
-    LINE_CHANNEL_ID     = var.line_channel_id
-    LINE_CHANNEL_SECRET = var.line_channel_secret
-    KAKAO_CLIENT_ID     = var.kakao_client_id
-    KAKAO_CLIENT_SECRET = var.kakao_client_secret
-    ECS_CLUSTER_ARN     = module.ecs.cluster_arn
-    ECS_TASK_DEF_ARN    = module.ecs.task_definition_arn
-    ECS_SUBNETS         = join(",", data.aws_subnets.public.ids)
-    ECS_SECURITY_GROUPS = module.ecs.security_group_id
-  }
+  app_env_vars = local.shared_app_env
 }
 
 
@@ -146,9 +127,10 @@ module "ecs" {
   aws_region = "ap-northeast-1"
   ecs_task_role_arn = module.iam.ecs_task_role_arn
   ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
-  vpc_id = data.aws_vpc.default.id
+  vpc_id      = data.aws_vpc.default.id
+  subnet_ids  = data.aws_subnets.public.ids
   ai_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-ai"]}:${local.env}"
-  face_recognition_queue_url = module.sqs.queue_url
+  app_env_vars = local.shared_app_env
 }
 
 # ── API Gateway ────────────────────────────────────────────────

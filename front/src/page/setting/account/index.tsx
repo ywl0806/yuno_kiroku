@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SettingsSubPageLayout } from '@/feature/settings/components/settings-sub-page-layout'
 import { useGetMe } from '@/feature/settings/hooks/use-get-me'
 import { useUpdateMe } from '@/feature/settings/hooks/use-update-me'
-import { ChevronLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -30,43 +30,47 @@ export const SettingsAccountPage = () => {
   }
 
   return (
-    <div className="mx-auto h-full max-w-[50rem] pt-4">
-      <div className="flex items-center gap-2 px-4 py-2">
-        <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="size-5" />
-        </button>
-        <span className="text-sm font-medium">{t('settings.account.title')}</span>
-      </div>
-
-      <div className="space-y-5 px-4 pt-6">
-        <div className="space-y-1.5">
-          <Label htmlFor="account-name">{t('settings.account.nameLabel')}</Label>
-          <div className="flex gap-2">
+    <SettingsSubPageLayout title={t('settings.account.title')}>
+      <div className="px-4 pt-3 space-y-3">
+        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04] divide-y divide-stone-100">
+          <div className="px-4 py-4 space-y-1.5">
+            <Label htmlFor="account-name">{t('settings.account.nameLabel')}</Label>
             <Input
               id="account-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('settings.account.namePlaceholder')}
+              className="border-stone-200 focus-visible:ring-stone-400"
             />
-            <Button disabled={isPending} onClick={handleSave}>
-              {t('common.save')}
-            </Button>
           </div>
+
+          {me?.provider && (
+            <div className="px-4 py-4 space-y-1">
+              <Label>{t('settings.account.social')}</Label>
+              <p className="text-sm capitalize text-stone-500">{me.provider}</p>
+            </div>
+          )}
         </div>
 
-        {me?.provider && (
-          <div className="space-y-1.5">
-            <Label>{t('settings.account.social')}</Label>
-            <p className="text-sm text-muted-foreground capitalize">{me.provider}</p>
-          </div>
-        )}
+        <Button
+          className="w-full h-11 rounded-xl bg-stone-900 hover:bg-stone-800 font-medium mt-2"
+          disabled={isPending}
+          onClick={handleSave}
+        >
+          {t('common.save')}
+        </Button>
+      </div>
 
-        <div className="pt-4">
-          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+      <div className="px-4 pt-10">
+        <div className="border-t border-stone-200 pt-4">
+          <button
+            className="w-full py-2.5 text-sm text-red-500 transition-colors hover:text-red-600"
+            onClick={handleLogout}
+          >
             {t('settings.account.logout')}
-          </Button>
+          </button>
         </div>
       </div>
-    </div>
+    </SettingsSubPageLayout>
   )
 }

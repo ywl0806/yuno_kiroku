@@ -17,6 +17,7 @@ from src.batch.face_recognition_batch import get_s3_client, logger, process_job
 
 SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL", "")
 AWS_REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
+SQS_ENDPOINT_URL = os.environ.get("SQS_ENDPOINT_URL", "")
 
 # SQS long-polling 대기 시간 (초, 최대 20)
 WAIT_TIME_SECONDS = 20
@@ -27,11 +28,14 @@ _running = True
 
 
 def get_sqs_client():
-    return boto3.client("sqs", region_name=AWS_REGION)
+    kwargs = {"region_name": AWS_REGION}
+    if SQS_ENDPOINT_URL:
+        kwargs["endpoint_url"] = SQS_ENDPOINT_URL
+    return boto3.client("sqs", **kwargs)
 
 
 def run_sqs_batch_loop():
-    logger.info("AI Batch Worker (production/SQS) 시작")
+    logger.info("AI Batch Worker 시작")
     sqs = get_sqs_client()
     s3_client = get_s3_client()
 
@@ -46,7 +50,7 @@ def run_sqs_batch_loop():
             messages = response.get("Messages", [])
             if not messages:
                 continue
-
+            logger.info(f"messages: {messages}")
             logger.info(f"SQS 메시지 수신: {len(messages)}개")
             for msg in messages:
                 if not _running:
@@ -57,22 +61,20 @@ def run_sqs_batch_loop():
                     job = json.loads(msg["Body"])
                 except json.JSONDecodeError as e:
                     logger.error(f"메시지 파싱 실패: {e} body={msg['Body']}")
-                    return False
                     continue
 
                 success = process_job(s3_client, job)
                 if not success:
-                    return False
+                    continue
 
                 # 성공 시 메시지 삭제
                 _delete_message(sqs, receipt_handle)
-                return True
 
         except Exception as e:
             logger.error(f"SQS 루프 에러: {e}")
-            return False
+            continue
 
-    logger.info("AI Batch Worker (production/SQS) 종료")
+    logger.info("AI Batch Worker 종료")
 
 
 def _delete_message(sqs, receipt_handle: str):

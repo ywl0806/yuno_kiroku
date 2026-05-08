@@ -3,74 +3,90 @@ import { SettingsGroupList } from '@/feature/settings/components/settings-group-
 import { SettingsKidsList } from '@/feature/settings/components/settings-kids-list'
 import { SettingsMemberList } from '@/feature/settings/components/settings-member-list'
 import { useGetSettingsData } from '@/feature/settings/hooks/use-get-settings-data'
-import { ChevronRight } from 'lucide-react'
+import { BookImage, ChevronRight, FolderKanban, Globe, Smile, User, Users } from 'lucide-react'
+import { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-const MenuSubTitle = ({ title }: { title: string }) => {
-  return (
-    <div className="flex items-center justify-between px-4 pb-3 pt-7 bg-background border-y border-gray-200">
-      <span className="text-[0.8rem] text-muted-foreground">{title}</span>
-    </div>
-  )
+interface MenuSectionProps {
+  title: string
+  icon: ComponentType<{ className?: string }>
+  iconColor: string
+  children: React.ReactNode
 }
 
+const MenuSection = ({ title, icon: Icon, iconColor, children }: MenuSectionProps) => (
+  <section className="px-4">
+    <div className="flex items-center gap-2 px-1 pb-2 pt-6">
+      <div className={`flex size-6 items-center justify-center rounded-lg ${iconColor}`}>
+        <Icon className="size-3.5" />
+      </div>
+      <span className="text-[0.7rem] font-semibold uppercase tracking-widest text-stone-400">{title}</span>
+    </div>
+    {children}
+  </section>
+)
+
+interface MenuLinkItemProps {
+  to: string
+  label: string
+}
+
+const MenuLinkItem = ({ to, label }: MenuLinkItemProps) => (
+  <Link
+    to={to}
+    className="group relative flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-stone-50 active:bg-stone-100"
+  >
+    <span className="text-sm font-medium text-stone-800">{label}</span>
+    <ChevronRight className="size-4 flex-shrink-0 text-stone-300 transition-transform group-hover:translate-x-0.5" />
+  </Link>
+)
 
 export const SettingsPage = () => {
   const { t } = useTranslation()
   const { data } = useGetSettingsData()
 
   return (
-    <div className="h-full">
-      <div className="max-w-[50rem] mx-auto h-full overflow-y-auto pb-[5rem] border">
-        <div className="flex items-center justify-center gap-2 px-4 py-2 border-b">
-          <span className="text-lg font-bold">{t('settings.title')}</span>
+    <div className="h-full bg-stone-50">
+      <div className="mx-auto h-full max-w-[50rem] overflow-y-auto pb-[5rem]">
+        {/* 헤더 */}
+        <div className="sticky top-0 z-10 bg-stone-50/80 px-5 pb-3 pt-5 backdrop-blur-sm">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">{t('settings.title')}</h1>
         </div>
-        {/* 메뉴 */}
-        <section>
-          <MenuSubTitle title={t('settings.app.title')} />
-          <Link to="/settings/app">
-            <div className="flex items-center justify-between px-4 py-3 hover:bg-accent bg-white ">
-              <span className="text-sm">{t('settings.app.language.title')}</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </div>
-          </Link>
-        </section>
 
-        <section>
-          <MenuSubTitle title={t('settings.account.title')} />
+        {/* 앱 설정 */}
+        <MenuSection title={t('settings.app.title')} icon={Globe} iconColor="bg-sky-100 text-sky-600">
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+            <MenuLinkItem to="/settings/app" label={t('settings.app.language.title')} />
+          </div>
+        </MenuSection>
 
-          <Link to="/settings/account">
-            <div className="flex items-center justify-between px-4 py-3 hover:bg-accent bg-white">
-              <span className="text-sm">{t('settings.account.account')}</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </div>
-          </Link>
-        </section>
+        {/* 계정 */}
+        <MenuSection title={t('settings.account.title')} icon={User} iconColor="bg-violet-100 text-violet-600">
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
+            <MenuLinkItem to="/settings/account" label={t('settings.account.account')} />
+          </div>
+        </MenuSection>
 
-        {/* 앨범 그룹 목록 */}
-        <section>
-          <MenuSubTitle title={t('settings.group.title')} />
+        {/* 앨범 그룹 */}
+        <MenuSection title={t('settings.group.title')} icon={FolderKanban} iconColor="bg-emerald-100 text-emerald-600">
           <SettingsGroupList groups={data?.groups} />
-        </section>
+        </MenuSection>
 
         {/* 가족 목록 */}
-        <section>
-          <MenuSubTitle title={t('settings.member.title')} />
+        <MenuSection title={t('settings.member.title')} icon={Users} iconColor="bg-rose-100 text-rose-500">
           <SettingsMemberList members={data?.members} />
-        </section>
+        </MenuSection>
 
         {/* 앨범 목록 */}
-        <section>
-          <MenuSubTitle title={t('settings.album.title')} />
+        <MenuSection title={t('settings.album.title')} icon={BookImage} iconColor="bg-indigo-100 text-indigo-600">
           <SettingsAlbumList albums={data?.albums} />
-        </section>
+        </MenuSection>
 
         {/* 아이 목록 */}
-        <section>
-          <MenuSubTitle title={t('settings.kid.title')} />
+        <MenuSection title={t('settings.kid.title')} icon={Smile} iconColor="bg-amber-100 text-amber-600">
           <SettingsKidsList kids={data?.kids} />
-        </section>
+        </MenuSection>
       </div>
     </div>
   )

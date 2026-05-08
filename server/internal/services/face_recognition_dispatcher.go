@@ -3,8 +3,13 @@ package services
 import (
 	"context"
 
-	"github.com/ywl0806/yuno_kiroku/internal/db"
-	"github.com/ywl0806/yuno_kiroku/internal/store"
+	"encoding/json"
+	"log"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/spf13/viper"
 )
 
 // FaceRecognitionDispatcher face_recognition_job을 생성하고 처리 트리거를 발행합니다.
@@ -12,26 +17,60 @@ type FaceRecognitionDispatcher interface {
 	Dispatch(ctx context.Context, params FaceRecognitionJobParams) error
 }
 
-// LocalFaceRecognitionDispatcher 로컬 개발용: job만 DB에 삽입 (Docker 컨테이너가 폴링)
-type LocalFaceRecognitionDispatcher struct {
-	jobStore store.FaceRecognitionJobStore
-}
-
-func NewLocalFaceRecognitionDispatcher(jobStore store.FaceRecognitionJobStore) *LocalFaceRecognitionDispatcher {
-	return &LocalFaceRecognitionDispatcher{jobStore: jobStore}
-}
-
 type FaceRecognitionJobParams struct {
-	MediaItemID    int32
-	FamilyID       int32
-	ViewStorageKey string
+	MediaItemID    int32  `json:"media_item_id"`
+	FamilyID       int32  `json:"family_id"`
+	ViewStorageKey string `json:"view_storage_key"`
 }
 
-func (d *LocalFaceRecognitionDispatcher) Dispatch(ctx context.Context, params FaceRecognitionJobParams) error {
-	_, err := d.jobStore.CreateFaceRecognitionJob(ctx, db.CreateFaceRecognitionJobParams{
-		MediaItemID:    params.MediaItemID,
-		FamilyID:       params.FamilyID,
-		ViewStorageKey: params.ViewStorageKey,
+// ECSFaceRecognitionDispatcher 프로덕션용: job 삽입 후 ECS task 트리거
+type SQSFaceRecognitionDispatcher struct {
+	sqsClient *sqs.Client
+	queueUrl  string
+}
+
+func NewSQSFaceRecognitionDispatcher(
+	sqsClient *sqs.Client,
+	queueUrl string,
+) *SQSFaceRecognitionDispatcher {
+	if sqsClient == nil {
+		cfg, err := config.LoadDefaultConfig(context.Background())
+		sqsEndpointURL := viper.GetString("SQS_ENDPOINT_URL")
+		if sqsEndpointURL != "" {
+			cfg.BaseEndpoint = aws.String(sqsEndpointURL)
+		}
+		if err != nil {
+			log.Fatalf("AWS 설정 로드 실패: %v", err)
+		}
+		sqsClient = sqs.NewFromConfig(cfg)
+	}
+
+	if queueUrl == "" {
+		queueUrl = viper.GetString("SQS_QUEUE_URL")
+	}
+
+	return &SQSFaceRecognitionDispatcher{
+		sqsClient: sqsClient,
+		queueUrl:  queueUrl,
+	}
+}
+
+func (d *SQSFaceRecognitionDispatcher) Dispatch(ctx context.Context, params FaceRecognitionJobParams) error {
+	body, err := json.Marshal(params)
+
+	log.Printf("body: %s", string(body))
+	if err != nil {
+		log.Printf("JSON Marshal 실패: %v", err)
+		return err
+	}
+	_, err = d.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
+		QueueUrl:    aws.String(d.queueUrl),
+		MessageBody: aws.String(string(body)),
 	})
-	return err
+	if err != nil {
+		log.Printf("SQS SendMessage 실패: %v", err)
+		return err
+	}
+
+	return nil
 }

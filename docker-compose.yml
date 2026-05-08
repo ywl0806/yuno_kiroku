@@ -35,17 +35,27 @@ services:
 
   ai-batch:
     build:
-      context: ai
-      dockerfile: ../docker/local/ai/Dockerfile
-    command: [ "python", "-m", "src.batch.face_recognition_batch" ]
+      context: .
+      dockerfile: docker/local/ai/Dockerfile
+    command: [ "python", "-m", "src.batch.sqs" ]
     volumes:
-      - ./ai:/app
+      - ./ai/src:/app/src
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
       STORAGE_TYPE: minio
+      S3_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: password
+      MEDIA_BUCKET_NAME: my-bucket
       AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      SQS_QUEUE_URL: http://queue:9324/000000000000/face-recognition
+      SQS_ENDPOINT_URL: http://queue:9324
     depends_on:
       - postgres
+      - minio
+      - queue
     networks:
       - app-net
   postgres:
@@ -85,11 +95,11 @@ services:
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: dummy
       AWS_SECRET_ACCESS_KEY: dummy
       SQS_QUEUE_URL: http://queue:9324/000000000000/face-recognition
+      SQS_ENDPOINT_URL: http://queue:9324
       PORT: "1325"
     volumes:
       - ./server:/app

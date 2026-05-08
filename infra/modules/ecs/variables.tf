@@ -33,7 +33,14 @@ variable "vpc_id" {
   description = "ECS Task가 실행될 VPC ID"
 }
 
-variable "face_recognition_queue_url" {
-  type        = string
-  description = "Face Recognition Queue URL"
+variable "subnet_ids" {
+  type        = list(string)
+  description = "ECS Task가 실행될 서브넷 ID 목록"
+}
+
+variable "app_env_vars" {
+  type        = map(string)
+  description = "컨테이너 환경변수 (Lambda/ECS 공통)"
+  sensitive   = true
+  default     = {}
 }

@@ -68,18 +68,13 @@ func (s *UserService) FindUserByProvider(ctx context.Context, provider, provider
 	return s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 }
 
-// FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. familyID/groupID로 가입할 가족·그룹을 지정한다 (미지정 시 1,1).
+// FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. familyID/groupID로 가입할 가족·그룹을 지정한다
 func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
 	user, err := s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 	if err == nil && user.ID != 0 {
 		return user, nil
 	}
-	if familyID == 0 {
-		familyID = 1
-	}
-	if groupID == 0 {
-		groupID = 1
-	}
+
 	username := provider + "_" + providerUserID
 	params := db.CreateUserOAuthParams{
 		Name:              sql.NullString{String: displayName, Valid: displayName != ""},

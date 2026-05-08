@@ -17,7 +17,7 @@ import (
 	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 )
 
-// InitLocal 로컬 개발용 — resize + face-recognition 라우트를 하나의 Echo에 등록
+// InitLocal 로컬 개발용 — resize 라우트를 Echo에 등록
 func InitLocal(e *echo.Echo) {
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
@@ -30,22 +30,11 @@ func InitLocal(e *echo.Echo) {
 	faceDispatcher := services.NewSQSFaceRecognitionDispatcher(nil, "")
 
 	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
-	faceRecognitionService := workerServices.NewFaceRecognitionService(
-		st,
-		st.FaceRecognitionJob,
-		st.MediaItem,
-		st.Face,
-		st.Identity,
-		st.IdentityFaceImg,
-		imageUploader,
-	)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	e.POST("/resize", handlers.NewResizeHandler(resizeService).HandleMinioEvent)
-	e.POST("/face-recognition/complete", handlers.NewFaceRecognitionHandler(faceRecognitionService).Complete)
-	e.POST("/face-recognition/fail", handlers.NewFaceRecognitionHandler(faceRecognitionService).Fail)
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(200, "OK")
 	})

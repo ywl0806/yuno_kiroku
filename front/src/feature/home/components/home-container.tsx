@@ -1,3 +1,4 @@
+import { useScrollHide } from '@/hooks/use-scroll-hide'
 import { HomeHeader } from '@/feature/home/components/home-header'
 import { PhotoSwiper } from '@/feature/home/components/photo-swiper'
 import { MediaItemRange } from '@/types'
@@ -8,20 +9,25 @@ type Props = {
   range: MediaItemRange[]
   date: string
 }
+
 export const HomeContainer: FC<Props> = ({ date, range }) => {
   const nav = useNavigate()
+  const { hidden, handleScroll, reset } = useScrollHide()
 
   useEffect(() => {
+    reset()
     if (!range || date) return
 
     if (range.length > 0) {
       nav(`/${range[0].year}-${range[0].month}`)
     }
+
   }, [date, range])
+
   return (
     <div className="flex h-full flex-col">
-      <HomeHeader date={date ?? ''} range={range} />
-      <PhotoSwiper date={date ?? ''} range={range} />
+      <HomeHeader date={date ?? ''} range={range} hidden={hidden} />
+      <PhotoSwiper date={date ?? ''} range={range} onScroll={handleScroll} />
     </div>
   )
 }

@@ -25,3 +25,7 @@ output "lambda_zip_bucket_name" {
 output "media_bucket_arn" {
     value = aws_s3_bucket.media.arn
 }
+
+output "media_bucket_name" {
+    value = aws_s3_bucket.media.id
+}

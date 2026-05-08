@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS face_recognition_jobs;
 DROP TABLE IF EXISTS face_detections;
 DROP TABLE IF EXISTS identity_face_imgs;
 DROP TABLE IF EXISTS identities;

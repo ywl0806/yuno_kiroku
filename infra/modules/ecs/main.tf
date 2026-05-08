@@ -53,12 +53,7 @@ resource "aws_ecs_task_definition" "ai" {
       image     = var.ai_image_uri
       essential = true
 
-      environment = [
-        {
-          name  = "SQS_QUEUE_URL"
-          value = var.face_recognition_queue_url
-        }
-      ]
+      environment = [for k, v in var.app_env_vars : { name = k, value = v }]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -74,41 +69,86 @@ resource "aws_ecs_task_definition" "ai" {
 }
 
 # ── Security Group (ECS AI Task) ─────────────────────────────
-# Phase 1: VPC 없음 구조에서 default VPC 사용, assignPublicIp=ENABLED
 
 resource "aws_security_group" "ecs_ai" {
   name        = "yuno-ecs-ai-${var.env}"
   description = "ECS AI Task security group"
   vpc_id      = var.vpc_id
 
-  # Supabase DB, S3, ECR, Resize Lambda Function URL 접근
+  # ECR 이미지 pull, S3, SQS, CloudWatch Logs 등 AWS 서비스
   egress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS outbound (Supabase, S3, ECR, Lambda Function URL)"
+    description = "HTTPS"
+  }
+
+  # DB접근
+  egress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "PostgreSQL (Supabase direct)"
+  }
+  egress {
+    from_port   = 6543
+    to_port     = 6543
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "PostgreSQL (Supabase connection pooler)"
   }
 
   tags = merge(var.common_tags, { Name = "yuno-ecs-ai-${var.env}" })
 }
 
+# ── ECS Service ──────────────────────────────────────────────
+
+resource "aws_ecs_service" "ai" {
+  name            = "yuno-ai-service-${var.env}"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.ai.arn
+  desired_count   = 0
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+    base              = 0
+  }
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = [aws_security_group.ecs_ai.id]
+    assign_public_ip = true
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
+  tags = var.common_tags
+}
+
 # ── App Auto Scaling ───────────────────────────────────────
 
 resource "aws_appautoscaling_target" "ai_task" {
-  resource_id = aws_ecs_cluster.main.id
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.ai.name}"
   scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace = "ecs"
-  min_capacity = 1
-  max_capacity = 10
+  service_namespace  = "ecs"
+  min_capacity       = 0
+  max_capacity       = 10
 }
+
+# ── App Auto Scaling Policies ─────────────────────────────
+# CloudWatch 알람은 modules/cloudwatch에서 관리
 
 resource "aws_appautoscaling_policy" "ai_task" {
   name = "yuno-ai-task-scale-out-${var.env}"
   policy_type = "StepScaling"
   resource_id = aws_appautoscaling_target.ai_task.resource_id
   scalable_dimension = aws_appautoscaling_target.ai_task.scalable_dimension
-  service_namespace = aws_appautoscaling_target.ai_task.service_namespace
+  service_namespace  = "ecs"
 
   step_scaling_policy_configuration {
     # 정확한 태스크 수를 기준으로 스케일 아웃
@@ -118,15 +158,20 @@ resource "aws_appautoscaling_policy" "ai_task" {
     metric_aggregation_type = "Maximum"
 
     step_adjustment {
-      scaling_adjustment = 1
+      scaling_adjustment          = 1
       metric_interval_lower_bound = 1
       metric_interval_upper_bound = 20
     }
 
     step_adjustment {
-      scaling_adjustment = 2
+      scaling_adjustment          = 2
       metric_interval_lower_bound = 20
       metric_interval_upper_bound = 40
+    }
+
+    step_adjustment {
+      scaling_adjustment          = 3
+      metric_interval_lower_bound = 40
     }
   }
 }
@@ -136,7 +181,7 @@ resource "aws_appautoscaling_policy" "ai_task_scale_in" {
   policy_type = "StepScaling"
   resource_id = aws_appautoscaling_target.ai_task.resource_id
   scalable_dimension = aws_appautoscaling_target.ai_task.scalable_dimension
-  service_namespace = aws_appautoscaling_target.ai_task.service_namespace
+  service_namespace  = "ecs"
 
   step_scaling_policy_configuration {
     adjustment_type = "ExactCapacity"

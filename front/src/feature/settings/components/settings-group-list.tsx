@@ -1,5 +1,4 @@
 import { Group } from '@/types'
-import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SettingsList, SettingsListAddButton, SettingsListItem } from './settings-list'
 
@@ -14,8 +13,7 @@ export const SettingsGroupList = ({ groups }: Props) => {
     <SettingsList>
       {groups?.map((group) => (
         <SettingsListItem key={group.id} to={`/settings/family/${group.id}/edit`}>
-          <span className="text-sm">{group.name}</span>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          {group.name}
         </SettingsListItem>
       ))}
       <SettingsListAddButton to="/settings/family/new" label={t('settings.group.add')} />
