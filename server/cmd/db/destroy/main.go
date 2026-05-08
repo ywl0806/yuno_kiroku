@@ -26,7 +26,7 @@ func main() {
 	defer db.Close()
 
 	log.Println("스키마 삭제중...")
-	_, err = db.Exec("DROP SCHEMA public CASCADE;")
+	_, err = db.Exec("DROP SCHEMA IF EXISTS public CASCADE;")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -54,12 +54,12 @@ func Init(e *echo.Echo) {
 		&oauth.LineConfig{
 			ChannelID:     viper.GetString("LINE_CHANNEL_ID"),
 			ChannelSecret: viper.GetString("LINE_CHANNEL_SECRET"),
-			CallbackURL:   viper.GetString("LINE_CALLBACK_URL"),
+			CallbackURL:   viper.GetString("API_URL") + "/api/auth/line/callback",
 		},
 		&oauth.KakaoConfig{
 			ClientID:     viper.GetString("KAKAO_CLIENT_ID"),
 			ClientSecret: viper.GetString("KAKAO_CLIENT_SECRET"),
-			RedirectURI:  viper.GetString("KAKAO_REDIRECT_URI"),
+			RedirectURI:  viper.GetString("API_URL") + "/api/auth/kakao/callback",
 		},
 	)
 	imageUploader := services.NewImageUploader(storageService)

@@ -1,21 +1,17 @@
 """
-얼굴 인식 배치 워커
+얼굴 인식 배치 공통 코어
 
-face_recognition_jobs 테이블을 폴링하여 detect_face()를 실행하고
-결과를 resize-worker API로 전달합니다.
-비즈니스 로직(identity 매칭, 크롭, DB 저장)은 resize-worker가 담당합니다.
+S3 클라이언트, 이미지 다운로드, ML 추론 후 Go 바이너리 실행을 담당합니다.
+job을 가져오는 방식(SQS)은 각 진입점(sqs.py)에서 처리합니다.
 """
 
+import json
 import logging
 import os
-import signal
+import subprocess
 import tempfile
-import time
 
 import boto3
-import psycopg2
-import psycopg2.extras
-import requests
 from botocore.config import Config
 
 from src.service.face import detect_face
@@ -23,25 +19,13 @@ from src.service.face import detect_face
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-# 환경변수
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-STORAGE_TYPE = os.environ.get("STORAGE_TYPE", "minio")
+STORAGE_TYPE = os.environ.get("STORAGE_TYPE", "s3")
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://minio:9000")
-STORAGE_BUCKET = os.environ.get("STORAGE_BUCKET", "my-bucket")
+MEDIA_BUCKET_NAME = os.environ.get("MEDIA_BUCKET_NAME", "my-bucket")
 MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER", "root")
 MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD", "password")
-AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-RESIZE_WORKER_URL = os.environ.get("RESIZE_WORKER_URL", "http://resize-worker:1325")
-
-POLL_INTERVAL = 5
-BATCH_SIZE = 10
-IDLE_EXIT_SECONDS = 60
-
-_running = True
-
-
-def get_db_conn():
-    return psycopg2.connect(DATABASE_URL)
+AWS_REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
+FACE_RECOGNITION_WORKER = os.environ.get("FACE_RECOGNITION_WORKER", "/app/face-recognition-worker")
 
 
 def get_s3_client():
@@ -58,127 +42,51 @@ def get_s3_client():
 
 
 def download_image(s3_client, key: str) -> str:
-    """S3에서 이미지를 임시 파일로 다운로드하고 경로 반환"""
     ext = key.rsplit(".", 1)[-1] if "." in key else "jpg"
     tmp = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
-    s3_client.download_fileobj(STORAGE_BUCKET, key, tmp)
+    s3_client.download_fileobj(MEDIA_BUCKET_NAME, key, tmp)
     tmp.close()
     return tmp.name
 
 
-def fetch_pending_jobs(conn, limit: int) -> list:
-    """pending job을 원자적으로 fetch (FOR UPDATE SKIP LOCKED)"""
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute(
-            """
-            UPDATE face_recognition_jobs
-            SET status = '02',
-                attempt_count = attempt_count + 1,
-                updated_at = NOW()
-            WHERE id IN (
-                SELECT id FROM face_recognition_jobs
-                WHERE status = '01'
-                ORDER BY created_at ASC
-                LIMIT %s
-                FOR UPDATE SKIP LOCKED
-            )
-            RETURNING *
-            """,
-            (limit,),
-        )
-        jobs = cur.fetchall()
-    conn.commit()
-    return [dict(j) for j in jobs]
-
-
-def process_job(s3_client, job: dict):
-    """단일 face_recognition_job 처리: ML 추론 후 resize-worker에 결과 전달"""
-    job_id = job["id"]
+def process_job(s3_client, job: dict) -> bool:
+    """ML 추론 후 Go 바이너리로 identity 매칭·크롭·저장 처리. 성공 시 True 반환."""
     view_key = job["view_storage_key"]
+    media_item_id = job["media_item_id"]
+    family_id = job["family_id"]
 
-    logger.info(f"job={job_id} 처리 시작 (view_key={view_key})")
+    logger.info(f"media_item={media_item_id} 처리 시작 (view_key={view_key})")
 
     tmp_path = None
     try:
-        # 1. view 이미지 다운로드
         tmp_path = download_image(s3_client, view_key)
 
-        # 2. 얼굴 감지 + 임베딩 계산 (ML 추론만)
         result = detect_face(tmp_path)
         faces = result.get("faces", [])
-        logger.info(f"job={job_id} 감지된 얼굴 수: {len(faces)}")
+        logger.info(f"media_item={media_item_id} 감지된 얼굴 수: {len(faces)}")
 
-        # 3. resize-worker에 결과 전달 (비즈니스 로직은 Go가 처리)
-        resp = requests.post(
-            f"{RESIZE_WORKER_URL}/face-recognition/complete",
-            json={"job_id": job_id, "faces": faces},
-            timeout=30,
+        payload = json.dumps({
+            "media_item_id": media_item_id,
+            "family_id": family_id,
+            "view_image_path": tmp_path,
+            "faces": faces,
+        }).encode()
+
+        proc = subprocess.run(
+            [FACE_RECOGNITION_WORKER],
+            input=payload,
+            capture_output=True,
         )
-        resp.raise_for_status()
-        logger.info(f"job={job_id} 처리 완료")
+        if proc.returncode != 0:
+            logger.error(f"media_item={media_item_id} face-recognition-worker 실패: {proc.stderr.decode()}")
+            return False
+
+        logger.info(f"media_item={media_item_id} 처리 완료")
+        return True
 
     except Exception as e:
-        logger.error(f"job={job_id} 처리 실패: {e}")
-        try:
-            requests.post(
-                f"{RESIZE_WORKER_URL}/face-recognition/fail",
-                json={"job_id": job_id, "error": str(e)},
-                timeout=10,
-            )
-        except Exception as fail_e:
-            logger.error(f"job={job_id} fail 상태 업데이트 실패: {fail_e}")
+        logger.error(f"media_item={media_item_id} 처리 실패: {e}")
+        return False
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
-
-
-def run_batch_loop():
-    logger.info("AI Batch Worker 시작")
-    conn = get_db_conn()
-    s3_client = get_s3_client()
-    idle_start: float | None = None
-
-    while _running:
-        try:
-            jobs = fetch_pending_jobs(conn, BATCH_SIZE)
-            if jobs:
-                idle_start = None
-                logger.info(f"처리할 job: {len(jobs)}개")
-                for job in jobs:
-                    if not _running:
-                        break
-                    process_job(s3_client, job)
-            else:
-                now = time.monotonic()
-                if idle_start is None:
-                    idle_start = now
-                elif now - idle_start >= IDLE_EXIT_SECONDS:
-                    logger.info(f"{IDLE_EXIT_SECONDS}초 동안 pending job 없음 - 종료")
-                    break
-                time.sleep(POLL_INTERVAL)
-        except psycopg2.OperationalError:
-            logger.warning("DB 연결 재시도...")
-            try:
-                conn.close()
-            except Exception:
-                pass
-            time.sleep(5)
-            conn = get_db_conn()
-        except Exception as e:
-            logger.error(f"배치 루프 에러: {e}")
-            time.sleep(POLL_INTERVAL)
-
-    logger.info("AI Batch Worker 종료")
-    conn.close()
-
-
-def _handle_sigterm(sig, frame):
-    global _running
-    logger.info("SIGTERM 수신 - 현재 job 완료 후 종료")
-    _running = False
-
-
-if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, _handle_sigterm)
-    signal.signal(signal.SIGINT, _handle_sigterm)
-    run_batch_loop()

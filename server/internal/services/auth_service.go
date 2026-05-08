@@ -127,6 +127,7 @@ func (s *AuthService) ProcessLineCallback(ctx context.Context, code, state strin
 	}
 	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
+		log.Println("ResolveInviteState LINE error:", err)
 		return nil, err
 	}
 
@@ -187,10 +188,10 @@ func (s *AuthService) IssueOAuthAccessToken(user *db.User) (string, error) {
 
 func (s *AuthService) issueAccessToken(user db.User) (string, error) {
 	claims := &jwt.AccessTokenClaims{
-		ID:        cast.ToString(user.ID),
-		Email:     user.Username,
-		FamilyId:  cast.ToString(user.FamilyID),
-		GroupId:   cast.ToString(user.GroupID),
+		ID:       cast.ToString(user.ID),
+		Email:    user.Username,
+		FamilyId: cast.ToString(user.FamilyID),
+		GroupId:  cast.ToString(user.GroupID),
 	}
 	return jwt.GenerateJWT(claims, s.authSecretKey, consts.AccessTokenCookieMaxAge)
 }

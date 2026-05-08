@@ -12,7 +12,6 @@ type MediaItemStore interface {
 	CreateMediaFile(ctx context.Context, arg db.CreateMediaFileParams) (db.MediaFile, error)
 	GetMediaItemByFaceDetection(ctx context.Context, arg db.GetMediaItemByFaceDetectionParams) (db.MediaItem, error)
 	GetMediaItemByID(ctx context.Context, id int32) (db.MediaItem, error)
-	GetMediaItemIDByStorageKey(ctx context.Context, storageKey string) (int32, error)
 	UpdateMediaItemTakenAt(ctx context.Context, arg db.UpdateMediaItemTakenAtParams) error
 	GetMediaItemsByTakenAt(ctx context.Context, arg db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error)
 	GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error)
@@ -72,10 +71,6 @@ func (s *mediaItemStore) SearchMediaItems(ctx context.Context, arg db.SearchMedi
 
 func (s *mediaItemStore) GetMediaItemByID(ctx context.Context, id int32) (db.MediaItem, error) {
 	return wrapErr(s.queries.GetMediaItemByID(ctx, id))
-}
-
-func (s *mediaItemStore) GetMediaItemIDByStorageKey(ctx context.Context, storageKey string) (int32, error) {
-	return s.queries.GetMediaItemIDByStorageKey(ctx, storageKey)
 }
 
 func (s *mediaItemStore) UpdateMediaItemTakenAt(ctx context.Context, arg db.UpdateMediaItemTakenAtParams) error {

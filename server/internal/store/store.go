@@ -29,7 +29,6 @@ type Store struct {
 	InviteToken          InviteTokenStore
 	Kid                  KidStore
 	IdentityFaceImg      IdentityFaceImgStore
-	FaceRecognitionJob   FaceRecognitionJobStore
 	Like                 LikeStore
 	Tag                  TagStore
 }
@@ -51,7 +50,6 @@ func New(sqlDB *sql.DB, queries *db.Queries) *Store {
 		InviteToken:          NewInviteTokenStore(queries),
 		Kid:                  NewKidStore(queries),
 		IdentityFaceImg:      NewIdentityFaceImgStore(queries),
-		FaceRecognitionJob:   NewFaceRecognitionJobStore(queries),
 		Like:                 NewLikeStore(queries),
 		Tag:                  NewTagStore(queries),
 	}
@@ -97,13 +95,15 @@ func (s *Store) Transact(ctx context.Context, fn func(tx *Store) error) error {
 // TransactWithAdvisoryLock 트랜잭션 범위 내에서 advisory lock을 획득한 후 fn을 실행한다.
 func (s *Store) TransactWithAdvisoryLock(ctx context.Context, key int64, fn func(tx *Store) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
-	// advisory lock 획득
-	err = AcquireAdvisoryXactLock(ctx, key, tx)
-	defer ReleaseAdvisoryXactLock(ctx, key, tx) // advisory lock 해제
-
 	if err != nil {
 		return err
 	}
+	// advisory lock 획득
+	if err = AcquireAdvisoryXactLock(ctx, key, tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer ReleaseAdvisoryXactLock(ctx, key, tx) // advisory lock 해제
 
 	// panic 발생 시 롤백한 뒤 패닉을 다시 던짐
 	defer func() {

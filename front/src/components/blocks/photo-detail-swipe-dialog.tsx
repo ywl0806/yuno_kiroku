@@ -7,6 +7,7 @@ import { MediaItem } from '@/types'
 import { Heart, X } from 'lucide-react'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { LazyLoadImage } from 'react-lazy-load-image-component'
+import { Zoom } from 'swiper/modules'
 import { Swiper, SwiperClass, SwiperSlide } from 'swiper/react'
 
 type Props = {
@@ -66,8 +67,10 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           <Heart className={`size-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
         </button>
 
-        <div className="h-full w-full">
+        <div className="h-full w-full overflow-y-auto">
           <Swiper
+            modules={[Zoom]}
+            zoom={{ maxRatio: 4 }}
             slidesPerView={1}
             className="h-full w-full"
             wrapperClass="h-full w-full"
@@ -79,7 +82,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           >
             {photos.map((photo) => (
               <SwiperSlide key={photo.id}>
-                <div className="relative h-full w-full flex items-center justify-center">
+                <div className="swiper-zoom-container relative h-full w-full flex items-center justify-center">
                   {photo.live_url ? (
                     <LivePhoto photo={photo} />
                   ) : (
@@ -96,9 +99,9 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           </Swiper>
         </div>
 
-        {/* 태그 버튼 (하단 좌측) */}
+        {/* 태그 버튼 (상단 좌측) */}
         {currentMediaItemId && (
-          <div className="absolute bottom-6 left-4 z-50">
+          <div className="absolute top-6 left-4 z-50">
             <TagSelector mediaItemId={currentMediaItemId} />
           </div>
         )}

@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
+	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
-	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 
 	_ "github.com/go-playground/validator/v10"
@@ -20,7 +21,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(authService *services.AuthService) *AuthHandler {
-	frontURL := viper.GetString("FRONT_URL")
+	frontURL := viper.GetString("APP_URL")
 	if frontURL == "" {
 		frontURL = "http://localhost:5173"
 	}
@@ -80,10 +81,10 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, LoginResponse{
 		User: models.LoginUserResponse{
-			ID:          result.User.ID,
-			Username:    result.User.Username,
-			FamilyID:    result.User.FamilyID,
-			GroupID:     result.User.GroupID,
+			ID:       result.User.ID,
+			Username: result.User.Username,
+			FamilyID: result.User.FamilyID,
+			GroupID:  result.User.GroupID,
 		},
 		Token: result.AccessToken,
 	})
@@ -101,7 +102,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Router /auth/line [get]
 func (h *AuthHandler) LineLoginRedirect(c echo.Context) error {
 	state := c.QueryParam("invite_token")
-	if state != "" {
+	if state == "" {
 		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
 	}
 	url, configured := h.authService.GetLineAuthURL(state)
@@ -128,11 +129,12 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=missing_code")
 	}
 	state := c.QueryParam("state")
-	if state != "" {
+	if state == "" {
 		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
 	}
 	user, err := h.authService.ProcessLineCallback(c.Request().Context(), code, state)
 	if err != nil {
+		log.Println("LineCallback error:", err)
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=line_token")
 	}
 
@@ -156,7 +158,7 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 func (h *AuthHandler) KakaoLoginRedirect(c echo.Context) error {
 	state := c.QueryParam("invite_token")
 
-	if state != "" {
+	if state == "" {
 		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
 	}
 	url, configured := h.authService.GetKakaoAuthURL(state)
@@ -183,7 +185,7 @@ func (h *AuthHandler) KakaoCallback(c echo.Context) error {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=missing_code")
 	}
 	state := c.QueryParam("state")
-	if state != "" {
+	if state == "" {
 		return apperr.NewBadRequestError("message.domain.login-invited-user-only", nil)
 	}
 	user, err := h.authService.ProcessKakaoCallback(c.Request().Context(), code, state)

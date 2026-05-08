@@ -26,6 +26,11 @@ type S3StorageService struct {
 func NewS3StorageService(bucketName string) *S3StorageService {
 
 	storageType := viper.GetString("STORAGE_TYPE")
+
+	if storageType == "" {
+		storageType = "s3"
+	}
+
 	var client *s3.Client
 	var presignClient *s3.PresignClient
 

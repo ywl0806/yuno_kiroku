@@ -10,6 +10,7 @@ type Props = {
   year: number
   month: number
   date: string
+  onScroll: (scrollTop: number) => void
 }
 
 type OpenMediaItemState = {
@@ -18,7 +19,7 @@ type OpenMediaItemState = {
   month: number
 }
 
-export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
+export const PhotoGridContainer: FC<Props> = ({ year, month, date, onScroll }) => {
   const { data: photos, refetch, isFetched } = useGetMediaItems({
     year,
     month,
@@ -65,7 +66,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date }) => {
   }, [photos])
 
   return (
-    <div className="scroll-container h-full w-full overflow-y-auto">
+    <div className="scroll-container h-full w-full overflow-y-auto" onScroll={(e) => onScroll(e.currentTarget.scrollTop)}>
       {photos && photos.length > 0 && (
         <MonthHeroSection year={year} month={month} allPhotos={photos} />
       )}

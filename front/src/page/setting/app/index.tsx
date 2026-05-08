@@ -1,6 +1,6 @@
-import { ChevronLeft } from 'lucide-react'
+import { SettingsSubPageLayout } from '@/feature/settings/components/settings-sub-page-layout'
+import { Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 
 const LANGUAGES = [
   { code: 'kr', label: '한국어', key: 'settings.app.language.korean' },
@@ -9,8 +9,6 @@ const LANGUAGES = [
 
 export const SettingsAppPage = () => {
   const { t, i18n } = useTranslation()
-  const navigate = useNavigate()
-
   const currentLang = i18n.language
 
   const handleChange = (code: string) => {
@@ -18,28 +16,26 @@ export const SettingsAppPage = () => {
   }
 
   return (
-    <div className="mx-auto h-full max-w-[50rem] pt-4">
-      <div className="flex items-center gap-2 px-4 py-2">
-        <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="size-5" />
-        </button>
-        <span className="text-sm font-medium">{t('settings.app.title')}</span>
+    <SettingsSubPageLayout title={t('settings.app.title')}>
+      <div className="px-4 pt-3">
+        <p className="mb-2 px-1 text-[0.7rem] font-semibold uppercase tracking-widest text-stone-400">
+          {t('settings.app.language.title')}
+        </p>
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04] divide-y divide-stone-100">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => handleChange(lang.code)}
+              className="flex w-full items-center justify-between px-4 py-3.5 text-sm transition-colors hover:bg-stone-50 active:bg-stone-100"
+            >
+              <span className={currentLang === lang.code ? 'font-medium text-stone-900' : 'text-stone-700'}>
+                {t(lang.key)}
+              </span>
+              {currentLang === lang.code && <Check className="size-4 text-amber-500" strokeWidth={2.5} />}
+            </button>
+          ))}
+        </div>
       </div>
-
-      <div className="space-y-1 px-4 pt-6">
-        <p className="mb-2 text-sm font-medium">{t('settings.app.language.title')}</p>
-        {LANGUAGES.map((lang) => (
-          <button
-            key={lang.code}
-            onClick={() => handleChange(lang.code)}
-            className={`flex w-full items-center justify-between rounded-md px-3 py-3 text-sm transition-colors ${currentLang === lang.code ? 'bg-accent font-medium' : 'hover:bg-accent/50'
-              }`}
-          >
-            <span>{t(lang.key)}</span>
-            {currentLang === lang.code && <span className="text-primary">✓</span>}
-          </button>
-        ))}
-      </div>
-    </div>
+    </SettingsSubPageLayout>
   )
 }

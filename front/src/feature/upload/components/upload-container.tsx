@@ -1,88 +1,136 @@
 import { PreviewImageInput } from '@/components/blocks/preview-image-input'
 import { Button } from '@/components/ui/button'
-import { useGetAlbums } from '@/feature/upload/hooks/use-get-albums'
-import { getSessionStorage, removeSessionStorage, SESSION_STORAGE_KEY, setSessionStorage } from '@/lib/session-storage'
+import { UPLOAD_STATUS } from '@/enums'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
-import { Album, ArrowLeft, Upload } from 'lucide-react'
-import { FC, useMemo, useRef, useState } from 'react'
+import { UploadMediaItem } from '@/types'
+import { Album, ArrowLeft, ChevronDown, ImagePlus, Upload } from 'lucide-react'
+import { FC, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 
 export const UploadContainer: FC = () => {
   const { t } = useTranslation()
-  const { data: albums } = useGetAlbums()
-  const [albumId, setAlbumId] = useState<number | null>(
-    getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
-      ? Number(getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID))
-      : null,
-  )
-  const selectedAlbum = useMemo(() => {
-    if (albumId === null) {
-      return null
-    }
-    return albums?.find((album) => album.id === albumId)
-  }, [albums, albumId])
-
-  const { mediaItems, setMediaItems, handleUploadPhotos, clearPhotos, isUploaded } = useUploadPhoto()
+  const navigate = useNavigate()
+  const {
+    mediaItems,
+    setMediaItems,
+    handleUploadPhotos,
+    clearPhotos,
+    isUploaded,
+    isUploading,
+    progress,
+    selectedAlbumId,
+    selectedAlbumName,
+    openAlbumSheet,
+  } = useUploadPhoto()
   const imgInputRef = useRef<HTMLInputElement>(null)
 
-  const handleChangeAlbum = (albumId: number) => {
-    setAlbumId(albumId)
-    setSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID, albumId.toString())
+  const handleBack = () => {
+    clearPhotos()
+    navigate(-1)
   }
 
-  const handleClearPhotos = () => {
-    clearPhotos()
-    setAlbumId(null)
-    removeSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    setMediaItems((prev: UploadMediaItem[]) => [
+      ...prev,
+      ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.PENDING })),
+    ])
   }
+
+  const isEmpty = mediaItems.length === 0
+  const inProgressCount = mediaItems.filter(
+    (m) => m.status === UPLOAD_STATUS.PENDING || m.status === UPLOAD_STATUS.PROCESSING,
+  ).length
+
   return (
-    <div className="h-full w-full px-5 pt-5">
-      {albumId === null && (
-        <div className="mx-auto flex h-full max-w-[20rem] select-none flex-col justify-center gap-5">
-          {albums?.map((album) => (
-            <Button
-              key={album.id}
-              variant="outline"
-              className="h-12 justify-start text-[1rem]"
-              onClick={() => handleChangeAlbum(album.id)}
-            >
-              <Album />
-              {album.name}
+    <div className="flex h-full w-full flex-col">
+      {/* 헤더 */}
+      <div className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 shrink-0">
+        {/* 뒤로가기 */}
+        <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1 px-2">
+          <ArrowLeft className="size-4" />
+          <span className="text-sm">{t('upload.back')}</span>
+        </Button>
+
+        {/* 앨범 선택/변경 버튼 */}
+        <button
+          type="button"
+          onClick={openAlbumSheet}
+          disabled={isUploaded}
+          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Album className="size-3.5 shrink-0" />
+          <span className="max-w-[140px] truncate">
+            {selectedAlbumName ?? t('upload.selectAlbum')}
+          </span>
+          {!isUploaded && <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />}
+        </button>
+
+        {/* 업로드 버튼 */}
+        <div className="flex justify-end" style={{ minWidth: '80px' }}>
+          {!isUploaded && mediaItems.length > 0 && selectedAlbumId !== null && (
+            <Button size="sm" onClick={() => handleUploadPhotos(selectedAlbumId)} className="gap-1.5">
+              <Upload className="size-3.5" />
+              <span>{t('upload.upload')}</span>
             </Button>
-          ))}
+          )}
+        </div>
+      </div>
+
+      {/* 업로드 중 진행 요약 */}
+      {isUploading && progress < 100 && (
+        <div className="flex items-center gap-2 bg-primary/5 px-4 py-2 text-xs text-primary shrink-0">
+          <span className="animate-pulse">●</span>
+          <span>
+            {t('upload.progress.uploading')} {inProgressCount} / {mediaItems.length}
+          </span>
         </div>
       )}
-      {selectedAlbum && (
-        <div className="h-full w-full overflow-y-auto">
-          <div className="flex w-full items-center justify-between ">
-            <div className="flex-1">
-              <Button variant="outline" size="sm" onClick={handleClearPhotos}>
-                <ArrowLeft />
-                <span>{t('upload.back')}</span>
-              </Button>
-            </div>
-            <div className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap text-sm">
-              <Album className="size-4" />
-              {selectedAlbum.name}
-            </div>
-            <div className="flex-1" />
-          </div>
+
+      {/* 본문 */}
+      {selectedAlbumId === null ? (
+        /* 앨범 미선택 상태 */
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          <Album className="size-12 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">{t('upload.selectAlbumHint')}</p>
+          <Button variant="outline" onClick={openAlbumSheet}>
+            {t('upload.selectAlbum')}
+          </Button>
+        </div>
+      ) : isEmpty ? (
+        /* 이미지 미선택 상태 */
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          <ImagePlus className="size-12 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">{t('upload.noImages')}</p>
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => imgInputRef.current?.click()}
+          >
+            <ImagePlus className="size-4" />
+            <span>{t('upload.addImage')}</span>
+          </Button>
+          <input
+            ref={imgInputRef}
+            hidden
+            type="file"
+            accept="image/*"
+            name="images"
+            multiple
+            onChange={handleAddImages}
+          />
+        </div>
+      ) : (
+        /* 이미지 선택 후 */
+        <div className="flex-1 overflow-y-auto">
           <PreviewImageInput
             inputRef={imgInputRef}
             images={mediaItems}
             setImages={setMediaItems}
-            albumId={selectedAlbum.id}
+            albumId={selectedAlbumId}
           />
-          <div className="absolute bottom-20 left-0 right-0 flex w-full justify-center gap-5 p-4">
-            <div className="flex items-center justify-center">
-              {!isUploaded && mediaItems.length > 0 && (
-                <Button variant="outline" onClick={() => handleUploadPhotos(selectedAlbum.id)}>
-                  <Upload />
-                  <span>{t('upload.upload')}</span>
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </div>

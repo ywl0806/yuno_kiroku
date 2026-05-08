@@ -5,9 +5,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
-	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 )
 
@@ -17,9 +17,9 @@ type InviteHandler struct {
 }
 
 func NewInviteHandler(inviteService *services.InviteService) *InviteHandler {
-	frontURL := viper.GetString("FRONT_URL")
+	frontURL := viper.GetString("APP_URL")
 	if frontURL == "" {
-		frontURL = "http://localhost:5173"
+		frontURL = "http://localhost:5155"
 	}
 	return &InviteHandler{inviteService: inviteService, frontURL: frontURL}
 }
@@ -81,10 +81,10 @@ func (h *InviteHandler) ValidateInvite(c echo.Context) error {
 		return err
 	}
 	return c.JSON(http.StatusOK, models.ValidateInviteResponse{
-		Valid:       true,
-		FamilyName:  familyName,
-		GroupName:   groupName,
-		FamilyID:    familyID,
-		GroupID:     groupID,
+		Valid:      true,
+		FamilyName: familyName,
+		GroupName:  groupName,
+		FamilyID:   familyID,
+		GroupID:    groupID,
 	})
 }

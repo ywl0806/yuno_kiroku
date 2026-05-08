@@ -167,21 +167,6 @@ CREATE TABLE IF NOT EXISTS face_detections (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
--- 얼굴 인식 배치 작업 테이블
-CREATE TABLE IF NOT EXISTS face_recognition_jobs (
-    id               SERIAL PRIMARY KEY,
-    media_item_id    INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
-    family_id        INTEGER NOT NULL REFERENCES families(id),
-    view_storage_key VARCHAR(512) NOT NULL,
-    status           VARCHAR(2) NOT NULL DEFAULT '01',
-    -- '01': pending, '02': processing, '03': completed, '09': failed
-    attempt_count    INTEGER NOT NULL DEFAULT 0,
-    last_error       TEXT,
-    completed_at     TIMESTAMP,
-    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING ivfflat (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_face_detections_media_item_id ON face_detections (media_item_id);
@@ -282,12 +267,6 @@ CREATE INDEX IF NOT EXISTS idx_face_detections_identity_id_media_item_id ON face
 
 -- Resize Worker에서 storage_key로 media_item_id를 빠르게 조회하기 위한 인덱스
 CREATE INDEX IF NOT EXISTS idx_media_files_storage_key ON media_files (storage_key);
--- media_item당 하나의 job만 존재 (중복 삽입 방지)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_frj_media_item_id ON face_recognition_jobs (media_item_id);
--- pending job 배치 fetch 최적화 (status='01'인 항목만 인덱싱)
-CREATE INDEX IF NOT EXISTS idx_frj_status_created ON face_recognition_jobs (status, created_at) WHERE status = '01';
--- family_id별 job 조회 최적화
-CREATE INDEX IF NOT EXISTS idx_frj_family_id_status ON face_recognition_jobs (family_id, status);
 
 -- 좋아요 테이블
 CREATE TABLE IF NOT EXISTS media_item_likes (

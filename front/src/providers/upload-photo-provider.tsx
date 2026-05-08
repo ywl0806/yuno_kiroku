@@ -1,18 +1,22 @@
+import { BottomSheet } from '@/components/ui/bottom-sheet'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { API_ROUTES } from '@/consts/api-route'
+import { UPLOAD_STATUS } from '@/enums'
+import { useGetAlbums } from '@/feature/upload/hooks/use-get-albums'
+import { getSessionStorage, removeSessionStorage, SESSION_STORAGE_KEY, setSessionStorage } from '@/lib/session-storage'
 import { MyAxiosWithAuth } from '@/lib/my-axios'
 import {
   UPLOAD_MEDIA_ITEM_ERROR_CODE,
-
   UploadMediaItem,
   UploadMediaItemError,
 } from '@/types'
-import { UploadStatus, UPLOAD_STATUS } from '@/enums'
+import { UploadStatus } from '@/enums'
 import { AxiosError } from 'axios'
-import { AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react'
+import { Album, AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react'
 import { createContext, Dispatch, FC, SetStateAction, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { unstable_useBlocker as useBlocker } from 'react-router-dom'
+import { unstable_useBlocker as useBlocker, useNavigate, useLocation } from 'react-router-dom'
 
 const UPLOAD_BATCH_STORAGE_KEY = 'yuno_upload_batch'
 
@@ -30,6 +34,13 @@ type UploadPhotoContextType = {
   isUploading: boolean
   reUploadPhoto: (index: number, albumId: number) => void
   isUploaded: boolean
+  // 앨범 시트
+  albumSheetOpen: boolean
+  openAlbumSheet: () => void
+  closeAlbumSheet: () => void
+  selectedAlbumId: number | null
+  selectedAlbumName: string | null
+  setSelectedAlbumId: (id: number) => void
 }
 
 export const UploadPhotoContext = createContext<UploadPhotoContextType>({
@@ -41,14 +52,44 @@ export const UploadPhotoContext = createContext<UploadPhotoContextType>({
   isUploading: false,
   reUploadPhoto: () => { },
   isUploaded: false,
+  albumSheetOpen: false,
+  openAlbumSheet: () => { },
+  closeAlbumSheet: () => { },
+  selectedAlbumId: null,
+  selectedAlbumName: null,
+  setSelectedAlbumId: () => { },
 })
 
 export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { data: albums } = useGetAlbums()
+
   const [mediaItems, setMediaItems] = useState<UploadMediaItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [isUploaded, setIsUploaded] = useState(false)
   const [currentUploadBatchId, setCurrentUploadBatchId] = useState<number | null>(null)
+
+  // 앨범 시트 상태
+  const [albumSheetOpen, setAlbumSheetOpen] = useState(false)
+  const [selectedAlbumId, setSelectedAlbumIdState] = useState<number | null>(
+    getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
+      ? Number(getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID))
+      : null,
+  )
+
+  const openAlbumSheet = useCallback(() => setAlbumSheetOpen(true), [])
+  const closeAlbumSheet = useCallback(() => setAlbumSheetOpen(false), [])
+
+  const setSelectedAlbumId = useCallback((id: number) => {
+    setSelectedAlbumIdState(id)
+    setSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID, id.toString())
+    closeAlbumSheet()
+    if (location.pathname !== '/upload') {
+      navigate('/upload')
+    }
+  }, [closeAlbumSheet, navigate, location.pathname])
 
   // 복구 관련 상태
   const [isRecovering, setIsRecovering] = useState(false)
@@ -59,10 +100,10 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
   const updatePhotoStatus = (index: number, status: UploadStatus, error?: UploadMediaItemError) => {
     setMediaItems((prev) => {
       prev[index] = { ...prev[index], status, error }
-
       return [...prev]
     })
   }
+
   const uploadMediaItem = async (
     mediaItem: UploadMediaItem,
     albumId: number,
@@ -73,7 +114,6 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     try {
       updatePhotoStatus(index, UPLOAD_STATUS.PENDING)
 
-      // 1. Presigned URL 발급
       const presignedRes = await MyAxiosWithAuth.post(
         `${API_ROUTES.MEDIA_ITEM.PRESIGNED_URL}?album_id=${albumId}&upload_batch_id=${uploadBatchId}`,
         { file_name: mediaItem.file.name, content_type: mediaItem.file.type || 'image/jpeg' },
@@ -84,7 +124,6 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         storage_key: string
       }
 
-      // 2. MinIO/S3에 직접 PUT (인증 헤더 없이)
       await fetch(presignedUrl, {
         method: 'PUT',
         body: mediaItem.file,
@@ -128,7 +167,6 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     setIsUploaded(true)
     setIsUploading(true)
 
-    // 배치 생성 (기존 배치가 없을 때만)
     let uploadBatchId: number
     if (currentUploadBatchId) {
       uploadBatchId = currentUploadBatchId
@@ -144,12 +182,10 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    // 파일 업로드 (원본만 빠르게 업로드)
     const process = mediaItems.map(
       (mediaItem, index) => () => uploadMediaItem(mediaItem, albumId, uploadBatchId, index),
     )
 
-    // 동시에 3개씩만 처리 (Promise 풀 방식)
     const concurrency = 3
     const executing: Promise<void>[] = []
 
@@ -166,23 +202,20 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
 
     await Promise.all(executing)
 
-    // 파이프라인 처리 중에 리로드해도 복구할 수 있도록 localStorage에 저장
     localStorage.setItem(
       UPLOAD_BATCH_STORAGE_KEY,
       JSON.stringify({ batchId: uploadBatchId, totalCount: mediaItems.length } satisfies StoredBatch),
     )
 
-    // 상태 polling 시작
     pollUploadBatchStatus(uploadBatchId)
   }
 
   const pollUploadBatchStatus = async (uploadBatchId: number) => {
-
     if (isUploading) {
       return
     }
 
-    const maxAttempts = 60 // 최대 5분 (5초마다 polling)
+    const maxAttempts = 60
     let attempts = 0
 
     const poll = async () => {
@@ -211,7 +244,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
 
         attempts++
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000) // 5초마다 polling
+          setTimeout(poll, 5000)
         } else {
           localStorage.removeItem(UPLOAD_BATCH_STORAGE_KEY)
           setIsUploadingWithTimeout(5000)
@@ -226,7 +259,6 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     poll()
   }
 
-  // 복구 polling (리로드 후 처리 중인 배치 확인)
   const pollRecoveredBatch = useCallback(async (batch: StoredBatch) => {
     const maxAttempts = 60
     let attempts = 0
@@ -265,7 +297,6 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     poll()
   }, [])
 
-  // 마운트 시 localStorage에서 처리 중인 배치 복구
   useEffect(() => {
     const stored = localStorage.getItem(UPLOAD_BATCH_STORAGE_KEY)
     if (!stored) return
@@ -287,8 +318,11 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     setMediaItems([])
     setIsUploaded(false)
     setCurrentUploadBatchId(null)
+    setSelectedAlbumIdState(null)
+    removeSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
     localStorage.removeItem(UPLOAD_BATCH_STORAGE_KEY)
   }
+
   const uploadCompleted = useMemo(() => {
     return mediaItems.filter(
       (mediaItem) =>
@@ -320,7 +354,6 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     return 'processing'
   }, [progress, statusCounts.uploading])
 
-  // 업로드 중 브라우저 리로드/탭 닫기 경고
   useEffect(() => {
     if (uploadPhase !== 'uploading') return
     const handler = (e: BeforeUnloadEvent) => {
@@ -330,13 +363,11 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     return () => window.removeEventListener('beforeunload', handler)
   }, [uploadPhase])
 
-  // SPA 이동 차단 (파일 업로드 중일 때만)
   const blocker = useBlocker(uploadPhase === 'uploading' && isUploading)
 
   const reUploadPhoto = async (index: number, albumId: number) => {
     const mediaItem = mediaItems[index]
     if (mediaItem.status === UPLOAD_STATUS.FAILED || mediaItem.status === UPLOAD_STATUS.DUPLICATE) {
-      // 재업로드 시 같은 배치 ID 사용 (기존 배치가 없으면 새로 생성)
       let uploadBatchId: number
       if (currentUploadBatchId) {
         uploadBatchId = currentUploadBatchId
@@ -359,6 +390,12 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
       }
     }
   }
+
+  const selectedAlbum = useMemo(
+    () => albums?.find((a) => a.id === selectedAlbumId) ?? null,
+    [albums, selectedAlbumId],
+  )
+
   return (
     <UploadPhotoContext.Provider
       value={{
@@ -370,6 +407,12 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         isUploading,
         reUploadPhoto,
         isUploaded,
+        albumSheetOpen,
+        openAlbumSheet,
+        closeAlbumSheet,
+        selectedAlbumId,
+        selectedAlbumName: selectedAlbum?.name ?? null,
+        setSelectedAlbumId,
       }}
     >
       {/* SPA 이동 차단 다이얼로그 */}
@@ -432,7 +475,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         </div>
       )}
 
-      {/* 복구 중 배너 (리로드 후 이전 처리 감지) */}
+      {/* 복구 중 배너 */}
       {isRecovering && recoveredBatch && (
         <div className="fixed bottom-6 left-1/2 z-50 w-[320px] -translate-x-1/2 rounded-2xl border bg-white px-5 py-4 shadow-xl transition-all duration-300">
           <div className="flex items-center gap-2">
@@ -464,6 +507,27 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
           </div>
         </div>
       )}
+
+      {/* 앨범 선택 바텀 시트 */}
+      <BottomSheet
+        open={albumSheetOpen}
+        onClose={closeAlbumSheet}
+        title={t('upload.selectAlbum')}
+      >
+        <div className="flex flex-col gap-2 px-4 pb-6 pt-2">
+          {albums?.map((album) => (
+            <Button
+              key={album.id}
+              variant={selectedAlbum?.id === album.id ? 'default' : 'outline'}
+              className="h-12 justify-start text-[1rem]"
+              onClick={() => setSelectedAlbumId(album.id)}
+            >
+              <Album className="size-4 shrink-0" />
+              {album.name}
+            </Button>
+          ))}
+        </div>
+      </BottomSheet>
 
       {children}
     </UploadPhotoContext.Provider>

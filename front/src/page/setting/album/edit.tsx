@@ -2,12 +2,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlbumGroupPermissionSelector } from '@/feature/settings/components/album-group-permission-selector'
+import { SettingsSubPageLayout } from '@/feature/settings/components/settings-sub-page-layout'
 import { useDeleteAlbum } from '@/feature/settings/hooks/use-delete-album'
 import { useGetAlbum } from '@/feature/settings/hooks/use-get-album'
 import { useGetSettingsData } from '@/feature/settings/hooks/use-get-settings-data'
 import { useUpdateAlbum } from '@/feature/settings/hooks/use-update-album'
 import { AlbumGroupPermission } from '@/types'
-import { ChevronLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -44,46 +44,52 @@ export const SettingsAlbumEditPage = () => {
   }
 
   return (
-    <div className="mx-auto h-full max-w-[50rem] pt-4">
-      <div className="flex items-center gap-2 px-4 py-2">
-        <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="size-5" />
-        </button>
-        <span className="text-sm font-medium">{t('settings.album.editTitle')}</span>
-      </div>
-
-      <div className="space-y-5 px-4 pt-6">
-        <div className="space-y-1.5">
-          <Label htmlFor="album-name">{t('settings.album.nameLabel')}</Label>
-          <Input
-            id="album-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t('settings.album.namePlaceholder')}
-          />
-        </div>
-
-        {settingsData?.groups && settingsData.groups.length > 0 && (
-          <div className="space-y-1.5">
-            <Label>{t('settings.album.permissionsLabel')}</Label>
-            <AlbumGroupPermissionSelector
-              groups={settingsData.groups}
-              value={permissions}
-              onChange={setPermissions}
+    <SettingsSubPageLayout title={t('settings.album.editTitle')}>
+      <div className="px-4 pt-3 space-y-3">
+        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04] divide-y divide-stone-100">
+          <div className="px-4 py-4 space-y-1.5">
+            <Label htmlFor="album-name">{t('settings.album.nameLabel')}</Label>
+            <Input
+              id="album-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('settings.album.namePlaceholder')}
+              className="border-stone-200 focus-visible:ring-stone-400"
             />
           </div>
-        )}
 
-        <Button className="w-full" disabled={isUpdating || !name.trim()} onClick={handleSave}>
+          {settingsData?.groups && settingsData.groups.length > 0 && (
+            <div className="px-4 py-4 space-y-1.5">
+              <Label>{t('settings.album.permissionsLabel')}</Label>
+              <AlbumGroupPermissionSelector
+                groups={settingsData.groups}
+                value={permissions}
+                onChange={setPermissions}
+              />
+            </div>
+          )}
+        </div>
+
+        <Button
+          className="w-full h-11 rounded-xl bg-stone-900 hover:bg-stone-800 font-medium mt-2"
+          disabled={isUpdating || !name.trim()}
+          onClick={handleSave}
+        >
           {t('common.save')}
         </Button>
+      </div>
 
-        <div className="pt-4">
-          <Button variant="destructive" className="w-full" disabled={isDeleting} onClick={handleDelete}>
+      <div className="px-4 pt-10">
+        <div className="border-t border-stone-200 pt-4">
+          <button
+            className="w-full py-2.5 text-sm text-red-500 transition-colors hover:text-red-600 disabled:opacity-40"
+            disabled={isDeleting}
+            onClick={handleDelete}
+          >
             {t('common.delete')}
-          </Button>
+          </button>
         </div>
       </div>
-    </div>
+    </SettingsSubPageLayout>
   )
 }

@@ -8,5 +8,6 @@ const (
 	THUMBNAIL_STORAGE_PREFIX = "thumbnail"
 	ORIGINAL_STORAGE_PREFIX  = "original"
 
-	FACE_SEARCH_THRESHOLD = 0.5
+	// 얼굴 검색 임베딩 유사도 임계값
+	FACE_SEARCH_THRESHOLD = 0.6
 )

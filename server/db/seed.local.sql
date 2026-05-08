@@ -3,12 +3,16 @@ INSERT INTO
 VALUES
     (1, 'family1');
 
+SELECT setval('families_id_seq', (SELECT MAX(id) FROM families));
+
 INSERT INTO
     groups (id, family_id, name, is_admin)
 VALUES
     (1, 1, 'admin', true),
     (2, 1, '이가', false),
     (3, 1, '村岡家', false);
+
+SELECT setval('groups_id_seq', (SELECT MAX(id) FROM groups));
 
 INSERT INTO
     users (
@@ -24,6 +28,8 @@ VALUES
     (2, 'yongwoo', 'lee', 'password', 1, 2),
     (3, 'yukina', 'muraoka', 'password', 1, 3);
 
+SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
+
 INSERT INTO
     albums (id, family_id, name)
 VALUES
@@ -31,6 +37,8 @@ VALUES
     (2, 1, 'lee'),
     (3, 1, 'muraoka'),
     (4, 1, 'admin');
+
+SELECT setval('albums_id_seq', (SELECT MAX(id) FROM albums));
 
 INSERT INTO
     album_groups_permissions (album_id, group_id, permission)

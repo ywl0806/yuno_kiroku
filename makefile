@@ -38,6 +38,7 @@ ai-batch:
 	docker compose up -d ai-batch
 
 init:
-	make run
+	make up
 	make migrate
 	make seed
+

@@ -153,9 +153,6 @@ MinIOが起動したら、初回はバケットを作成する必要がありま
 # データベース
 DATABASE_URL=postgres://postgres:postgres@localhost:5433/yuno
 
-# AIサービス
-AI_API_URL=http://localhost:8000
-
 # JWT
 JWT_SECRET=your-secret-key
 
@@ -173,8 +170,6 @@ STORAGE_ENDPOINT=localhost:9001
 STORAGE_ACCESS_KEY=minioadmin
 STORAGE_SECRET_KEY=minioadmin
 STORAGE_USE_SSL=false
-STORAGE_BUCKET_THUMBNAIL=thumbnails
-STORAGE_BUCKET_ORIGINAL=originals
 ```
 
 ---

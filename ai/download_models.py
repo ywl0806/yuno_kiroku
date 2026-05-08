@@ -14,7 +14,8 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 print("Downloading buffalo_s model...")
 app = FaceAnalysis(
     providers=["CPUExecutionProvider"],
-    name="buffalo_s",
+    # name="buffalo_s",
+    name="buffalo_l",
     root=MODELS_DIR,  # 모델 저장 경로 지정
 )
 app.prepare(ctx_id=0, det_size=(640, 640))

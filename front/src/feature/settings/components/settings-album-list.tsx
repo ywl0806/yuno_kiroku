@@ -1,5 +1,4 @@
 import { Album } from '@/types'
-import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SettingsList, SettingsListAddButton, SettingsListItem } from './settings-list'
 
@@ -14,8 +13,7 @@ export const SettingsAlbumList = ({ albums }: Props) => {
     <SettingsList>
       {albums?.map((album) => (
         <SettingsListItem key={album.id} to={`/settings/album/${album.id}/edit`}>
-          <span className="text-sm">{album.name}</span>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          {album.name}
         </SettingsListItem>
       ))}
       <SettingsListAddButton to="/settings/album/new" label={t('settings.album.add')} />

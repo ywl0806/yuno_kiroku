@@ -14,12 +14,10 @@ services:
       - minio
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
-      AI_API_URL: http://ai:8000
       STORAGE_TYPE: minio
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-      STORAGE_BUCKET: my-bucket
       AWS_REGION: us-east-1
 
     networks:
@@ -37,17 +35,27 @@ services:
 
   ai-batch:
     build:
-      context: ai
-      dockerfile: ../docker/local/ai/Dockerfile
-    command: ["python", "-m", "src.batch.face_recognition_batch"]
+      context: .
+      dockerfile: docker/local/ai/Dockerfile
+    command: [ "python", "-m", "src.batch.sqs" ]
     volumes:
-      - ./ai:/app
+      - ./ai/src:/app/src
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/yuno?sslmode=disable
       STORAGE_TYPE: minio
+      S3_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: password
+      MEDIA_BUCKET_NAME: my-bucket
       AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      SQS_QUEUE_URL: http://queue:9324/000000000000/face-recognition
+      SQS_ENDPOINT_URL: http://queue:9324
     depends_on:
       - postgres
+      - minio
+      - queue
     networks:
       - app-net
   postgres:
@@ -64,6 +72,17 @@ services:
     networks:
       - app-net
 
+  queue:
+    image: softwaremill/elasticmq-native:1.6.7
+    container_name: queue
+    ports:
+      - "9324:9324"
+      - "9325:9325"
+    volumes:
+      - ./docker/local/elasticmq.conf:/opt/elasticmq.conf
+    networks:
+      - app-net
+
   resize-worker:
     build:
       context: server
@@ -76,14 +95,18 @@ services:
       S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
-      STORAGE_BUCKET: my-bucket
       AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      SQS_QUEUE_URL: http://queue:9324/000000000000/face-recognition
+      SQS_ENDPOINT_URL: http://queue:9324
       PORT: "1325"
     volumes:
       - ./server:/app
     depends_on:
       - postgres
       - minio
+      - queue
     networks:
       - app-net
 
@@ -114,19 +137,16 @@ services:
     networks:
       - app-net
     entrypoint: >
-      /bin/sh -c "
-      until mc alias set myminio http://minio:9000 root password; do
+      /bin/sh -c " until mc alias set myminio http://minio:9000 root password;
+      do
         echo 'MinIO 연결 대기 중...';
         sleep 2;
-      done;
-      mc mb --ignore-existing myminio/my-bucket;
-      mc anonymous set download myminio/my-bucket;
-      mc event add myminio/my-bucket arn:minio:sqs::1:webhook --event put --prefix original/ || true;
-      mc cors set --config-file /dev/stdin myminio/my-bucket << 'EOF'
+      done; mc mb --ignore-existing myminio/my-bucket; mc anonymous set download
+      myminio/my-bucket; mc event add myminio/my-bucket arn:minio:sqs::1:webhook
+      --event put --prefix original/ || true; mc cors set --config-file
+      /dev/stdin myminio/my-bucket << 'EOF'
       {\"CORSRules\":[{\"AllowedHeaders\":[\"*\"],\"AllowedMethods\":[\"GET\",\"PUT\"],\"AllowedOrigins\":[\"http://localhost:5155\"],\"ExposeHeaders\":[\"ETag\"]}]}
-      EOF
-      echo '버킷, CORS 및 이벤트 설정 완료';
-      "
+      EOF echo '버킷, CORS 및 이벤트 설정 완료'; "
 
 networks:
   app-net:

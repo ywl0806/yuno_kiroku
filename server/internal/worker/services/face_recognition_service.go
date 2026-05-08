@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
@@ -32,12 +33,9 @@ type FaceResult struct {
 	Embedding    []float64    `json:"embedding"`
 }
 
-// FaceRecognitionService Python batch로부터 임베딩 결과를 받아
-// identity 매칭, face_detections 저장, 얼굴 크롭을 처리합니다.
+// FaceRecognitionService Go CLI에서 호출되어 identity 매칭, face_detections 저장, 얼굴 크롭을 처리합니다.
 type FaceRecognitionService struct {
 	transactor      store.Transactor
-	faceJobStore    store.FaceRecognitionJobStore
-	mediaItemStore  store.MediaItemStore
 	faceStore       store.FaceStore
 	identityStore   store.IdentityStore
 	identityFaceImg store.IdentityFaceImgStore
@@ -46,115 +44,18 @@ type FaceRecognitionService struct {
 
 func NewFaceRecognitionService(
 	transactor store.Transactor,
-	faceJobStore store.FaceRecognitionJobStore,
-	mediaItemStore store.MediaItemStore,
 	faceStore store.FaceStore,
 	identityStore store.IdentityStore,
 	identityFaceImg store.IdentityFaceImgStore,
 	imageUploader *services.ImageUploader,
-
 ) *FaceRecognitionService {
 	return &FaceRecognitionService{
 		transactor:      transactor,
-		faceJobStore:    faceJobStore,
-		mediaItemStore:  mediaItemStore,
 		faceStore:       faceStore,
 		identityStore:   identityStore,
 		identityFaceImg: identityFaceImg,
 		imageUploader:   imageUploader,
 	}
-}
-
-// Fail Python batch가 처리 실패 시 job 상태를 되돌립니다.
-func (s *FaceRecognitionService) Fail(ctx context.Context, jobID int32, errMsg string) error {
-	return s.faceJobStore.FailFaceRecognitionJob(ctx, jobID, errMsg)
-}
-
-// Complete Python batch가 임베딩 계산 완료 후 호출합니다.
-// identity 매칭 → face_detections INSERT → 얼굴 크롭 → job 완료 처리
-func (s *FaceRecognitionService) Complete(ctx context.Context, jobID int32, faces []FaceResult) error {
-	job, err := s.faceJobStore.GetFaceRecognitionJobByID(ctx, jobID)
-	if err != nil {
-		return err
-	}
-
-	if err := s.processFaces(ctx, job, faces); err != nil {
-		s.faceJobStore.FailFaceRecognitionJob(ctx, jobID, err.Error())
-		return err
-	}
-
-	return s.faceJobStore.CompleteFaceRecognitionJob(ctx, jobID)
-}
-
-func (s *FaceRecognitionService) processFaces(ctx context.Context, job db.FaceRecognitionJob, faces []FaceResult) error {
-	// view 이미지 다운로드 (얼굴 크롭에 사용)
-	var viewData []byte
-	var viewWidth, viewHeight int
-
-	for _, face := range faces {
-		// advisory lock + identity 매칭/생성 + face_detection INSERT를 하나의 트랜잭션으로 처리
-		// → 동일 family의 동시 요청이 와도 중복 identity가 생성되지 않음
-		var identityID int32
-		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|int64(job.FamilyID), func(tx *store.Store) error {
-			id, err := matchOrCreateIdentity(ctx, tx, job.FamilyID, face.Embedding)
-			if err != nil {
-				return err
-			}
-			identityID = id
-
-			_, err = tx.Face.CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
-				MediaItemID:    job.MediaItemID,
-				IdentityID:     identityID,
-				LocationTop:    int32(face.FaceLocation.Top),
-				LocationRight:  int32(face.FaceLocation.Right),
-				LocationBottom: int32(face.FaceLocation.Bottom),
-				LocationLeft:   int32(face.FaceLocation.Left),
-				Embedding:      utils.Float64SliceToVectorString(face.Embedding),
-			})
-			return err
-		})
-		if err != nil {
-			log.Printf("face 처리 실패 (무시): %v", err)
-			continue
-		}
-
-		// 최초 1회만 view 이미지 다운로드
-		if viewData == nil {
-			viewData, err = s.imageUploader.GetFile(ctx, job.ViewStorageKey)
-			if err != nil {
-				log.Printf("view 이미지 다운로드 실패 (크롭 생략): %v", err)
-				continue
-			}
-			viewWidth, viewHeight, err = imageDimensions(viewData)
-			if err != nil {
-				log.Printf("이미지 크기 파싱 실패 (크롭 생략): %v", err)
-				viewData = nil
-				continue
-			}
-		}
-
-		storageKey, err := s.CropFaceAndUpload(
-			ctx,
-			viewData, viewWidth, viewHeight,
-			int32(face.FaceLocation.Top), int32(face.FaceLocation.Right),
-			int32(face.FaceLocation.Bottom), int32(face.FaceLocation.Left),
-			0.3, identityID, job.MediaItemID,
-		)
-		if err != nil {
-			log.Printf("얼굴 크롭 실패 (무시): %v", err)
-			continue
-		}
-
-		if _, err = s.identityFaceImg.CreateIdentityFaceImg(ctx, db.CreateIdentityFaceImgParams{
-			IdentityID:  identityID,
-			MediaItemID: job.MediaItemID,
-			StorageKey:  storageKey,
-		}); err != nil {
-			log.Printf("identity_face_img 생성 실패 (무시): %v", err)
-		}
-	}
-
-	return nil
 }
 
 // matchOrCreateIdentity 얼굴 임베딩을 데이터베이스에서 검색 후 매칭된 identity가 없으면 새로운 identity를 생성합니다.
@@ -180,6 +81,80 @@ func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID int32,
 
 	return similar.IdentityID, nil
 
+}
+
+// ProcessFacesParams Go CLI에서 전달받는 얼굴 인식 처리 파라미터
+type ProcessFacesParams struct {
+	MediaItemID   int32  `json:"media_item_id"`
+	FamilyID      int32  `json:"family_id"`
+	ViewImagePath string `json:"view_image_path"` // Python이 다운로드한 로컬 임시 파일 경로
+}
+
+// ProcessFaces Go CLI 진입점에서 호출. view 이미지를 로컬 파일에서 읽어 얼굴 처리를 수행합니다.
+func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params ProcessFacesParams, faces []FaceResult) error {
+	var viewData []byte
+	var viewWidth, viewHeight int
+
+	for _, face := range faces {
+		var identityID int32
+		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|int64(params.FamilyID), func(tx *store.Store) error {
+			id, err := matchOrCreateIdentity(ctx, tx, params.FamilyID, face.Embedding)
+			if err != nil {
+				return err
+			}
+			identityID = id
+			_, err = tx.Face.CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
+				MediaItemID:    params.MediaItemID,
+				IdentityID:     identityID,
+				LocationTop:    int32(face.FaceLocation.Top),
+				LocationRight:  int32(face.FaceLocation.Right),
+				LocationBottom: int32(face.FaceLocation.Bottom),
+				LocationLeft:   int32(face.FaceLocation.Left),
+				Embedding:      utils.Float64SliceToVectorString(face.Embedding),
+			})
+			return err
+		})
+		if err != nil {
+			log.Printf("face 처리 실패 (무시): %v", err)
+			continue
+		}
+
+		if viewData == nil {
+			viewData, err = os.ReadFile(params.ViewImagePath)
+			if err != nil {
+				log.Printf("view 이미지 파일 읽기 실패 (크롭 생략): %v", err)
+				continue
+			}
+			viewWidth, viewHeight, err = imageDimensions(viewData)
+			if err != nil {
+				log.Printf("이미지 크기 파싱 실패 (크롭 생략): %v", err)
+				viewData = nil
+				continue
+			}
+		}
+
+		storageKey, err := s.CropFaceAndUpload(
+			ctx,
+			viewData, viewWidth, viewHeight,
+			int32(face.FaceLocation.Top), int32(face.FaceLocation.Right),
+			int32(face.FaceLocation.Bottom), int32(face.FaceLocation.Left),
+			0.3, identityID, params.MediaItemID,
+		)
+		if err != nil {
+			log.Printf("얼굴 크롭 실패 (무시): %v", err)
+			continue
+		}
+
+		if _, err = s.identityFaceImg.CreateIdentityFaceImg(ctx, db.CreateIdentityFaceImgParams{
+			IdentityID:  identityID,
+			MediaItemID: params.MediaItemID,
+			StorageKey:  storageKey,
+		}); err != nil {
+			log.Printf("identity_face_img 생성 실패 (무시): %v", err)
+		}
+	}
+
+	return nil
 }
 
 // imageDimensions view 이미지 바이트에서 width/height를 파싱합니다.

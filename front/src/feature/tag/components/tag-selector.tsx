@@ -1,14 +1,14 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getTagsForMediaItem } from '@/service/tag-service'
 import { useGetTags } from '@/feature/tag/hooks/use-get-tags'
 import { useTagMutations } from '@/feature/tag/hooks/use-tag-mutations'
 import { Tag } from '@/types'
-import { Check, Plus, Tag as TagIcon, X } from 'lucide-react'
-import { FC, useEffect, useRef, useState } from 'react'
+import { Check, Plus, Tag as TagIcon } from 'lucide-react'
+import { FC, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { TagBadge } from './tag-badge'
 
 type Props = {
   mediaItemId: number
@@ -17,12 +17,10 @@ type Props = {
 export const TagSelector: FC<Props> = ({ mediaItemId }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [openAddTag, setOpenAddTag] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [currentTags, setCurrentTags] = useState<Tag[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
   const { data: allTags = [] } = useGetTags()
@@ -30,22 +28,8 @@ export const TagSelector: FC<Props> = ({ mediaItemId }) => {
 
   const currentTagIds = new Set(currentTags.map((t) => t.id))
 
-  // 바깥 클릭 시 닫기
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setOpenAddTag(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-
-  // 버튼 클릭 시 최초 한 번만 현재 태그 fetch
-  const handleOpen = async () => {
-    if (!open && !loaded) {
+  const handleOpenChange = async (next: boolean) => {
+    if (next && !loaded) {
       try {
         const tags = await getTagsForMediaItem(mediaItemId)
         setCurrentTags(tags)
@@ -54,17 +38,11 @@ export const TagSelector: FC<Props> = ({ mediaItemId }) => {
         setLoaded(true)
       }
     }
-    if (open) {
-      setOpen(false)
-      setOpenAddTag(false)
-    } else {
-      setOpen(true)
+    if (!next) {
+      setShowCreate(false)
+      setNewName('')
     }
-
-  }
-
-  const handleOpenAddTag = () => {
-    setOpenAddTag(v => !v)
+    setOpen(next)
   }
 
   const handleToggleTag = (tag: Tag) => {
@@ -92,103 +70,101 @@ export const TagSelector: FC<Props> = ({ mediaItemId }) => {
   }
 
   return (
-    <div ref={containerRef} className="relative h-full w-full">
-      <div className="flex gap-1 items-end">
-
-        <button
-          onClick={handleOpen}
-          className="size-9 flex items-center gap-1 rounded-full bg-black/50 p-3 text-xs text-white backdrop-blur-sm hover:bg-black/70"
-        >
-          <TagIcon className="size-4" />
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button className="flex size-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70">
+          <TagIcon className="size-5" />
         </button>
-        {open && (
-          <div className="relative flex items-center h-full gap-1 flex-wrap animate-in fade-in duration-100">
-            {currentTags.map((tag) => (
-              <TagBadge key={tag.id} tag={tag} onRemove={() => handleToggleTag(tag)} />
-            ))}
-            <button onClick={handleOpenAddTag} className="flex rounded-lg items-center gap-1 bg-black/20 px-2 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/70">
-              <Plus className="size-4" />
-              {t('tag.add')}
-            </button>
-          </div>
-        )}
-      </div>
-      {openAddTag && (
-        <div className="absolute bottom-full left-0 mb-2 w-56 rounded-lg border bg-background p-2 shadow-lg">
-          {/* 헤더 */}
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">{t('tag.title')}</span>
-            <button onClick={() => setOpenAddTag(false)} className="rounded p-0.5 hover:bg-muted">
-              <X className="size-3 text-muted-foreground" />
-            </button>
-          </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" side="top" align="start">
+        <p className="mb-1 text-xs font-semibold text-muted-foreground">{t('tag.title')}</p>
 
-          {/* 태그 목록 */}
-          <div className="max-h-48 space-y-0.5 overflow-y-auto">
-            {!loaded && (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">{t('common.loading')}</p>
-            )}
-            {loaded && allTags.map((tag) => {
-              const isSelected = currentTagIds.has(tag.id)
-              return (
+        {/* 현재 선택된 태그 */}
+        {loaded && currentTags.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap gap-1 border-b pb-1.5">
+            {currentTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
+              >
+                {tag.name}
                 <button
-                  key={tag.id}
-                  className="flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
                   onClick={() => handleToggleTag(tag)}
                   disabled={isPending}
+                  className="leading-none hover:text-destructive"
                 >
-                  <span>{tag.name}</span>
-                  {isSelected && <Check className="size-4 text-primary" />}
+                  ×
                 </button>
-              )
-            })}
-            {loaded && allTags.length === 0 && (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">{t('tag.no_tags')}</p>
-            )}
+              </span>
+            ))}
           </div>
+        )}
 
-          {/* 새 태그 생성 */}
-          <div className="mt-1.5 border-t pt-1.5">
-            {showCreate ? (
-              <div className="space-y-1.5">
-                <Input
-                  placeholder={t('tag.name')}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="h-7 text-xs"
-                  autoFocus
-                />
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    className="h-7 flex-1 text-xs"
-                    onClick={handleCreateTag}
-                    disabled={isPending || !newName.trim()}
-                  >
-                    {t('common.save')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-xs"
-                    onClick={() => { setShowCreate(false); setNewName('') }}
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                </div>
-              </div>
-            ) : (
+        {/* 전체 태그 목록 */}
+        <div className="max-h-48 space-y-0.5 overflow-y-auto">
+          {!loaded && (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">{t('common.loading')}</p>
+          )}
+          {loaded && allTags.map((tag) => {
+            const isSelected = currentTagIds.has(tag.id)
+            return (
               <button
-                className="flex w-full items-center gap-1 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-                onClick={() => setShowCreate(true)}
+                key={tag.id}
+                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
+                onClick={() => handleToggleTag(tag)}
+                disabled={isPending}
               >
-                <Plus className="size-3" />
-                {t('tag.create_custom')}
+                <span>{tag.name}</span>
+                {isSelected && <Check className="size-4 text-primary" />}
               </button>
-            )}
-          </div>
+            )
+          })}
+          {loaded && allTags.length === 0 && (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">{t('tag.no_tags')}</p>
+          )}
         </div>
-      )}
-    </div>
+
+        {/* 새 태그 생성 */}
+        <div className="mt-1.5 border-t pt-1.5">
+          {showCreate ? (
+            <div className="space-y-1.5">
+              <Input
+                placeholder={t('tag.name')}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="h-7 text-xs"
+                autoFocus
+              />
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  className="h-7 flex-1 text-xs"
+                  onClick={handleCreateTag}
+                  disabled={isPending || !newName.trim()}
+                >
+                  {t('common.save')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => { setShowCreate(false); setNewName('') }}
+                >
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="flex w-full items-center gap-1 rounded px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+              onClick={() => setShowCreate(true)}
+            >
+              <Plus className="size-3" />
+              {t('tag.create_custom')}
+            </button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
