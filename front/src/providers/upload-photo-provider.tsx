@@ -396,6 +396,11 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     [albums, selectedAlbumId],
   )
 
+  const selectedAlbumName = useMemo(() => {
+    if (!selectedAlbum) return null
+    return selectedAlbum.is_common ? t('settings.album.commonName') : selectedAlbum.name
+  }, [selectedAlbum, t])
+
   return (
     <UploadPhotoContext.Provider
       value={{
@@ -411,7 +416,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         openAlbumSheet,
         closeAlbumSheet,
         selectedAlbumId,
-        selectedAlbumName: selectedAlbum?.name ?? null,
+        selectedAlbumName,
         setSelectedAlbumId,
       }}
     >
@@ -523,7 +528,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
               onClick={() => setSelectedAlbumId(album.id)}
             >
               <Album className="size-4 shrink-0" />
-              {album.name}
+              {album.is_common ? t('settings.album.commonName') : album.name}
             </Button>
           ))}
         </div>

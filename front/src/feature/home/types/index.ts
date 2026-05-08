@@ -10,4 +10,5 @@ export type IdentityOption = {
 export type AlbumOption = {
   id: number
   name: string
+  is_common: boolean
 }

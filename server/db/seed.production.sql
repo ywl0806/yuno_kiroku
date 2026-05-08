@@ -25,12 +25,12 @@ VALUES
     (3, 'yukina', 'muraoka', 'password', 1, 3);
 
 INSERT INTO
-    albums (id, family_id, name)
+    albums (id, family_id, name, is_common)
 VALUES
-    (1, 1, '공용'),
-    (2, 1, 'lee'),
-    (3, 1, 'muraoka'),
-    (4, 1, 'admin');
+    (1, 1, '공용', TRUE),
+    (2, 1, 'lee', FALSE),
+    (3, 1, 'muraoka', FALSE),
+    (4, 1, 'admin', FALSE);
 
 INSERT INTO
     album_groups_permissions (album_id, group_id, permission)

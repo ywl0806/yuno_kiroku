@@ -22,15 +22,21 @@ func (q *Queries) DeleteAlbumGroupPermissionsByAlbumID(ctx context.Context, albu
 
 const getAlbumGroupPermissions = `-- name: GetAlbumGroupPermissions :many
 SELECT
-    album_id, group_id, permission, created_at, updated_at
+    agp.album_id, agp.group_id, agp.permission, agp.created_at, agp.updated_at
 FROM
-    album_groups_permissions
+    album_groups_permissions as agp
+    INNER JOIN albums as a on agp.album_id = a.id AND a.family_id = $2
 WHERE
-    album_id = $1
+    agp.album_id = $1
 `
 
-func (q *Queries) GetAlbumGroupPermissions(ctx context.Context, albumID int32) ([]AlbumGroupsPermission, error) {
-	rows, err := q.db.QueryContext(ctx, getAlbumGroupPermissions, albumID)
+type GetAlbumGroupPermissionsParams struct {
+	AlbumID  int32
+	FamilyID int32
+}
+
+func (q *Queries) GetAlbumGroupPermissions(ctx context.Context, arg GetAlbumGroupPermissionsParams) ([]AlbumGroupsPermission, error) {
+	rows, err := q.db.QueryContext(ctx, getAlbumGroupPermissions, arg.AlbumID, arg.FamilyID)
 	if err != nil {
 		return nil, err
 	}

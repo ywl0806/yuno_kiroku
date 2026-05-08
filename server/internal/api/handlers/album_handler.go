@@ -93,11 +93,11 @@ func (con *AlbumHandler) CreateAlbum(c echo.Context) error {
 	for i, p := range req.Permissions {
 		perms[i] = services.GroupPermission{GroupID: p.GroupID, Permission: p.Permission}
 	}
-	album, err := con.albumService.CreateAlbum(c.Request().Context(), authUser.FamilyId, req.Name, perms)
+	album, err := con.albumService.CreateAlbum(c.Request().Context(), authUser.FamilyId, req.Name, req.IsCommon, perms)
 	if err != nil {
 		return err
 	}
-	_, albumPerms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
+	albumPerms, err := con.albumService.GetAlbumPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (con *AlbumHandler) UpdateAlbum(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	_, albumPerms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
+	albumPerms, err := con.albumService.GetAlbumPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
 	if err != nil {
 		return err
 	}

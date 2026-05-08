@@ -188,7 +188,10 @@
       "permissionsLabel": "그룹 권한",
       "permRead": "읽기",
       "permWrite": "쓰기",
-      "deleteConfirm": "정말 삭제하시겠습니까?"
+      "deleteConfirm": "정말 삭제하시겠습니까?",
+      "commonName": "공통 앨범",
+      "commonBadge": "공통",
+      "commonNotEditable": "공통 앨범은 수정하거나 삭제할 수 없습니다."
     },
     "kid": {
       "title": "아이",

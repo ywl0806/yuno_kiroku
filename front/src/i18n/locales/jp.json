@@ -188,7 +188,10 @@
       "permissionsLabel": "グループ権限",
       "permRead": "読み取り",
       "permWrite": "書き込み",
-      "deleteConfirm": "本当に削除しますか？"
+      "deleteConfirm": "本当に削除しますか？",
+      "commonName": "共有アルバム",
+      "commonBadge": "共有",
+      "commonNotEditable": "共有アルバムは編集・削除できません。"
     },
     "kid": {
       "title": "子ども一覧",

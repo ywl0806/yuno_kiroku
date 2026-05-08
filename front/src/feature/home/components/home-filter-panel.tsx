@@ -80,7 +80,7 @@ export const HomeFilterPanel = ({ filter, onFilterChange }: Props) => {
                   : 'border-border bg-background text-muted-foreground',
               )}
             >
-              {albumOption.name}
+              {albumOption.is_common ? t('settings.album.commonName') : albumOption.name}
             </button>
           ))}
         </div>

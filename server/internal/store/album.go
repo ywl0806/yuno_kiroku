@@ -11,7 +11,7 @@ type AlbumStore interface {
 	FindAlbumsForWrite(ctx context.Context, arg db.FindAlbumsForWriteParams) ([]db.Album, error)
 	GetAlbumsOptions(ctx context.Context, familyID int32, groupID int32) ([]db.GetAlbumsOptionsRow, error)
 	FindAlbumsByFamilyID(ctx context.Context, familyID int32) ([]db.Album, error)
-	FindAlbumByID(ctx context.Context, id int32) (db.Album, error)
+	FindAlbumByIDAndFamilyID(ctx context.Context, id int32, familyID int32) (db.Album, error)
 	CreateAlbum(ctx context.Context, arg db.CreateAlbumParams) (db.Album, error)
 	UpdateAlbum(ctx context.Context, arg db.UpdateAlbumParams) (db.Album, error)
 	DeleteAlbum(ctx context.Context, id int32) error
@@ -41,8 +41,11 @@ func (s *albumStore) FindAlbumsByFamilyID(ctx context.Context, familyID int32) (
 	return wrapErr(s.queries.FindAlbumsByFamilyID(ctx, familyID))
 }
 
-func (s *albumStore) FindAlbumByID(ctx context.Context, id int32) (db.Album, error) {
-	return wrapErr(s.queries.FindAlbumByID(ctx, id))
+func (s *albumStore) FindAlbumByIDAndFamilyID(ctx context.Context, id int32, familyID int32) (db.Album, error) {
+	return wrapErr(s.queries.FindAlbumByIDAndFamilyID(ctx, db.FindAlbumByIDAndFamilyIDParams{
+		ID:       id,
+		FamilyID: familyID,
+	}))
 }
 
 func (s *albumStore) CreateAlbum(ctx context.Context, arg db.CreateAlbumParams) (db.Album, error) {

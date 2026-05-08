@@ -1,10 +1,11 @@
 -- name: GetAlbumGroupPermissions :many
 SELECT
-    *
+    agp.*
 FROM
-    album_groups_permissions
+    album_groups_permissions as agp
+    INNER JOIN albums as a on agp.album_id = a.id AND a.family_id = $2
 WHERE
-    album_id = $1;
+    agp.album_id = $1;
 
 -- name: InsertAlbumGroupPermission :exec
 INSERT INTO

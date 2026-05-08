@@ -8,12 +8,23 @@ FROM
 WHERE
     a.family_id = sqlc.arg(family_id)::int
     AND g.id = sqlc.arg(group_id)::int
-    AND agp.permission = 'W';
+    AND agp.permission = 'W'
+UNION
+SELECT
+    a.*
+FROM
+    albums as a
+WHERE
+    a.family_id = sqlc.arg(family_id)::int
+    AND a.is_common = TRUE
+ORDER BY
+    id;
 
 -- name: GetAlbumsOptions :many
 SELECT
     a.id,
-    a.name
+    a.name,
+    a.is_common
 FROM
     albums as a
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
@@ -21,7 +32,19 @@ FROM
 WHERE
     a.family_id = sqlc.arg(family_id)::int
     AND g.id = sqlc.arg(group_id)::int
-    AND agp.permission = 'R';
+    AND agp.permission = 'R'
+UNION
+SELECT
+    a.id,
+    a.name,
+    a.is_common
+FROM
+    albums as a
+WHERE
+    a.family_id = sqlc.arg(family_id)::int
+    AND a.is_common = TRUE
+ORDER BY
+    id;
 
 -- name: FindAlbumsByFamilyID :many
 SELECT
@@ -33,19 +56,20 @@ WHERE
 ORDER BY
     id;
 
--- name: FindAlbumByID :one
+-- name: FindAlbumByIDAndFamilyID :one
 SELECT
     *
 FROM
     albums
 WHERE
-    id = $1;
+    id = $1
+    AND family_id = $2;
 
 -- name: CreateAlbum :one
 INSERT INTO
-    albums (family_id, name)
+    albums (family_id, name, is_common)
 VALUES
-    ($1, $2)
+    ($1, $2, $3)
 RETURNING
     *;
 

@@ -70,6 +70,7 @@ export interface Group {
 export interface Album {
   id: number
   name: string
+  is_common: boolean
   created_at: string
   updated_at: string
 }

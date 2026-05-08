@@ -9,6 +9,7 @@ import (
 type AlbumResponse struct {
 	ID        int32     `json:"id"`
 	Name      string    `json:"name"`
+	IsCommon  bool      `json:"is_common"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -17,20 +18,23 @@ func NewAlbumResponse(album *db.Album) *AlbumResponse {
 	return &AlbumResponse{
 		ID:        album.ID,
 		Name:      album.Name,
+		IsCommon:  album.IsCommon,
 		CreatedAt: album.CreatedAt,
 		UpdatedAt: album.UpdatedAt,
 	}
 }
 
 type AlbumOptionResponse struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID       int32  `json:"id"`
+	Name     string `json:"name"`
+	IsCommon bool   `json:"is_common"`
 }
 
 func NewAlbumOptionResponse(albumOption *db.GetAlbumsOptionsRow) *AlbumOptionResponse {
 	return &AlbumOptionResponse{
-		ID:   albumOption.ID,
-		Name: albumOption.Name,
+		ID:       albumOption.ID,
+		Name:     albumOption.Name,
+		IsCommon: albumOption.IsCommon,
 	}
 }
 
@@ -49,6 +53,7 @@ type GroupPermission struct {
 
 type CreateAlbumRequest struct {
 	Name        string            `json:"name" validate:"required"`
+	IsCommon    bool              `json:"is_common"`
 	Permissions []GroupPermission `json:"permissions"`
 }
 

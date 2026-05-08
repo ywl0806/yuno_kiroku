@@ -13,6 +13,7 @@ type Album struct {
 	ID        int32
 	FamilyID  int32
 	Name      string
+	IsCommon  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

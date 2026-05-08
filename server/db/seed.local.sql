@@ -31,12 +31,12 @@ VALUES
 SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 
 INSERT INTO
-    albums (id, family_id, name)
+    albums (id, family_id, name, is_common)
 VALUES
-    (1, 1, '공용'),
-    (2, 1, 'lee'),
-    (3, 1, 'muraoka'),
-    (4, 1, 'admin');
+    (1, 1, '공용', TRUE),
+    (2, 1, 'lee', FALSE),
+    (3, 1, 'muraoka', FALSE),
+    (4, 1, 'admin', FALSE);
 
 SELECT setval('albums_id_seq', (SELECT MAX(id) FROM albums));
 
