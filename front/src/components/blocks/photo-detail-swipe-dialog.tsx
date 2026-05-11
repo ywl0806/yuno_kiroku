@@ -24,7 +24,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
   const [likeMaps, setLikeMaps] = useState<Record<string, boolean>>({})
 
   const currentPhoto = useMemo(() => photos[index], [photos, index])
-  const currentMediaItemId = currentPhoto ? Number(currentPhoto.id) : null
+  const currentMediaItemId = currentPhoto ? currentPhoto.id : null
 
   const { toggle: toggleLike, isPending: isLikePending } = useLikeMutation()
 

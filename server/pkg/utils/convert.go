@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"hash/crc32"
+
 	"github.com/jinzhu/copier"
 	"github.com/spf13/cast"
 )
@@ -23,4 +25,8 @@ func ConvertToInt32(src any) (int32, error) {
 
 func ConvertToBool(src any) (bool, error) {
 	return cast.ToBoolE(src)
+}
+
+func StringToHash(src string) int64 {
+	return int64(crc32.ChecksumIEEE([]byte(src)))
 }

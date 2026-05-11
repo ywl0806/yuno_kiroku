@@ -13,7 +13,7 @@ FROM
     identities
 WHERE
     id = sqlc.arg (id)::int
-    AND family_id = sqlc.arg (family_id)::int;
+    AND family_id = sqlc.arg (family_id)::uuid;
 
 -- name: FindIdentitiesByFamilyId :many
 SELECT
@@ -21,7 +21,7 @@ SELECT
 FROM
     identities
 WHERE
-    family_id = sqlc.arg (family_id)::int;
+    family_id = sqlc.arg (family_id)::uuid;
 
 -- name: GetIdentityOptions :many
 SELECT DISTINCT ON (i.id)

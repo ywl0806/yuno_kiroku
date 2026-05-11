@@ -7,7 +7,7 @@ import (
 )
 
 type AlbumResponse struct {
-	ID        int32     `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	IsCommon  bool      `json:"is_common"`
 	CreatedAt time.Time `json:"created_at"`
@@ -25,7 +25,7 @@ func NewAlbumResponse(album *db.Album) *AlbumResponse {
 }
 
 type AlbumOptionResponse struct {
-	ID       int32  `json:"id"`
+	ID       string `json:"id"`
 	Name     string `json:"name"`
 	IsCommon bool   `json:"is_common"`
 }

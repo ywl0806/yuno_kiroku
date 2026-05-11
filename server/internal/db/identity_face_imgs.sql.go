@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -23,7 +24,7 @@ RETURNING
 
 type CreateIdentityFaceImgParams struct {
 	IdentityID  int32
-	MediaItemID int32
+	MediaItemID string
 	StorageKey  string
 }
 
@@ -68,8 +69,8 @@ WHERE
             (k.id = ALL ($3::int[]))
             ELSE TRUE
         END
-        OR CASE WHEN $4::int[] IS NOT NULL THEN
-            (u.id = ALL ($4::int[]))
+        OR CASE WHEN $4::uuid[] IS NOT NULL THEN
+            (u.id = ALL ($4::uuid[]))
             ELSE TRUE
         END
     )
@@ -79,20 +80,20 @@ ORDER BY
 `
 
 type FindNewestIdentityFaceImgByFamilyIdParams struct {
-	FamilyID      int32
+	FamilyID      string
 	OnlyNotLinked bool
 	WithKidIds    []int32
-	WithUserIds   []int32
+	WithUserIds   []string
 }
 
 type FindNewestIdentityFaceImgByFamilyIdRow struct {
 	ID          int32
 	IdentityID  int32
-	MediaItemID int32
+	MediaItemID string
 	StorageKey  string
 	KidID       sql.NullInt32
 	KidName     sql.NullString
-	UserID      sql.NullInt32
+	UserID      uuid.NullUUID
 	UserName    sql.NullString
 }
 

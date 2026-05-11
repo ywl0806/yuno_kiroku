@@ -2,7 +2,7 @@ import { UploadStatus } from '@/enums'
 
 export interface Tag {
   id: number
-  family_id: number | null
+  family_id: string | null
   name: string
   is_preset: boolean
 }
@@ -38,8 +38,7 @@ export type MediaItemRange = {
 }
 
 export interface Family {
-  id: number
-  name: string
+  id: string
   created_at: string
   updated_at: string
 }
@@ -49,10 +48,10 @@ export type FamilyTitleType = 'dad' | 'mom' | 'grandfather' | 'grandmother' | 'u
 export const FAMILY_TITLE_OPTIONS: FamilyTitleType[] = ['dad', 'mom', 'grandfather', 'grandmother', 'uncle', 'aunt', 'other', 'custom']
 
 export interface Member {
-  id: number
+  id: string
   name: string
   username: string
-  family_id: number
+  family_id: string
   group_id: number
   family_title: FamilyTitleType | null
   custom_family_title: string | null
@@ -60,7 +59,7 @@ export interface Member {
 
 export interface Group {
   id: number
-  family_id: number
+  family_id: string
   is_admin: boolean
   name: string
   created_at: string
@@ -68,7 +67,7 @@ export interface Group {
 }
 
 export interface Album {
-  id: number
+  id: string
   name: string
   is_common: boolean
   created_at: string
@@ -77,7 +76,7 @@ export interface Album {
 
 export interface Kid {
   id: number
-  family_id: number
+  family_id: string
   name: string | null
   birth_date: string | null
   identity_id: number | null
@@ -98,7 +97,7 @@ export interface SettingsData {
 }
 
 export interface Me {
-  id: number
+  id: string
   name: string | null
   username: string
   provider: string | null
@@ -115,7 +114,7 @@ export interface AlbumWithPermissions extends Album {
 }
 
 export interface BatchThumbnail {
-  id: number
+  id: string
   thumbnail_url: string
   thumbnail_width: number
   thumbnail_height: number
@@ -123,7 +122,7 @@ export interface BatchThumbnail {
 
 export interface UploadBatchWithThumbnails {
   id: number
-  album_id: number
+  album_id: string
   upload_at: string
   count: number
   thumbnails: BatchThumbnail[]
@@ -147,7 +146,7 @@ export type UploadMediaItemError = {
 
 export type UploadMediaItem = {
   id?: string
-  media_item_id?: number
+  media_item_id?: string
   file: File
   src: string
   status: UploadStatus

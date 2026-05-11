@@ -15,7 +15,7 @@ WHERE
     album_id = $1
 `
 
-func (q *Queries) DeleteAlbumGroupPermissionsByAlbumID(ctx context.Context, albumID int32) error {
+func (q *Queries) DeleteAlbumGroupPermissionsByAlbumID(ctx context.Context, albumID string) error {
 	_, err := q.db.ExecContext(ctx, deleteAlbumGroupPermissionsByAlbumID, albumID)
 	return err
 }
@@ -31,8 +31,8 @@ WHERE
 `
 
 type GetAlbumGroupPermissionsParams struct {
-	AlbumID  int32
-	FamilyID int32
+	AlbumID  string
+	FamilyID string
 }
 
 func (q *Queries) GetAlbumGroupPermissions(ctx context.Context, arg GetAlbumGroupPermissionsParams) ([]AlbumGroupsPermission, error) {
@@ -72,7 +72,7 @@ VALUES
 `
 
 type InsertAlbumGroupPermissionParams struct {
-	AlbumID    int32
+	AlbumID    string
 	GroupID    int32
 	Permission string
 }

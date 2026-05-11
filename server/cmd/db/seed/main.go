@@ -45,7 +45,7 @@ func main() {
 
 	// 비밀번호 해시 업데이트
 	for users.Next() {
-		var id int
+		var id string
 		var password string
 
 		err = users.Scan(&id, &password)

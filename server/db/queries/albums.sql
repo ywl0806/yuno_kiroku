@@ -6,7 +6,7 @@ FROM
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
     INNER JOIN groups as g on agp.group_id = g.id
 WHERE
-    a.family_id = sqlc.arg(family_id)::int
+    a.family_id = sqlc.arg(family_id)::uuid
     AND g.id = sqlc.arg(group_id)::int
     AND agp.permission = 'W'
 UNION
@@ -15,7 +15,7 @@ SELECT
 FROM
     albums as a
 WHERE
-    a.family_id = sqlc.arg(family_id)::int
+    a.family_id = sqlc.arg(family_id)::uuid
     AND a.is_common = TRUE
 ORDER BY
     id;
@@ -30,7 +30,7 @@ FROM
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
     INNER JOIN groups as g on agp.group_id = g.id
 WHERE
-    a.family_id = sqlc.arg(family_id)::int
+    a.family_id = sqlc.arg(family_id)::uuid
     AND g.id = sqlc.arg(group_id)::int
     AND agp.permission = 'R'
 UNION
@@ -41,7 +41,7 @@ SELECT
 FROM
     albums as a
 WHERE
-    a.family_id = sqlc.arg(family_id)::int
+    a.family_id = sqlc.arg(family_id)::uuid
     AND a.is_common = TRUE
 ORDER BY
     id;

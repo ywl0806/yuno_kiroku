@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
@@ -100,10 +99,7 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 // ProcessResizeFromData 이미 메모리에 있는 원본 데이터를 받아
 // 리사이즈 → 업로드 → media_files 저장 → upload_status=completed → face job 디스패치를 처리합니다.
 // multipart 업로드(MediaItemService)와 MinIO webhook(ProcessResize) 양쪽에서 공유합니다.
-func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData []byte, mediaItemID, familyID int32) error {
-	mediaItemStr := strconv.Itoa(int(mediaItemID))
-	familyStr := strconv.Itoa(int(familyID))
-
+func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData []byte, mediaItemID, familyID string) error {
 	// 1. 리사이즈
 	viewImg, err := imagepkg.Resize(originalData, consts.VIEW_MAX_LENGTH)
 	if err != nil {
@@ -119,8 +115,8 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	viewKey, err := s.imageUploader.SaveFile(
 		ctx,
 		viewImg.Data,
-		consts.VIEW_STORAGE_PREFIX+"/"+familyStr,
-		mediaItemStr+viewImg.Ext,
+		consts.VIEW_STORAGE_PREFIX+"/"+familyID,
+		mediaItemID+viewImg.Ext,
 	)
 	viewImg.Data = nil
 	if err != nil {
@@ -131,8 +127,8 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	thumbKey, err := s.imageUploader.SaveFile(
 		ctx,
 		thumbImg.Data,
-		consts.THUMBNAIL_STORAGE_PREFIX+"/"+familyStr,
-		mediaItemStr+thumbImg.Ext,
+		consts.THUMBNAIL_STORAGE_PREFIX+"/"+familyID,
+		mediaItemID+thumbImg.Ext,
 	)
 	thumbImg.Data = nil
 	if err != nil {
@@ -179,7 +175,7 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	return nil
 }
 
-func (s *ResizeService) setFailed(ctx context.Context, mediaItemID int32, err error) {
+func (s *ResizeService) setFailed(ctx context.Context, mediaItemID string, err error) {
 	if _, updateErr := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(enums.UploadStatusFailed),
@@ -203,35 +199,27 @@ func extractStorageKeyExt(key string) string {
 }
 
 // "original/1/456.jpg" → familyId=1
-func extractFamilyIDFromKey(key string) (int32, error) {
+func extractFamilyIDFromKey(key string) (string, error) {
 	parts := splitStorageKey(key)
 	if len(parts) < 3 {
-		return 0, fmt.Errorf("invalid key format: %s", key)
+		return "", fmt.Errorf("invalid key format: %s", key)
 	}
-	id, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return 0, fmt.Errorf("family_id 파싱 실패 (key=%s): %w", key, err)
-	}
-	return int32(id), nil
+	return parts[1], nil
 }
 
-// "original/1/456.jpg" → mediaItemId=456
-func extractMediaItemIDFromKey(key string) (int32, error) {
+// "original/1/456.jpg" → mediaItemId="456"
+func extractMediaItemIDFromKey(key string) (string, error) {
 	parts := splitStorageKey(key)
 	if len(parts) < 3 {
-		return 0, fmt.Errorf("invalid key format: %s", key)
+		return "", fmt.Errorf("invalid key format: %s", key)
 	}
 	name := parts[len(parts)-1]
 	for i := len(name) - 1; i >= 0; i-- {
 		if name[i] == '.' {
-			id, err := strconv.Atoi(name[:i])
-			if err != nil {
-				return 0, fmt.Errorf("media_item_id 파싱 실패 (key=%s): %w", key, err)
-			}
-			return int32(id), nil
+			return name[:i], nil
 		}
 	}
-	return 0, fmt.Errorf("no extension in key: %s", key)
+	return "", fmt.Errorf("no extension in key: %s", key)
 }
 
 func splitStorageKey(key string) []string {

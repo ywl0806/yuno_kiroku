@@ -8,7 +8,7 @@ import (
 
 // KidStore 아이 데이터 접근 인터페이스
 type KidStore interface {
-	FindKidsByFamilyID(ctx context.Context, familyID int32) ([]db.Kid, error)
+	FindKidsByFamilyID(ctx context.Context, familyID string) ([]db.Kid, error)
 	CreateKid(ctx context.Context, arg db.CreateKidParams) (db.Kid, error)
 	UpdateKid(ctx context.Context, arg db.UpdateKidParams) (db.Kid, error)
 	DeleteKid(ctx context.Context, id int32) error
@@ -25,7 +25,7 @@ func NewKidStore(queries *db.Queries) KidStore {
 	return &kidStore{queries: queries}
 }
 
-func (s *kidStore) FindKidsByFamilyID(ctx context.Context, familyID int32) ([]db.Kid, error) {
+func (s *kidStore) FindKidsByFamilyID(ctx context.Context, familyID string) ([]db.Kid, error) {
 	return wrapErr(s.queries.FindKidsByFamilyID(ctx, familyID))
 }
 

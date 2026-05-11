@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom'
 export const SettingsFamilyInvitePage = () => {
   const { familyId } = useParams<{ familyId: string }>()
   const { t } = useTranslation()
-  const { data, isLoading, isError } = useGetFamilyInvite(Number(familyId))
+  const { data, isLoading, isError } = useGetFamilyInvite(familyId ?? '')
 
   const handleCopy = () => {
     if (!data?.inviteUrl) return

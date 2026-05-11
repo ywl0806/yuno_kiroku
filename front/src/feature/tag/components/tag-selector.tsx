@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 
 type Props = {
-  mediaItemId: number
+  mediaItemId: string
 }
 
 export const TagSelector: FC<Props> = ({ mediaItemId }) => {

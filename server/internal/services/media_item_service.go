@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
@@ -30,12 +31,12 @@ func NewMediaItemService(
 
 // UploadImageResult는 이미지 업로드 시작 후 반환하는 응답
 type UploadImageResult struct {
-	MediaItemID int32
+	MediaItemID string
 	Status      string
 }
 
 // 미디어 아이템의 업로드 상태를 업데이트
-func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
+func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID string, uploadStatus enums.UploadStatus) error {
 	_, err := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(uploadStatus),
@@ -44,7 +45,7 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 }
 
 // GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환
-func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
+func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID string, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
 	params := db.GetMediaItemsByTakenAtParams{
 		GroupID:     groupID,
 		TakenAtFrom: from,
@@ -96,16 +97,20 @@ type SearchMediaItemsResult struct {
 }
 
 // SearchMediaItems는 검색 조건으로 미디어 아이템을 페이지 단위로 반환
-func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID, userID int32, from, to *time.Time, albumID *int32, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
+func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, userID string, from, to *time.Time, albumID *string, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
 	if identityIDs == nil {
 		identityIDs = []int32{}
 	}
 	if tagIDs == nil {
 		tagIDs = []int32{}
 	}
-	albumIDNull := sql.NullInt32{Valid: false}
+	albumIDNull := uuid.NullUUID{Valid: false}
 	if albumID != nil {
-		albumIDNull = sql.NullInt32{Int32: *albumID, Valid: true}
+		parsed, err := uuid.Parse(*albumID)
+		if err != nil {
+			return nil, err
+		}
+		albumIDNull = uuid.NullUUID{UUID: parsed, Valid: true}
 	}
 	fromNull := sql.NullTime{Valid: false}
 	if from != nil {
@@ -145,7 +150,7 @@ func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID, userID
 
 // PresignedUploadResult는 Presigned URL 발급 후 반환하는 응답
 type PresignedUploadResult struct {
-	MediaItemID  int32
+	MediaItemID  string
 	PresignedURL string
 	StorageKey   string
 }
@@ -155,7 +160,7 @@ type PresignedUploadResult struct {
 func (s *MediaItemService) CreatePresignedUpload(
 	ctx context.Context,
 	fileName, contentType string,
-	familyId, albumId, uploadBatchID int32,
+	familyId, albumId string, uploadBatchID int32,
 ) (*PresignedUploadResult, error) {
 	// 1. media_item 먼저 생성 (storageKey에 mediaItemID 필요)
 	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, db.CreateMediaItemParams{
@@ -194,7 +199,7 @@ func (s *MediaItemService) CreatePresignedUpload(
 }
 
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성
-func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error) {
+func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId string) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)
 	if err != nil {
 		return nil, err
@@ -208,7 +213,7 @@ func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID 
 }
 
 type BatchThumbnail struct {
-	ID              int32
+	ID              string
 	ThumbnailUrl    string
 	ThumbnailWidth  int32
 	ThumbnailHeight int32
@@ -216,7 +221,7 @@ type BatchThumbnail struct {
 
 type UploadBatchWithThumbnails struct {
 	ID         int32
-	AlbumID    int32
+	AlbumID    string
 	UploadAt   time.Time
 	Count      int64
 	Thumbnails []BatchThumbnail
@@ -297,7 +302,7 @@ type UploadBatchItemsResult struct {
 }
 
 // GetMediaItemsByUploadBatch는 특정 배치의 미디어 아이템을 페이지 단위로 반환합니다.
-func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID int32, page int) (*UploadBatchItemsResult, error) {
+func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID string, page int) (*UploadBatchItemsResult, error) {
 	if page < 1 {
 		page = 1
 	}

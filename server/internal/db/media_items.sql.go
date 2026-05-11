@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -41,8 +42,8 @@ RETURNING
 `
 
 type CreateMediaItemParams struct {
-	FamilyID               int32
-	AlbumID                int32
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	TakenAt                time.Time
 	FileName               sql.NullString
@@ -84,7 +85,7 @@ FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
 WHERE
-    mi.family_id = $1::int
+    mi.family_id = $1::uuid
     AND fd.embedding = ANY($2::vector[])
 GROUP BY
     mi.id
@@ -92,7 +93,7 @@ LIMIT 1
 `
 
 type GetMediaItemByFaceDetectionParams struct {
-	FamilyID   int32
+	FamilyID   string
 	Embeddings []interface{}
 }
 
@@ -119,7 +120,7 @@ const getMediaItemByID = `-- name: GetMediaItemByID :one
 SELECT id, family_id, album_id, upload_batch_id, upload_status, taken_location_latitude, taken_location_longitude, taken_at, file_name, created_at, updated_at FROM media_items WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetMediaItemByID(ctx context.Context, id int32) (MediaItem, error) {
+func (q *Queries) GetMediaItemByID(ctx context.Context, id string) (MediaItem, error) {
 	row := q.db.QueryRowContext(ctx, getMediaItemByID, id)
 	var i MediaItem
 	err := row.Scan(
@@ -215,9 +216,9 @@ LIMIT 5
 `
 
 type GetMediaItemThumbnailsByUploadBatchIdRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
 	TakenLocationLatitude  sql.NullFloat64
@@ -298,7 +299,7 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
@@ -313,16 +314,16 @@ ORDER BY
 `
 
 type GetMediaItemsByTakenAtParams struct {
-	UserID      int32
+	UserID      string
 	GroupID     int32
 	TakenAtFrom time.Time
 	TakenAtTo   time.Time
 }
 
 type GetMediaItemsByTakenAtRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
 	TakenLocationLatitude  sql.NullFloat64
@@ -407,7 +408,7 @@ SELECT
     mf_view.height AS view_height,
     mil.id AS is_liked
 FROM media_items AS mi
-LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::uuid
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
@@ -418,16 +419,16 @@ OFFSET $3::int
 `
 
 type GetMediaItemsByUploadBatchIdParams struct {
-	UserID        int32
+	UserID        string
 	UploadBatchID int32
 	PageOffset    int32
 	PageSize      int32
 }
 
 type GetMediaItemsByUploadBatchIdRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
 	TakenLocationLatitude  sql.NullFloat64
@@ -523,11 +524,11 @@ ORDER BY ub.upload_at DESC
 
 type GetUploadBatchWithThumbnailsRow struct {
 	ID          int32
-	AlbumID     int32
+	AlbumID     string
 	StorageKey  string
 	Width       sql.NullInt32
 	Height      sql.NullInt32
-	MediaItemID int32
+	MediaItemID string
 }
 
 func (q *Queries) GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]GetUploadBatchWithThumbnailsRow, error) {
@@ -570,7 +571,7 @@ ORDER BY mi.id ASC
 `
 
 type GetUploadStatusesRow struct {
-	ID           int32
+	ID           string
 	UploadStatus string
 }
 
@@ -614,7 +615,7 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
@@ -624,7 +625,7 @@ WHERE
     AND mi.upload_status = '03'
     AND ($3::timestamp IS NULL OR mi.taken_at >= $3::timestamp)
     AND ($4::timestamp IS NULL OR mi.taken_at <= $4::timestamp)
-    AND ($5::int IS NULL OR mi.album_id = $5::int)
+    AND ($5::uuid IS NULL OR mi.album_id = $5::uuid)
     AND (
         cardinality($6::int[]) = 0
         OR EXISTS (
@@ -638,7 +639,7 @@ WHERE
         OR EXISTS (
             SELECT 1 FROM media_item_likes mil
             WHERE mil.media_item_id = mi.id
-              AND mil.user_id = $1::int
+              AND mil.user_id = $1::uuid
         )
     )
     AND (
@@ -656,11 +657,11 @@ OFFSET $9::int
 `
 
 type SearchMediaItemsParams struct {
-	UserID      int32
+	UserID      string
 	GroupID     int32
 	TakenAtFrom sql.NullTime
 	TakenAtTo   sql.NullTime
-	AlbumID     sql.NullInt32
+	AlbumID     uuid.NullUUID
 	IdentityIds []int32
 	Liked       bool
 	TagIds      []int32
@@ -669,9 +670,9 @@ type SearchMediaItemsParams struct {
 }
 
 type SearchMediaItemsRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
 	TakenLocationLatitude  sql.NullFloat64
@@ -758,7 +759,7 @@ WHERE id = $1
 `
 
 type UpdateMediaItemTakenAtParams struct {
-	ID                     int32
+	ID                     string
 	TakenAt                time.Time
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
@@ -782,12 +783,12 @@ RETURNING id, upload_status, created_at, updated_at
 `
 
 type UpdateMediaItemUploadStatusParams struct {
-	ID           int32
+	ID           string
 	UploadStatus string
 }
 
 type UpdateMediaItemUploadStatusRow struct {
-	ID           int32
+	ID           string
 	UploadStatus string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

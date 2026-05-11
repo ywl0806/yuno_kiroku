@@ -129,7 +129,7 @@ export const UploadContainer: FC = () => {
             inputRef={imgInputRef}
             images={mediaItems}
             setImages={setMediaItems}
-            albumId={selectedAlbumId}
+            albumId={selectedAlbumId ?? ''}
           />
         </div>
       )}

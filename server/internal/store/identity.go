@@ -8,10 +8,10 @@ import (
 
 // IdentityStore identity(인물) 데이터 접근 인터페이스
 type IdentityStore interface {
-	CreateIdentity(ctx context.Context, familyID int32) (db.Identity, error)
+	CreateIdentity(ctx context.Context, familyID string) (db.Identity, error)
 	FindIdentityByIdAndFamilyId(ctx context.Context, arg db.FindIdentityByIdAndFamilyIdParams) (db.Identity, error)
-	FindIdentitiesByFamilyId(ctx context.Context, familyID int32) ([]db.Identity, error)
-	GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error)
+	FindIdentitiesByFamilyId(ctx context.Context, familyID string) ([]db.Identity, error)
+	GetIdentityOptions(ctx context.Context, familyID string) ([]db.GetIdentityOptionsRow, error)
 }
 
 type identityStore struct {
@@ -23,7 +23,7 @@ func NewIdentityStore(queries *db.Queries) IdentityStore {
 	return &identityStore{queries: queries}
 }
 
-func (s *identityStore) CreateIdentity(ctx context.Context, familyID int32) (db.Identity, error) {
+func (s *identityStore) CreateIdentity(ctx context.Context, familyID string) (db.Identity, error) {
 	return wrapErr(s.queries.CreateIdentity(ctx, familyID))
 }
 
@@ -32,10 +32,10 @@ func (s *identityStore) FindIdentityByIdAndFamilyId(ctx context.Context, arg db.
 	return wrapErr(identity, err, "field.identity")
 }
 
-func (s *identityStore) FindIdentitiesByFamilyId(ctx context.Context, familyID int32) ([]db.Identity, error) {
+func (s *identityStore) FindIdentitiesByFamilyId(ctx context.Context, familyID string) ([]db.Identity, error) {
 	return wrapErr(s.queries.FindIdentitiesByFamilyId(ctx, familyID))
 }
 
-func (s *identityStore) GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error) {
+func (s *identityStore) GetIdentityOptions(ctx context.Context, familyID string) ([]db.GetIdentityOptionsRow, error) {
 	return wrapErr(s.queries.GetIdentityOptions(ctx, familyID))
 }

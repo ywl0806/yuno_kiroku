@@ -2,15 +2,16 @@ package handlers
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
-	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
 type MediaItemHandler struct {
@@ -34,8 +35,8 @@ func NewMediaItemHandler(
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/presigned-url [post]
 func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
-	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
-	if err != nil {
+	albumId := c.QueryParam("album_id")
+	if albumId == "" {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "album_id"})
 	}
 
@@ -75,9 +76,8 @@ func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/upload-batch [post]
 func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
-	// album 쿼리 파라미터 가져오기
-	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
-	if err != nil {
+	albumId := c.QueryParam("album_id")
+	if albumId == "" {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.album_id"})
 	}
 
@@ -120,7 +120,7 @@ func (con *MediaItemHandler) GetMediaItemRange(c echo.Context) error {
 // @Param from query string true "From" example(2025-01-01)
 // @Param to query string true "To" example(2025-01-01)
 // @Param identity_ids query []int false "Identity IDs"
-// @Param album_id query int false "Album ID"
+// @Param album_id query string false "Album ID"
 // @Success 200
 func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	reqParams := new(models.GetMediaItemsRequest)
@@ -150,7 +150,7 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 // @Param from query string false "From (RFC3339)"
 // @Param to query string false "To (RFC3339)"
 // @Param identity_ids query []int false "Identity IDs"
-// @Param album_id query int false "Album ID"
+// @Param album_id query string false "Album ID"
 // @Param page query int false "Page (1-based, default 1)"
 // @Success 200 {object} models.SearchMediaItemsResponse
 func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
@@ -188,8 +188,8 @@ func (con *MediaItemHandler) GetUploadBatches(c echo.Context) error {
 	ctx := c.Request().Context()
 	page := 1
 	if p := c.QueryParam("page"); p != "" {
-		if parsed, err := utils.ConvertToInt32(p); err == nil {
-			page = int(parsed)
+		if parsed, err := strconv.Atoi(p); err == nil {
+			page = parsed
 		}
 	}
 
@@ -223,8 +223,8 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 
 	page := 1
 	if p := c.QueryParam("page"); p != "" {
-		if parsed, err := utils.ConvertToInt32(p); err == nil {
-			page = int(parsed)
+		if parsed, err := strconv.Atoi(p); err == nil {
+			page = parsed
 		}
 	}
 
@@ -254,16 +254,13 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/upload-batch/status [get]
 func (con *MediaItemHandler) GetUploadBatchStatus(c echo.Context) error {
-	// upload_batch_id 쿼리 파라미터 가져오기
 	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
 	if err != nil {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.upload_batch_id"})
 	}
 
-	// 컨텍스트 가져오기
 	ctx := c.Request().Context()
 
-	// 업로드 배치 조회
 	uploadStatuses, err := con.mediaItemService.GetUploadStatuses(ctx, uploadBatchID)
 	if err != nil {
 		return err

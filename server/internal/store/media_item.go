@@ -11,11 +11,11 @@ type MediaItemStore interface {
 	CreateMediaItem(ctx context.Context, arg db.CreateMediaItemParams) (db.MediaItem, error)
 	CreateMediaFile(ctx context.Context, arg db.CreateMediaFileParams) (db.MediaFile, error)
 	GetMediaItemByFaceDetection(ctx context.Context, arg db.GetMediaItemByFaceDetectionParams) (db.MediaItem, error)
-	GetMediaItemByID(ctx context.Context, id int32) (db.MediaItem, error)
+	GetMediaItemByID(ctx context.Context, id string) (db.MediaItem, error)
 	UpdateMediaItemTakenAt(ctx context.Context, arg db.UpdateMediaItemTakenAtParams) error
 	GetMediaItemsByTakenAt(ctx context.Context, arg db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error)
 	GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error)
-	CreateUploadBatch(ctx context.Context, albumID int32) (db.UploadBatch, error)
+	CreateUploadBatch(ctx context.Context, albumID string) (db.UploadBatch, error)
 	UpdateMediaItemUploadStatus(ctx context.Context, arg db.UpdateMediaItemUploadStatusParams) (db.UpdateMediaItemUploadStatusRow, error)
 	GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error)
 	SearchMediaItems(ctx context.Context, arg db.SearchMediaItemsParams) ([]db.SearchMediaItemsRow, error)
@@ -53,7 +53,7 @@ func (s *mediaItemStore) GetMediaItemRange(ctx context.Context, clanGroupID int3
 	return wrapErr(s.queries.GetMediaItemRange(ctx, clanGroupID))
 }
 
-func (s *mediaItemStore) CreateUploadBatch(ctx context.Context, albumID int32) (db.UploadBatch, error) {
+func (s *mediaItemStore) CreateUploadBatch(ctx context.Context, albumID string) (db.UploadBatch, error) {
 	return wrapErr(s.queries.CreateUploadBatch(ctx, albumID))
 }
 
@@ -69,7 +69,7 @@ func (s *mediaItemStore) SearchMediaItems(ctx context.Context, arg db.SearchMedi
 	return wrapErr(s.queries.SearchMediaItems(ctx, arg))
 }
 
-func (s *mediaItemStore) GetMediaItemByID(ctx context.Context, id int32) (db.MediaItem, error) {
+func (s *mediaItemStore) GetMediaItemByID(ctx context.Context, id string) (db.MediaItem, error) {
 	return wrapErr(s.queries.GetMediaItemByID(ctx, id))
 }
 

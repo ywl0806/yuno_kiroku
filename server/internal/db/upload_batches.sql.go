@@ -18,7 +18,7 @@ VALUES ($1)
 RETURNING id, album_id, upload_at, created_at, updated_at
 `
 
-func (q *Queries) CreateUploadBatch(ctx context.Context, albumID int32) (UploadBatch, error) {
+func (q *Queries) CreateUploadBatch(ctx context.Context, albumID string) (UploadBatch, error) {
 	row := q.db.QueryRowContext(ctx, createUploadBatch, albumID)
 	var i UploadBatch
 	err := row.Scan(
@@ -62,7 +62,7 @@ type GetUploadBatchesAndMediaItemCountsParams struct {
 
 type GetUploadBatchesAndMediaItemCountsRow struct {
 	ID       int32
-	AlbumID  int32
+	AlbumID  string
 	UploadAt time.Time
 	Count    int64
 }

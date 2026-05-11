@@ -1,7 +1,7 @@
 import { getTagsForMediaItem } from '@/service/tag-service'
 import { useQuery } from '@tanstack/react-query'
 
-export const useGetMediaItemTags = (mediaItemId: number | null) => {
+export const useGetMediaItemTags = (mediaItemId: string | null) => {
   return useQuery({
     queryKey: ['media-item-tags', mediaItemId],
     queryFn: () => getTagsForMediaItem(mediaItemId!),

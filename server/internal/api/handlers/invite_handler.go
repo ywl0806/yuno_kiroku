@@ -76,15 +76,14 @@ func (h *InviteHandler) ValidateInvite(c echo.Context) error {
 	if token == "" {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "field.token"})
 	}
-	familyName, groupName, familyID, groupID, err := h.inviteService.ValidateInviteToken(c.Request().Context(), token)
+	groupName, familyID, groupID, err := h.inviteService.ValidateInviteToken(c.Request().Context(), token)
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, models.ValidateInviteResponse{
-		Valid:      true,
-		FamilyName: familyName,
-		GroupName:  groupName,
-		FamilyID:   familyID,
-		GroupID:    groupID,
+		Valid:     true,
+		GroupName: groupName,
+		FamilyID:  familyID,
+		GroupID:   groupID,
 	})
 }

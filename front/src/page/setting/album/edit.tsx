@@ -16,7 +16,7 @@ export const SettingsAlbumEditPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { albumId } = useParams<{ albumId: string }>()
-  const id = Number(albumId)
+  const id = albumId ?? ''
 
   const { data: album } = useGetAlbum(id)
   const { data: settingsData } = useGetSettingsData()

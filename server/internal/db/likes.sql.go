@@ -17,8 +17,8 @@ SELECT EXISTS(
 `
 
 type IsMediaItemLikedParams struct {
-	MediaItemID int32
-	UserID      int32
+	MediaItemID string
+	UserID      string
 }
 
 func (q *Queries) IsMediaItemLiked(ctx context.Context, arg IsMediaItemLikedParams) (bool, error) {
@@ -35,8 +35,8 @@ ON CONFLICT DO NOTHING
 `
 
 type LikeMediaItemParams struct {
-	MediaItemID int32
-	UserID      int32
+	MediaItemID string
+	UserID      string
 }
 
 func (q *Queries) LikeMediaItem(ctx context.Context, arg LikeMediaItemParams) error {
@@ -50,8 +50,8 @@ WHERE media_item_id = $1 AND user_id = $2
 `
 
 type UnlikeMediaItemParams struct {
-	MediaItemID int32
-	UserID      int32
+	MediaItemID string
+	UserID      string
 }
 
 func (q *Queries) UnlikeMediaItem(ctx context.Context, arg UnlikeMediaItemParams) error {

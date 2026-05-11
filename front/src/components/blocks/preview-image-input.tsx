@@ -43,7 +43,7 @@ type Props = {
   inputRef?: RefObject<HTMLInputElement>
   images: UploadMediaItem[]
   setImages: Dispatch<SetStateAction<UploadMediaItem[]>>
-  albumId: number
+  albumId: string
 }
 
 export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albumId }) => {

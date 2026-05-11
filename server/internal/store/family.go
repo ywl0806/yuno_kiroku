@@ -8,9 +8,9 @@ import (
 
 // FamilyStore 가족(family) 데이터 접근 인터페이스
 type FamilyStore interface {
-	FindFamilyByID(ctx context.Context, id int32) (db.FindFamilyByIDRow, error)
-	GetFamilyByID(ctx context.Context, id int32) (db.Family, error)
-	CreateFamily(ctx context.Context, name string) (db.Family, error)
+	FindFamilyByID(ctx context.Context, id string) (string, error)
+	GetFamilyByID(ctx context.Context, id string) (db.Family, error)
+	CreateFamily(ctx context.Context) (db.Family, error)
 }
 
 type familyStore struct {
@@ -22,15 +22,15 @@ func NewFamilyStore(queries *db.Queries) FamilyStore {
 	return &familyStore{queries: queries}
 }
 
-func (s *familyStore) FindFamilyByID(ctx context.Context, id int32) (db.FindFamilyByIDRow, error) {
+func (s *familyStore) FindFamilyByID(ctx context.Context, id string) (string, error) {
 	row, err := s.queries.FindFamilyByID(ctx, id)
 	return wrapErr(row, err, "field.family")
 }
 
-func (s *familyStore) GetFamilyByID(ctx context.Context, id int32) (db.Family, error) {
+func (s *familyStore) GetFamilyByID(ctx context.Context, id string) (db.Family, error) {
 	return wrapErr(s.queries.GetFamilyByID(ctx, id))
 }
 
-func (s *familyStore) CreateFamily(ctx context.Context, name string) (db.Family, error) {
-	return wrapErr(s.queries.CreateFamily(ctx, name))
+func (s *familyStore) CreateFamily(ctx context.Context) (db.Family, error) {
+	return wrapErr(s.queries.CreateFamily(ctx))
 }

@@ -59,7 +59,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	if err != nil {
 		return nil, err
 	}
-	if user.ID == 0 || !utils.CheckPassword(password, user.Password) {
+	if user.ID == "" || !utils.CheckPassword(password, user.Password) {
 		return nil, ErrInvalidCredentials
 	}
 	accessToken, err := s.issueAccessToken(user)
@@ -79,7 +79,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 
 // InviteState 초대 토큰에서 추출한 가입 정보
 type InviteState struct {
-	FamilyID          int32
+	FamilyID          string
 	GroupID           int32
 	FamilyTitle       string
 	CustomFamilyTitle string
@@ -222,7 +222,7 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenStr st
 		return nil, errors.New("invalid refresh token")
 	}
 
-	user, err := s.userService.GetUserByID(ctx, cast.ToInt32(claims.ID))
+	user, err := s.userService.GetUserByID(ctx, claims.ID)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}

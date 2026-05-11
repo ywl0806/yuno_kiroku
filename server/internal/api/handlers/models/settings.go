@@ -35,5 +35,5 @@ func NewIdentityFaceOptionResponse(identityFaceOption *db.FindNewestIdentityFace
 type IdentityFaceOptionRequest struct {
 	OnlyNotLinked bool    `query:"only_not_linked"`
 	WithKidIds    []int32 `query:"with_kid_ids"`
-	WithUserIds   []int32 `query:"with_user_ids"`
+	WithUserIds   []string `query:"with_user_ids"`
 }

@@ -41,7 +41,7 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
@@ -87,7 +87,7 @@ FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
 WHERE
-    mi.family_id = sqlc.arg(family_id)::int
+    mi.family_id = sqlc.arg(family_id)::uuid
     AND fd.embedding = ANY(sqlc.arg(embeddings)::vector[])
 GROUP BY
     mi.id
@@ -127,7 +127,7 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
@@ -137,7 +137,7 @@ WHERE
     AND mi.upload_status = '03'
     AND (sqlc.narg(taken_at_from)::timestamp IS NULL OR mi.taken_at >= sqlc.narg(taken_at_from)::timestamp)
     AND (sqlc.narg(taken_at_to)::timestamp IS NULL OR mi.taken_at <= sqlc.narg(taken_at_to)::timestamp)
-    AND (sqlc.narg(album_id)::int IS NULL OR mi.album_id = sqlc.narg(album_id)::int)
+    AND (sqlc.narg(album_id)::uuid IS NULL OR mi.album_id = sqlc.narg(album_id)::uuid)
     AND (
         cardinality(sqlc.arg(identity_ids)::int[]) = 0
         OR EXISTS (
@@ -151,7 +151,7 @@ WHERE
         OR EXISTS (
             SELECT 1 FROM media_item_likes mil
             WHERE mil.media_item_id = mi.id
-              AND mil.user_id = sqlc.arg(user_id)::int
+              AND mil.user_id = sqlc.arg(user_id)::uuid
         )
     )
     AND (
@@ -209,7 +209,7 @@ SELECT
     mf_view.height AS view_height,
     mil.id AS is_liked
 FROM media_items AS mi
-LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::int
+LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::uuid
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'

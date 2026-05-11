@@ -9,7 +9,7 @@ import (
 
 type KidResponse struct {
 	ID         int32      `json:"id"`
-	FamilyID   int32      `json:"family_id"`
+	FamilyID   string     `json:"family_id"`
 	Name       *string    `json:"name"`
 	BirthDate  *time.Time `json:"birth_date"`
 	IdentityID *int32     `json:"identity_id"`
@@ -38,7 +38,7 @@ type KidWithFaceImg struct {
 	KidID        int32  `json:"kid_id"`
 	Name         string `json:"name"`
 	FaceImgURL   string `json:"face_img_url"`
-	MediaItemID  int32  `json:"media_item_id"`
+	MediaItemID  string `json:"media_item_id"`
 	TakenAtYear  int    `json:"taken_at_year"`
 	TakenAtMonth int    `json:"taken_at_month"`
 	BirthDate    string `json:"birth_date"`

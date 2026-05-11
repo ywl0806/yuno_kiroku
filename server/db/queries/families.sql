@@ -1,7 +1,6 @@
 -- name: FindFamilyByID :one
 SELECT
-    id,
-    name
+    id
 FROM
     families
 WHERE
@@ -17,8 +16,7 @@ WHERE
 
 -- name: CreateFamily :one
 INSERT INTO
-    families (name)
-VALUES
-    ($1)
+    families
+DEFAULT VALUES
 RETURNING
     *;

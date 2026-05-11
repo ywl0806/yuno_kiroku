@@ -4,7 +4,7 @@ import { AlbumGroupPermission, AlbumWithPermissions } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 type UpdateAlbumPayload = {
-  id: number
+  id: string
   name: string
   permissions: AlbumGroupPermission[]
 }

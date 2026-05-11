@@ -29,7 +29,7 @@ RETURNING
 `
 
 type CreateFaceDetectionParams struct {
-	MediaItemID    int32
+	MediaItemID    string
 	IdentityID     int32
 	LocationTop    int32
 	LocationRight  int32
@@ -73,7 +73,7 @@ FROM
     face_detections AS fd
     INNER JOIN identities AS i ON fd.identity_id = i.id
 WHERE
-    i.family_id = $2::int
+    i.family_id = $2::uuid
     AND fd.embedding <=> $1::vector < $3::float
 ORDER BY
     fd.embedding <=> $1::vector ASC
@@ -83,13 +83,13 @@ LIMIT
 
 type FindMostSimilarFaceParams struct {
 	Embedding           interface{}
-	FamilyID            int32
+	FamilyID            string
 	SimilarityThreshold float64
 }
 
 type FindMostSimilarFaceRow struct {
 	IdentityID int32
-	FamilyID   int32
+	FamilyID   string
 	Distance   interface{}
 }
 
@@ -107,14 +107,14 @@ FROM
     face_detections AS fd
     JOIN media_items AS mi ON fd.media_item_id = mi.id
 WHERE
-    mi.family_id = $1::int
-    AND mi.album_id = $2::int
+    mi.family_id = $1::uuid
+    AND mi.album_id = $2::uuid
     AND fd.embedding = ANY($3::vector[])
 `
 
 type GetFaceDetectionsByEmbeddingsParams struct {
-	FamilyID   int32
-	AlbumID    int32
+	FamilyID   string
+	AlbumID    string
 	Embeddings []interface{}
 }
 

@@ -19,7 +19,7 @@ type CreateKidParams struct {
 	Name       sql.NullString
 	BirthDate  sql.NullTime
 	IdentityID sql.NullInt32
-	FamilyID   int32
+	FamilyID   string
 }
 
 func (q *Queries) CreateKid(ctx context.Context, arg CreateKidParams) (Kid, error) {
@@ -55,7 +55,7 @@ const findKidsByFamilyID = `-- name: FindKidsByFamilyID :many
 SELECT id, name, birth_date, identity_id, family_id, created_at, updated_at FROM kids WHERE family_id = $1 ORDER BY id
 `
 
-func (q *Queries) FindKidsByFamilyID(ctx context.Context, familyID int32) ([]Kid, error) {
+func (q *Queries) FindKidsByFamilyID(ctx context.Context, familyID string) ([]Kid, error) {
 	rows, err := q.db.QueryContext(ctx, findKidsByFamilyID, familyID)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ ORDER BY k.id, RANDOM()
 `
 
 type GetKidsWithRandomFaceImgParams struct {
-	FamilyID    int32
+	FamilyID    string
 	TakenAtTo   sql.NullTime
 	TakenAtFrom sql.NullTime
 }
@@ -141,8 +141,8 @@ type GetKidsWithRandomFaceImgRow struct {
 	Name        sql.NullString
 	BirthDate   sql.NullTime
 	IdentityID  sql.NullInt32
-	FamilyID    int32
-	MediaItemID int32
+	FamilyID    string
+	MediaItemID string
 	StorageKey  string
 	TakenAt     time.Time
 }

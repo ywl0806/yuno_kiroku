@@ -37,7 +37,7 @@ RETURNING
 `
 
 type CreateMediaFileParams struct {
-	MediaItemID int32
+	MediaItemID string
 	Role        string
 	StorageKey  string
 	MimeType    sql.NullString

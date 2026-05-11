@@ -18,8 +18,8 @@ type FaceRecognitionDispatcher interface {
 }
 
 type FaceRecognitionJobParams struct {
-	MediaItemID    int32  `json:"media_item_id"`
-	FamilyID       int32  `json:"family_id"`
+	MediaItemID    string `json:"media_item_id"`
+	FamilyID       string `json:"family_id"`
 	ViewStorageKey string `json:"view_storage_key"`
 }
 

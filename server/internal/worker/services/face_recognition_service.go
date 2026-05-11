@@ -60,7 +60,7 @@ func NewFaceRecognitionService(
 
 // matchOrCreateIdentity 얼굴 임베딩을 데이터베이스에서 검색 후 매칭된 identity가 없으면 새로운 identity를 생성합니다.
 // 반드시 advisory lock이 획득된 트랜잭션 Store(tx) 위에서 호출해야 합니다.
-func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID int32, embedding []float64) (int32, error) {
+func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID string, embedding []float64) (int32, error) {
 	similar, err := tx.Face.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
 		FamilyID:            familyID,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
@@ -85,8 +85,8 @@ func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID int32,
 
 // ProcessFacesParams Go CLI에서 전달받는 얼굴 인식 처리 파라미터
 type ProcessFacesParams struct {
-	MediaItemID   int32  `json:"media_item_id"`
-	FamilyID      int32  `json:"family_id"`
+	MediaItemID   string `json:"media_item_id"`
+	FamilyID      string `json:"family_id"`
 	ViewImagePath string `json:"view_image_path"` // Python이 다운로드한 로컬 임시 파일 경로
 }
 
@@ -97,7 +97,7 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 
 	for _, face := range faces {
 		var identityID int32
-		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|int64(params.FamilyID), func(tx *store.Store) error {
+		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|utils.StringToHash(params.FamilyID), func(tx *store.Store) error {
 			id, err := matchOrCreateIdentity(ctx, tx, params.FamilyID, face.Embedding)
 			if err != nil {
 				return err
@@ -172,7 +172,8 @@ func (s *FaceRecognitionService) CropFaceAndUpload(
 	ctx context.Context,
 	viewData []byte, imgWidth, imgHeight int,
 	top, right, bottom, left int32, padding float64,
-	identityID, mediaItemID int32,
+	identityID int32,
+	mediaItemID string,
 ) (string, error) {
 	// bbox 패딩 계산
 	faceW := int(right - left)

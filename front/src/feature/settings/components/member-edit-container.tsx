@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 interface Props {
-    memberId: number
+    memberId: string
     member: Member
     groups: Group[]
 }

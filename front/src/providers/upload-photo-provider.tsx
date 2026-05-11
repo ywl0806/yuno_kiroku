@@ -28,19 +28,19 @@ type StoredBatch = {
 type UploadPhotoContextType = {
   mediaItems: UploadMediaItem[]
   setMediaItems: Dispatch<SetStateAction<UploadMediaItem[]>>
-  handleUploadPhotos: (albumId: number) => Promise<void>
+  handleUploadPhotos: (albumId: string) => Promise<void>
   clearPhotos: () => void
   progress: number
   isUploading: boolean
-  reUploadPhoto: (index: number, albumId: number) => void
+  reUploadPhoto: (index: number, albumId: string) => void
   isUploaded: boolean
   // 앨범 시트
   albumSheetOpen: boolean
   openAlbumSheet: () => void
   closeAlbumSheet: () => void
-  selectedAlbumId: number | null
+  selectedAlbumId: string | null
   selectedAlbumName: string | null
-  setSelectedAlbumId: (id: number) => void
+  setSelectedAlbumId: (id: string) => void
 }
 
 export const UploadPhotoContext = createContext<UploadPhotoContextType>({
@@ -73,18 +73,16 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
 
   // 앨범 시트 상태
   const [albumSheetOpen, setAlbumSheetOpen] = useState(false)
-  const [selectedAlbumId, setSelectedAlbumIdState] = useState<number | null>(
-    getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID)
-      ? Number(getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID))
-      : null,
+  const [selectedAlbumId, setSelectedAlbumIdState] = useState<string | null>(
+    getSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID) || null,
   )
 
   const openAlbumSheet = useCallback(() => setAlbumSheetOpen(true), [])
   const closeAlbumSheet = useCallback(() => setAlbumSheetOpen(false), [])
 
-  const setSelectedAlbumId = useCallback((id: number) => {
+  const setSelectedAlbumId = useCallback((id: string) => {
     setSelectedAlbumIdState(id)
-    setSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID, id.toString())
+    setSessionStorage(SESSION_STORAGE_KEY.UPLOAD_ALBUM_ID, id)
     closeAlbumSheet()
     if (location.pathname !== '/upload') {
       navigate('/upload')
@@ -106,7 +104,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
 
   const uploadMediaItem = async (
     mediaItem: UploadMediaItem,
-    albumId: number,
+    albumId: string,
     uploadBatchId: number,
     index: number,
     retry?: boolean,
@@ -119,7 +117,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         { file_name: mediaItem.file.name, content_type: mediaItem.file.type || 'image/jpeg' },
       )
       const { media_item_id: mediaItemId, presigned_url: presignedUrl } = presignedRes.data as {
-        media_item_id: number
+        media_item_id: string
         presigned_url: string
         storage_key: string
       }
@@ -163,7 +161,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
     return () => clearTimeout(timeoutId)
   }, [])
 
-  const handleUploadPhotos = async (albumId: number) => {
+  const handleUploadPhotos = async (albumId: string) => {
     setIsUploaded(true)
     setIsUploading(true)
 
@@ -224,7 +222,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
           `${API_ROUTES.MEDIA_ITEM.UPLOAD_BATCH_STATUS}?upload_batch_id=${uploadBatchId}`,
         )
 
-        const statuseMap = new Map<number, UploadStatus>()
+        const statuseMap = new Map<string, UploadStatus>()
         response.data.statuses.forEach((status) => {
           statuseMap.set(status.id, status.upload_status)
         })
@@ -232,7 +230,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
         setMediaItems((prev) => {
           const next = [...prev]
           next.forEach((mediaItem) => {
-            mediaItem.status = statuseMap.get(Number(mediaItem.media_item_id)) ?? UPLOAD_STATUS.PENDING
+            mediaItem.status = statuseMap.get(mediaItem.media_item_id ?? '') ?? UPLOAD_STATUS.PENDING
           })
           return next
         })
@@ -365,7 +363,7 @@ export const UploadPhotoProvider: FC<{ children: React.ReactNode }> = ({ childre
 
   const blocker = useBlocker(uploadPhase === 'uploading' && isUploading)
 
-  const reUploadPhoto = async (index: number, albumId: number) => {
+  const reUploadPhoto = async (index: number, albumId: string) => {
     const mediaItem = mediaItems[index]
     if (mediaItem.status === UPLOAD_STATUS.FAILED || mediaItem.status === UPLOAD_STATUS.DUPLICATE) {
       let uploadBatchId: number
@@ -545,7 +543,7 @@ export const useUploadPhoto = () => {
 
 type UploadBatchStatusResponse = {
   statuses: {
-    id: number
+    id: string
     upload_status: UploadStatus
   }[]
   is_completed: boolean

@@ -17,7 +17,7 @@ type PresignedUploadRequest struct {
 
 // PresignedUploadResponse Presigned URL 발급 응답
 type PresignedUploadResponse struct {
-	MediaItemID  int32  `json:"media_item_id"`
+	MediaItemID  string `json:"media_item_id"`
 	PresignedURL string `json:"presigned_url"`
 	StorageKey   string `json:"storage_key"`
 	ExpiresIn    int    `json:"expires_in"`
@@ -26,19 +26,19 @@ type PresignedUploadResponse struct {
 // CreateUploadBatchResponse 업로드 배치 생성 응답
 type CreateUploadBatchResponse struct {
 	ID        int32     `json:"id"`
-	AlbumID   int32     `json:"album_id"`
+	AlbumID   string    `json:"album_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // UploadImageResponse 이미지 업로드 응답
 type UploadImageResponse struct {
-	MediaItemID int32  `json:"media_item_id"`
+	MediaItemID string `json:"media_item_id"`
 	Status      string `json:"status"`
 }
 
 type MediaFileResponse struct {
 	ID          int32  `json:"id"`
-	MediaItemID int32  `json:"media_item_id"`
+	MediaItemID string `json:"media_item_id"`
 	Role        string `json:"role"`
 	Url         string `json:"url"`
 	MimeType    string `json:"mime_type"`
@@ -47,16 +47,16 @@ type MediaFileResponse struct {
 }
 
 type TagResponse struct {
-	ID       int32  `json:"id"`
-	FamilyID *int32 `json:"family_id"`
-	Name     string `json:"name"`
-	IsPreset bool   `json:"is_preset"`
+	ID       int32   `json:"id"`
+	FamilyID *string `json:"family_id"`
+	Name     string  `json:"name"`
+	IsPreset bool    `json:"is_preset"`
 }
 
 func NewTagResponse(tag db.Tag) TagResponse {
-	var familyID *int32
+	var familyID *string
 	if tag.FamilyID.Valid {
-		v := tag.FamilyID.Int32
+		v := tag.FamilyID.UUID.String()
 		familyID = &v
 	}
 	return TagResponse{
@@ -79,9 +79,9 @@ func NewTagResponses(tags []db.Tag) []TagResponse {
 }
 
 type MediaItemResponse struct {
-	ID              int32         `json:"id"`
-	FamilyID        int32         `json:"family_id"`
-	AlbumID         int32         `json:"album_id"`
+	ID              string        `json:"id"`
+	FamilyID        string        `json:"family_id"`
+	AlbumID         string        `json:"album_id"`
 	TakenAt         time.Time     `json:"taken_at"`
 	FileName        string        `json:"file_name"`
 	CreatedAt       time.Time     `json:"created_at"`
@@ -131,7 +131,7 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 }
 
 type UploadBatchStatus struct {
-	ID           int32  `json:"id"`
+	ID           string `json:"id"`
 	UploadStatus string `json:"upload_status"`
 }
 type UploadBatchStatusResponse struct {
@@ -158,7 +158,7 @@ func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *Upl
 }
 
 type BatchThumbnailResponse struct {
-	ID              int32  `json:"id"`
+	ID              string `json:"id"`
 	ThumbnailUrl    string `json:"thumbnail_url"`
 	ThumbnailWidth  int32  `json:"thumbnail_width"`
 	ThumbnailHeight int32  `json:"thumbnail_height"`
@@ -166,7 +166,7 @@ type BatchThumbnailResponse struct {
 
 type UploadBatchWithThumbnailsResponse struct {
 	ID         int32                    `json:"id"`
-	AlbumID    int32                    `json:"album_id"`
+	AlbumID    string                   `json:"album_id"`
 	UploadAt   time.Time                `json:"upload_at"`
 	Count      int64                    `json:"count"`
 	Thumbnails []BatchThumbnailResponse `json:"thumbnails"`
@@ -229,7 +229,7 @@ type SearchMediaItemsRequest struct {
 	From        *time.Time `query:"from"`
 	To          *time.Time `query:"to"`
 	IdentityIDs []int32    `query:"identity_ids"`
-	AlbumID     *int32     `query:"album_id"`
+	AlbumID     *string    `query:"album_id"`
 	Liked       bool       `query:"liked"`
 	TagIDs      []int32    `query:"tag_ids"`
 	Page        int        `query:"page"`

@@ -30,9 +30,9 @@ func NewImageUploader(storage storage.StorageService) *ImageUploader {
 
 // 원본 이미지용 S3 키를 생성 (Presigned URL 발급 시 사용)
 // 반환 형식: original/{familyId}/{mediaItemId}.{ext}
-func (u *ImageUploader) BuildOriginalKey(familyId, mediaItemId int32, fileName string) string {
+func (u *ImageUploader) BuildOriginalKey(familyId, mediaItemId string, fileName string) string {
 	ext := strings.ToLower(strings.TrimPrefix(fileName[strings.LastIndex(fileName, "."):], "."))
-	return consts.ORIGINAL_STORAGE_PREFIX + "/" + strconv.Itoa(int(familyId)) + "/" + strconv.Itoa(int(mediaItemId)) + "." + ext
+	return consts.ORIGINAL_STORAGE_PREFIX + "/" + familyId + "/" + mediaItemId + "." + ext
 }
 
 // Presigned PUT URL을 생성

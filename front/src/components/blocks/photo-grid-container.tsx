@@ -14,7 +14,7 @@ type Props = {
 }
 
 type OpenMediaItemState = {
-  mediaItemId: number
+  mediaItemId: string
   year: number
   month: number
 }
@@ -43,7 +43,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, onScroll }) =
   useEffect(() => {
     const req = location.state?.openMediaItem as OpenMediaItemState | undefined
     if (!req || !photos || req.year !== year || req.month !== month) return
-    const index = photos.findIndex((p) => Number(p.id) === req.mediaItemId)
+    const index = photos.findIndex((p) => p.id === req.mediaItemId)
     if (index !== -1) {
       setDetailViewIndex(index)
       setOpenDetailView(true)

@@ -11,9 +11,9 @@ import (
 )
 
 type AuthUser struct {
-	ID       int32  `json:"id" validate:"required"`
+	ID       string `json:"id" validate:"required"`
 	Email    string `json:"email" validate:"required,email"`
-	FamilyId int32  `json:"family_id" validate:"required"`
+	FamilyId string `json:"family_id" validate:"required"`
 	GroupId  int32  `json:"group_id" validate:"required"`
 }
 
@@ -38,9 +38,9 @@ func (g *Guard) Handler(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		c.Set(consts.AuthUserKey, &AuthUser{
-			ID:       cast.ToInt32(claims.ID),
+			ID:       claims.ID,
 			Email:    claims.Email,
-			FamilyId: cast.ToInt32(claims.FamilyId),
+			FamilyId: claims.FamilyId,
 			GroupId:  cast.ToInt32(claims.GroupId),
 		})
 

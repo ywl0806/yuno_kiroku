@@ -19,26 +19,26 @@ func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, gr
 	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, userID int32) (db.User, error) {
+func (s *UserService) GetUserByID(ctx context.Context, userID string) (db.User, error) {
 	return s.userStore.FindUserByID(ctx, userID)
 }
 
-func (s *UserService) GetUserByIDAndFamilyID(ctx context.Context, userID, familyID int32) (db.User, error) {
+func (s *UserService) GetUserByIDAndFamilyID(ctx context.Context, userID, familyID string) (db.User, error) {
 	return s.userStore.FindUserByIDAndFamilyID(ctx, userID, familyID)
 }
 
-func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.User, error) {
+func (s *UserService) GetMembers(ctx context.Context, familyID string) ([]db.User, error) {
 	return s.userStore.FindMembersByFamilyID(ctx, familyID)
 }
 
-func (s *UserService) UpdateMe(ctx context.Context, userID int32, name string) (db.User, error) {
+func (s *UserService) UpdateMe(ctx context.Context, userID string, name string) (db.User, error) {
 	return s.userStore.UpdateUserName(ctx, db.UpdateUserNameParams{
 		Name: sql.NullString{String: name, Valid: name != ""},
 		ID:   userID,
 	})
 }
 
-func (s *UserService) UpdateMember(ctx context.Context, memberID, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
+func (s *UserService) UpdateMember(ctx context.Context, memberID string, familyID string, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
 	return s.userStore.UpdateMember(ctx, db.UpdateMemberParams{
 		GroupID:           groupID,
 		FamilyTitle:       sql.NullString{String: familyTitle, Valid: familyTitle != ""},
@@ -50,7 +50,6 @@ func (s *UserService) UpdateMember(ctx context.Context, memberID, familyID, grou
 
 // 유저 생성
 func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
-
 	user, err := s.userStore.CreateUser(ctx, params)
 	if err != nil {
 		return db.User{}, err
@@ -73,9 +72,9 @@ func (s *UserService) FindUserByProvider(ctx context.Context, provider, provider
 }
 
 // FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. familyID/groupID로 가입할 가족·그룹을 지정한다
-func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
+func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID string, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
 	user, err := s.userStore.FindUserByProvider(ctx, provider, providerUserID)
-	if err == nil && user.ID != 0 {
+	if err == nil && user.ID != "" {
 		return user, nil
 	}
 
@@ -111,15 +110,9 @@ func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.Cr
 	return nil
 }
 
-func (s *UserService) validateFamilyExists(ctx context.Context, familyID int32) error {
-	family, err := s.familyStore.FindFamilyByID(ctx, familyID)
-	if err != nil {
-		return err
-	}
-	if family.ID == 0 {
-		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.family"})
-	}
-	return nil
+func (s *UserService) validateFamilyExists(ctx context.Context, familyID string) error {
+	_, err := s.familyStore.FindFamilyByID(ctx, familyID)
+	return err
 }
 
 func (s *UserService) GetGroupIsAdmin(ctx context.Context, groupID int32) (bool, error) {
@@ -147,7 +140,7 @@ func (s *UserService) validateDuplicateUsername(ctx context.Context, username st
 	if err != nil {
 		return err
 	}
-	if user.ID != 0 {
+	if user.ID != "" {
 		return apperr.NewAppErrorWithData(apperr.Conflict, "error.conflict.username", nil)
 	}
 	return nil

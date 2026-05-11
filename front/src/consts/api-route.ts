@@ -11,8 +11,8 @@ export const API_ROUTES = {
     CREATE: '/user',
     ME: '/user/me',
     MEMBERS: '/user/members',
-    MEMBER: (id: number) => `/user/${id}`,
-    UPDATE: (id: number) => `/user/${id}`,
+    MEMBER: (id: string) => `/user/${id}`,
+    UPDATE: (id: string) => `/user/${id}`,
   },
 
   // Photo
@@ -35,7 +35,7 @@ export const API_ROUTES = {
   // Family
   FAMILY: {
     LIST: '/family',
-    INVITE: (familyId: number) => `/family/${familyId}/invite`,
+    INVITE: (familyId: string) => `/family/${familyId}/invite`,
   },
 
   // Invite
@@ -71,9 +71,9 @@ export const API_ROUTES = {
     OPTIONS: '/album/options',
     ALL: '/album',
     CREATE: '/album',
-    BY_ID: (id: number) => `/album/${id}`,
-    UPDATE: (id: number) => `/album/${id}`,
-    DELETE: (id: number) => `/album/${id}`,
+    BY_ID: (id: string) => `/album/${id}`,
+    UPDATE: (id: string) => `/album/${id}`,
+    DELETE: (id: string) => `/album/${id}`,
   },
 
   // MediaItem
@@ -87,9 +87,9 @@ export const API_ROUTES = {
     UPLOAD_BATCH_STATUS: '/media-item/upload-batch/status',
     UPLOAD_BATCHES: '/media-item/upload-batch',
     UPLOAD_BATCH_ITEMS: (id: number) => `/media-item/upload-batch/${id}/items`,
-    LIKE: (id: number) => `/media-item/${id}/like`,
-    TAGS: (id: number) => `/media-item/${id}/tag`,
-    TAG_REMOVE: (id: number, tagId: number) => `/media-item/${id}/tag/${tagId}`,
+    LIKE: (id: string) => `/media-item/${id}/like`,
+    TAGS: (id: string) => `/media-item/${id}/tag`,
+    TAG_REMOVE: (id: string, tagId: number) => `/media-item/${id}/tag/${tagId}`,
   },
 
   // Tag

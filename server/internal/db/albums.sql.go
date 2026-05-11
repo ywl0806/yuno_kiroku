@@ -19,7 +19,7 @@ RETURNING
 `
 
 type CreateAlbumParams struct {
-	FamilyID int32
+	FamilyID string
 	Name     string
 	IsCommon bool
 }
@@ -44,7 +44,7 @@ WHERE
     id = $1
 `
 
-func (q *Queries) DeleteAlbum(ctx context.Context, id int32) error {
+func (q *Queries) DeleteAlbum(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deleteAlbum, id)
 	return err
 }
@@ -60,8 +60,8 @@ WHERE
 `
 
 type FindAlbumByIDAndFamilyIDParams struct {
-	ID       int32
-	FamilyID int32
+	ID       string
+	FamilyID string
 }
 
 func (q *Queries) FindAlbumByIDAndFamilyID(ctx context.Context, arg FindAlbumByIDAndFamilyIDParams) (Album, error) {
@@ -89,7 +89,7 @@ ORDER BY
     id
 `
 
-func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID int32) ([]Album, error) {
+func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID string) ([]Album, error) {
 	rows, err := q.db.QueryContext(ctx, findAlbumsByFamilyID, familyID)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ FROM
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
     INNER JOIN groups as g on agp.group_id = g.id
 WHERE
-    a.family_id = $1::int
+    a.family_id = $1::uuid
     AND g.id = $2::int
     AND agp.permission = 'W'
 UNION
@@ -136,14 +136,14 @@ SELECT
 FROM
     albums as a
 WHERE
-    a.family_id = $1::int
+    a.family_id = $1::uuid
     AND a.is_common = TRUE
 ORDER BY
     id
 `
 
 type FindAlbumsForWriteParams struct {
-	FamilyID int32
+	FamilyID string
 	GroupID  int32
 }
 
@@ -187,7 +187,7 @@ FROM
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
     INNER JOIN groups as g on agp.group_id = g.id
 WHERE
-    a.family_id = $1::int
+    a.family_id = $1::uuid
     AND g.id = $2::int
     AND agp.permission = 'R'
 UNION
@@ -198,19 +198,19 @@ SELECT
 FROM
     albums as a
 WHERE
-    a.family_id = $1::int
+    a.family_id = $1::uuid
     AND a.is_common = TRUE
 ORDER BY
     id
 `
 
 type GetAlbumsOptionsParams struct {
-	FamilyID int32
+	FamilyID string
 	GroupID  int32
 }
 
 type GetAlbumsOptionsRow struct {
-	ID       int32
+	ID       string
 	Name     string
 	IsCommon bool
 }
@@ -251,7 +251,7 @@ RETURNING
 
 type UpdateAlbumParams struct {
 	Name string
-	ID   int32
+	ID   string
 }
 
 func (q *Queries) UpdateAlbum(ctx context.Context, arg UpdateAlbumParams) (Album, error) {

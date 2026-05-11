@@ -9,7 +9,7 @@ import (
 )
 
 type MeResponse struct {
-	ID       int32   `json:"id"`
+	ID       string  `json:"id"`
 	Name     *string `json:"name"`
 	Username string  `json:"username"`
 	Provider *string `json:"provider"`
@@ -45,10 +45,10 @@ type UpdateMemberRequest struct {
 }
 
 type MemberResponse struct {
-	ID                int32   `json:"id"`
+	ID                string  `json:"id"`
 	Name              string  `json:"name"`
 	Username          string  `json:"username"`
-	FamilyID          int32   `json:"family_id"`
+	FamilyID          string  `json:"family_id"`
 	GroupID           int32   `json:"group_id"`
 	FamilyTitle       *string `json:"family_title"`
 	CustomFamilyTitle *string `json:"custom_family_title"`
@@ -83,7 +83,7 @@ type CreateUserRequest struct {
 	Name     string `json:"name" validate:"required"`
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required,min=6"`
-	FamilyID int32  `json:"family_id" validate:"required"`
+	FamilyID string `json:"family_id" validate:"required"`
 	GroupID  int32  `json:"group_id" validate:"required"`
 }
 
