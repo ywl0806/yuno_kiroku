@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS albums (
     id SERIAL PRIMARY KEY, -- 앨범 ID
     family_id INTEGER NOT NULL REFERENCES families (id), -- 소속 가족 ID
     name VARCHAR(255) NOT NULL, -- 앨범 이름
+    is_common BOOLEAN NOT NULL DEFAULT FALSE, -- 공통 앨범 여부 (가족 내 모든 멤버 접근 가능)
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
@@ -206,6 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_media_items_family_year_month ON media_items (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_album_groups_permissions_album_id_group_id ON album_groups_permissions (album_id, group_id, permission);
 
 CREATE INDEX IF NOT EXISTS idx_groups_family_id ON groups (family_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_family_id_is_admin ON groups (family_id) WHERE is_admin = TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_users_family_id ON users (family_id);
 
@@ -234,6 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_media_items_family_created_at ON media_items (fam
 CREATE INDEX IF NOT EXISTS idx_media_items_upload_status ON media_items (upload_status);
 
 CREATE INDEX IF NOT EXISTS idx_albums_family_id ON albums (family_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_family_id_is_common ON albums (family_id) WHERE is_common = TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_album_groups_permissions_album_id ON album_groups_permissions (album_id);
 
@@ -267,7 +270,6 @@ CREATE INDEX IF NOT EXISTS idx_face_detections_identity_id_media_item_id ON face
 
 -- Resize Worker에서 storage_key로 media_item_id를 빠르게 조회하기 위한 인덱스
 CREATE INDEX IF NOT EXISTS idx_media_files_storage_key ON media_files (storage_key);
-
 
 -- 좋아요 테이블
 CREATE TABLE IF NOT EXISTS media_item_likes (

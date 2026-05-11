@@ -13,9 +13,10 @@ type MeResponse struct {
 	Name     *string `json:"name"`
 	Username string  `json:"username"`
 	Provider *string `json:"provider"`
+	IsAdmin  bool    `json:"is_admin"`
 }
 
-func NewMeResponse(u *db.User) *MeResponse {
+func NewMeResponse(u *db.User, isAdmin bool) *MeResponse {
 	var name *string
 	if u.Name.Valid {
 		name = &u.Name.String
@@ -29,6 +30,7 @@ func NewMeResponse(u *db.User) *MeResponse {
 		Name:     name,
 		Username: u.Username,
 		Provider: provider,
+		IsAdmin:  isAdmin,
 	}
 }
 

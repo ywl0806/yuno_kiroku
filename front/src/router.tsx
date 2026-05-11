@@ -19,8 +19,17 @@ import { SettingsKidEditPage } from '@/page/setting/kid/edit'
 import { RecentPage } from '@/page/recent'
 import { SearchPage } from '@/page/search'
 import { UploadPage } from '@/page/upload/upload'
-import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
+import { useGetMe } from '@/feature/settings/hooks/use-get-me'
+import { Route, Navigate, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 import { BatchDetailPage } from '@/page/recent/detail'
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { data: me, isLoading } = useGetMe()
+  if (isLoading) return null
+  if (!me?.is_admin) return <Navigate to="/settings" replace />
+  return <>{children}</>
+
+}
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -45,24 +54,24 @@ export const router = createBrowserRouter(
           <Route path="account" element={<SettingsAccountPage />} />
 
           <Route path="family">
-            <Route path="new" element={<SettingsFamilyNewPage />} />
-            <Route path=":familyId/edit" element={<SettingsFamilyEditPage />} />
-            <Route path=":familyId/invite" element={<SettingsFamilyInvitePage />} />
+            <Route path="new" element={<AdminRoute><SettingsFamilyNewPage /></AdminRoute>} />
+            <Route path=":familyId/edit" element={<AdminRoute><SettingsFamilyEditPage /></AdminRoute>} />
+            <Route path=":familyId/invite" element={<AdminRoute><SettingsFamilyInvitePage /></AdminRoute>} />
           </Route>
 
           <Route path="album">
-            <Route path="new" element={<SettingsAlbumNewPage />} />
-            <Route path=":albumId/edit" element={<SettingsAlbumEditPage />} />
+            <Route path="new" element={<AdminRoute><SettingsAlbumNewPage /></AdminRoute>} />
+            <Route path=":albumId/edit" element={<AdminRoute><SettingsAlbumEditPage /></AdminRoute>} />
           </Route>
 
           <Route path="member">
-            <Route path="invite" element={<SettingsMemberInvitePage />} />
-            <Route path=":memberId/edit" element={<SettingsMemberEditPage />} />
+            <Route path="invite" element={<AdminRoute><SettingsMemberInvitePage /></AdminRoute>} />
+            <Route path=":memberId/edit" element={<AdminRoute><SettingsMemberEditPage /></AdminRoute>} />
           </Route>
 
           <Route path="kid">
-            <Route path="new" element={<SettingsKidNewPage />} />
-            <Route path=":kidId/edit" element={<SettingsKidEditPage />} />
+            <Route path="new" element={<AdminRoute><SettingsKidNewPage /></AdminRoute>} />
+            <Route path=":kidId/edit" element={<AdminRoute><SettingsKidEditPage /></AdminRoute>} />
           </Route>
         </Route>
 

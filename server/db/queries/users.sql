@@ -57,9 +57,16 @@ SELECT
 FROM
     users
 WHERE
+    id = $1;
+
+-- name: FindUserByIDAndFamilyID :one
+SELECT
+    *
+FROM
+    users
+WHERE
     id = $1
     AND family_id = $2;
-
 -- name: UpdateUserName :one
 UPDATE users
 SET

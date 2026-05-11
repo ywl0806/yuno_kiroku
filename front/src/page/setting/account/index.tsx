@@ -1,16 +1,15 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { clearAuthToken } from '@/feature/auth/lib/set-auth-token'
 import { SettingsSubPageLayout } from '@/feature/settings/components/settings-sub-page-layout'
 import { useGetMe } from '@/feature/settings/hooks/use-get-me'
 import { useUpdateMe } from '@/feature/settings/hooks/use-update-me'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 
 export const SettingsAccountPage = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { data: me } = useGetMe()
   const { mutate: updateMe, isPending } = useUpdateMe()
 
@@ -24,9 +23,9 @@ export const SettingsAccountPage = () => {
     updateMe({ name })
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    navigate('/login')
+  const handleLogout = async () => {
+    await clearAuthToken()
+    window.location.href = '/login'
   }
 
   return (

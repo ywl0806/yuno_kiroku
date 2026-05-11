@@ -25,7 +25,7 @@ export const AlbumGroupPermissionSelector = ({ groups, value, onChange }: Props)
     <div className="space-y-2">
       {groups.map((group) => (
         <div key={group.id} className="flex items-center justify-between rounded-md border px-3 py-2">
-          <span className="text-sm">{group.name}</span>
+          <span className="text-sm">{group.is_admin ? t('settings.group.adminName') : group.name}</span>
           <div className="flex items-center gap-4">
             <label className="flex cursor-pointer items-center gap-1.5 text-sm">
               <input

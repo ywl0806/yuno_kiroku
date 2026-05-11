@@ -1,28 +1,14 @@
-import { setAuthToken } from '@/feature/auth/lib/set-auth-token'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-type Props = {
-  token: string | null
-}
-
-/**
- * OAuth 콜백. 백엔드가 /login/callback?token=... 으로 리다이렉트한 뒤
- * 토큰을 저장하고 홈으로 이동한다.
- */
-export function LoginCallbackContainer({ token }: Props) {
+export function LoginCallbackContainer() {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!token) {
-      navigate('/login?error=missing_token', { replace: true })
-      return
-    }
-    setAuthToken(token)
     navigate('/', { replace: true })
-  }, [token, navigate])
+  }, [navigate])
 
   return (
     <div className="flex h-screen w-screen items-center justify-center">

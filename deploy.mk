@@ -7,8 +7,9 @@ build-api-lambda:
 	cd server && \
 	GOOS=linux GOARCH=arm64 go build -o bootstrap cmd/lambda/api/main.go && \
 	zip function.zip bootstrap && \
-	rm bootstrap
-	cp ./function.zip ../function.zip
+	rm bootstrap && \
+	cp function.zip ../function.zip && \
+	rm function.zip
 
 upload-zip:
 	aws-vault exec $(AWS_VAULT_PROFILE) -- aws s3 cp function.zip s3://$(LAMBDA_ZIP_BUCKET)/function.zip

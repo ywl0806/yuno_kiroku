@@ -181,9 +181,17 @@ func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state stri
 	return &user, nil
 }
 
-// IssueOAuthAccessToken OAuth 로그인 유저용 액세스 토큰 발급
-func (s *AuthService) IssueOAuthAccessToken(user *db.User) (string, error) {
-	return s.issueAccessToken(*user)
+// IssueOAuthTokens OAuth 로그인 유저용 액세스 토큰과 리프레시 토큰 발급
+func (s *AuthService) IssueOAuthTokens(user *db.User) (accessToken, refreshToken string, err error) {
+	accessToken, err = s.issueAccessToken(*user)
+	if err != nil {
+		return "", "", err
+	}
+	refreshToken, err = s.issueRefreshToken(*user)
+	if err != nil {
+		return "", "", err
+	}
+	return accessToken, refreshToken, nil
 }
 
 func (s *AuthService) issueAccessToken(user db.User) (string, error) {
@@ -199,6 +207,38 @@ func (s *AuthService) issueAccessToken(user db.User) (string, error) {
 func (s *AuthService) issueRefreshToken(user db.User) (string, error) {
 	claims := &jwt.RefreshTokenClaims{ID: cast.ToString(user.ID)}
 	return jwt.GenerateJWT(claims, s.authSecretKey, consts.RefreshTokenCookieMaxAge)
+}
+
+// RefreshResult 토큰 갱신 성공 시 반환 데이터
+type RefreshResult struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+// RefreshAccessToken 리프레시 토큰으로 새 액세스 토큰과 리프레시 토큰 발급
+func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenStr string) (*RefreshResult, error) {
+	claims := &jwt.RefreshTokenClaims{}
+	if err := jwt.ParseJWT(refreshTokenStr, s.authSecretKey, claims); err != nil {
+		return nil, errors.New("invalid refresh token")
+	}
+
+	user, err := s.userService.GetUserByID(ctx, cast.ToInt32(claims.ID))
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	accessToken, err := s.issueAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+	newRefreshToken, err := s.issueRefreshToken(user)
+	if err != nil {
+		return nil, err
+	}
+	return &RefreshResult{
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+	}, nil
 }
 
 func randomState() string {

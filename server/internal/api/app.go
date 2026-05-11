@@ -107,7 +107,14 @@ func Init(e *echo.Echo) {
 	e.Validator = validator.NewCustomValidator()
 
 	// 미들웨어 등록 (등록 순서대로 요청 시 실행됨 - RequestID가 먼저 와야 Logger에서 request_id 사용 가능)
-	// 1. RequestID - 요청 ID 설정 (Logger보다 먼저 등록해야 Format에서 ${request_id} 출력됨)
+	// 1. CORS - credentials 포함 요청 허용 (프론트와 API가 다른 서브도메인인 경우)
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{viper.GetString("APP_URL")},
+		AllowCredentials: true,
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+	}))
+	// 2. RequestID - 요청 ID 설정 (Logger보다 먼저 등록해야 Format에서 ${request_id} 출력됨)
 	e.Use(middleware.RequestIDWithConfig(middleware.RequestIDConfig{
 		Skipper: func(c echo.Context) bool {
 			return c.Path() == "/api/health"

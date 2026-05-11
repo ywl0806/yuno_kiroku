@@ -102,6 +102,7 @@ export interface Me {
   name: string | null
   username: string
   provider: string | null
+  is_admin: boolean
 }
 
 export interface AlbumGroupPermission {

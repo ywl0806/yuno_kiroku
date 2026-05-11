@@ -31,6 +31,20 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 	}
 }
 
+func setAccessTokenCookie(c echo.Context, token string) {
+	isProduction := viper.GetString("APP_ENV") == "production"
+	c.SetCookie(&http.Cookie{
+		Name:     consts.AccessTokenCookieName,
+		Value:    token,
+		HttpOnly: true,
+		Secure:   isProduction,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   consts.AccessTokenCookieMaxAge,
+		Path:     consts.AccessTokenCookiePath,
+		Domain:   viper.GetString("COOKIE_DOMAIN"),
+	})
+}
+
 // LoginRequest 로그인 요청
 type LoginRequest struct {
 	Username string `json:"username" validate:"required" example:"admin"`
@@ -39,8 +53,7 @@ type LoginRequest struct {
 
 // LoginResponse 로그인 성공 응답
 type LoginResponse struct {
-	User  models.LoginUserResponse `json:"user"`
-	Token string                   `json:"token"`
+	User models.LoginUserResponse `json:"user"`
 }
 
 // @Description 아이디/비밀번호 로그인. 성공 시 액세스 토큰과 리프레시 토큰(쿠키) 반환.
@@ -78,6 +91,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		Secure:   true,
 		MaxAge:   consts.RefreshTokenCookieMaxAge,
 	})
+	setAccessTokenCookie(c, result.AccessToken)
 
 	return c.JSON(http.StatusOK, LoginResponse{
 		User: models.LoginUserResponse{
@@ -86,7 +100,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 			FamilyID: result.User.FamilyID,
 			GroupID:  result.User.GroupID,
 		},
-		Token: result.AccessToken,
 	})
 }
 
@@ -138,11 +151,20 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=line_token")
 	}
 
-	token, err := h.authService.IssueOAuthAccessToken(user)
+	accessToken, refreshToken, err := h.authService.IssueOAuthTokens(user)
 	if err != nil {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=token")
 	}
-	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback?token="+token)
+	c.SetCookie(&http.Cookie{
+		Name:     consts.RefreshTokenCookieName,
+		Value:    refreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   consts.RefreshTokenCookieMaxAge,
+		Path:     "/",
+	})
+	setAccessTokenCookie(c, accessToken)
+	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback")
 }
 
 // @Description 카카오 로그인 페이지로 리다이렉트. query invite_token이 있으면 state로 넘겨 콜백에서 초대 그룹 적용.
@@ -166,6 +188,65 @@ func (h *AuthHandler) KakaoLoginRedirect(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "Kakao login is not configured")
 	}
 	return c.Redirect(http.StatusFound, url)
+}
+
+// @Description 리프레시 토큰(쿠키)으로 새 액세스 토큰 발급. 토큰 로테이션 적용.
+//
+// @Summary Refresh Access Token
+// @Tags Auth
+// @Produce json
+// @Success 200 {object} map[string]string "token"
+// @Failure 401 "Invalid or missing refresh token"
+// @Router /auth/refresh [post]
+func (h *AuthHandler) Refresh(c echo.Context) error {
+	cookie, err := c.Cookie(consts.RefreshTokenCookieName)
+	if err != nil || cookie.Value == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "missing refresh token")
+	}
+
+	result, err := h.authService.RefreshAccessToken(c.Request().Context(), cookie.Value)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid refresh token")
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     consts.RefreshTokenCookieName,
+		Value:    result.RefreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   consts.RefreshTokenCookieMaxAge,
+		Path:     "/",
+	})
+	setAccessTokenCookie(c, result.AccessToken)
+
+	return c.NoContent(http.StatusOK)
+}
+
+// @Description 로그아웃. 리프레시 토큰 쿠키 삭제.
+//
+// @Summary Logout
+// @Tags Auth
+// @Success 200
+// @Router /auth/logout [post]
+func (h *AuthHandler) Logout(c echo.Context) error {
+	c.SetCookie(&http.Cookie{
+		Name:     consts.RefreshTokenCookieName,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   -1,
+		Path:     "/",
+	})
+	c.SetCookie(&http.Cookie{
+		Name:     consts.AccessTokenCookieName,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   -1,
+		Path:     consts.AccessTokenCookiePath,
+		Domain:   viper.GetString("COOKIE_DOMAIN"),
+	})
+	return c.NoContent(http.StatusOK)
 }
 
 // @Description 카카오 로그인 콜백. code로 토큰·프로필 조회 후 유저 생성/조회 및 JWT 발급, 프론트 로그인 콜백 URL로 리다이렉트.
@@ -193,9 +274,18 @@ func (h *AuthHandler) KakaoCallback(c echo.Context) error {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=kakao_token")
 	}
 
-	token, err := h.authService.IssueOAuthAccessToken(user)
+	accessToken, refreshToken, err := h.authService.IssueOAuthTokens(user)
 	if err != nil {
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=token")
 	}
-	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback?token="+token)
+	c.SetCookie(&http.Cookie{
+		Name:     consts.RefreshTokenCookieName,
+		Value:    refreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   consts.RefreshTokenCookieMaxAge,
+		Path:     "/",
+	})
+	setAccessTokenCookie(c, accessToken)
+	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback")
 }

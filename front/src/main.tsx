@@ -1,4 +1,4 @@
-import App from '@/app'
+import App from '@/App'
 import '@/i18n'
 import '@/index.css'
 import React from 'react'

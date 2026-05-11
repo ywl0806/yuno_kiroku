@@ -37,6 +37,9 @@ func (s *GroupService) UpdateGroup(ctx context.Context, groupID int32, familyID 
 	if group.FamilyID != familyID {
 		return db.Group{}, apperr.NewForbiddenError("error.forbidden", nil)
 	}
+	if group.IsAdmin {
+		return db.Group{}, apperr.NewBadRequestError("error.group.admin_not_editable", nil)
+	}
 	return s.groupStore.UpdateGroup(ctx, db.UpdateGroupParams{
 		Name: name,
 		ID:   groupID,
@@ -50,6 +53,9 @@ func (s *GroupService) DeleteGroup(ctx context.Context, groupID int32, familyID 
 	}
 	if group.FamilyID != familyID {
 		return apperr.NewForbiddenError("error.forbidden", nil)
+	}
+	if group.IsAdmin {
+		return apperr.NewBadRequestError("error.group.admin_not_deletable", nil)
 	}
 	return s.groupStore.DeleteGroup(ctx, groupID)
 }

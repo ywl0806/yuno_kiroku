@@ -176,7 +176,10 @@
       "editTitle": "アルバムグループを編集",
       "nameLabel": "グループ名",
       "namePlaceholder": "名前を入力",
-      "deleteConfirm": "本当に削除しますか？"
+      "deleteConfirm": "本当に削除しますか？",
+      "adminName": "管理者",
+      "adminBadge": "管理者",
+      "adminNotEditable": "管理者グループは編集・削除できません。"
     },
     "album": {
       "title": "アルバム一覧",

@@ -2,6 +2,7 @@ import { SettingsAlbumList } from '@/feature/settings/components/settings-album-
 import { SettingsGroupList } from '@/feature/settings/components/settings-group-list'
 import { SettingsKidsList } from '@/feature/settings/components/settings-kids-list'
 import { SettingsMemberList } from '@/feature/settings/components/settings-member-list'
+import { useGetMe } from '@/feature/settings/hooks/use-get-me'
 import { useGetSettingsData } from '@/feature/settings/hooks/use-get-settings-data'
 import { BookImage, ChevronRight, FolderKanban, Globe, Smile, User, Users } from 'lucide-react'
 import { ComponentType } from 'react'
@@ -45,6 +46,8 @@ const MenuLinkItem = ({ to, label }: MenuLinkItemProps) => (
 export const SettingsPage = () => {
   const { t } = useTranslation()
   const { data } = useGetSettingsData()
+  const { data: me } = useGetMe()
+  const isAdmin = me?.is_admin ?? false
 
   return (
     <div className="h-full bg-stone-50">
@@ -68,25 +71,29 @@ export const SettingsPage = () => {
           </div>
         </MenuSection>
 
-        {/* 앨범 그룹 */}
-        <MenuSection title={t('settings.group.title')} icon={FolderKanban} iconColor="bg-emerald-100 text-emerald-600">
-          <SettingsGroupList groups={data?.groups} />
-        </MenuSection>
+        {isAdmin && (
+          <>
+            {/* 앨범 그룹 */}
+            <MenuSection title={t('settings.group.title')} icon={FolderKanban} iconColor="bg-emerald-100 text-emerald-600">
+              <SettingsGroupList groups={data?.groups} />
+            </MenuSection>
 
-        {/* 가족 목록 */}
-        <MenuSection title={t('settings.member.title')} icon={Users} iconColor="bg-rose-100 text-rose-500">
-          <SettingsMemberList members={data?.members} />
-        </MenuSection>
+            {/* 가족 목록 */}
+            <MenuSection title={t('settings.member.title')} icon={Users} iconColor="bg-rose-100 text-rose-500">
+              <SettingsMemberList members={data?.members} />
+            </MenuSection>
 
-        {/* 앨범 목록 */}
-        <MenuSection title={t('settings.album.title')} icon={BookImage} iconColor="bg-indigo-100 text-indigo-600">
-          <SettingsAlbumList albums={data?.albums} />
-        </MenuSection>
+            {/* 앨범 목록 */}
+            <MenuSection title={t('settings.album.title')} icon={BookImage} iconColor="bg-indigo-100 text-indigo-600">
+              <SettingsAlbumList albums={data?.albums} />
+            </MenuSection>
 
-        {/* 아이 목록 */}
-        <MenuSection title={t('settings.kid.title')} icon={Smile} iconColor="bg-amber-100 text-amber-600">
-          <SettingsKidsList kids={data?.kids} />
-        </MenuSection>
+            {/* 아이 목록 */}
+            <MenuSection title={t('settings.kid.title')} icon={Smile} iconColor="bg-amber-100 text-amber-600">
+              <SettingsKidsList kids={data?.kids} />
+            </MenuSection>
+          </>
+        )}
       </div>
     </div>
   )

@@ -207,6 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_media_items_family_year_month ON media_items (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_album_groups_permissions_album_id_group_id ON album_groups_permissions (album_id, group_id, permission);
 
 CREATE INDEX IF NOT EXISTS idx_groups_family_id ON groups (family_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_family_id_is_admin ON groups (family_id) WHERE is_admin = TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_users_family_id ON users (family_id);
 

@@ -53,11 +53,16 @@ func (con *UserHandler) CreateUser(c echo.Context) error {
 // @Success 200 {object} models.MeResponse
 func (con *UserHandler) GetMe(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
-	user, err := con.userService.GetUserByID(c.Request().Context(), authUser.ID, authUser.FamilyId)
+	ctx := c.Request().Context()
+	user, err := con.userService.GetUserByID(ctx, authUser.ID)
 	if err != nil {
 		return err
 	}
-	return c.JSON(200, models.NewMeResponse(&user))
+	isAdmin, err := con.userService.GetGroupIsAdmin(ctx, user.GroupID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMeResponse(&user, isAdmin))
 }
 
 // @Tags User
@@ -68,15 +73,20 @@ func (con *UserHandler) GetMe(c echo.Context) error {
 // @Success 200 {object} models.MeResponse
 func (con *UserHandler) UpdateMe(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
 	req := new(models.UpdateMeRequest)
 	if err := c.Bind(req); err != nil {
 		return err
 	}
-	user, err := con.userService.UpdateMe(c.Request().Context(), authUser.ID, req.Name)
+	user, err := con.userService.UpdateMe(ctx, authUser.ID, req.Name)
 	if err != nil {
 		return err
 	}
-	return c.JSON(200, models.NewMeResponse(&user))
+	isAdmin, err := con.userService.GetGroupIsAdmin(ctx, user.GroupID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMeResponse(&user, isAdmin))
 }
 
 // @Tags User
@@ -136,7 +146,7 @@ func (con *UserHandler) GetMember(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
 	}
-	user, err := con.userService.GetUserByID(c.Request().Context(), int32(memberID), authUser.FamilyId)
+	user, err := con.userService.GetUserByIDAndFamilyID(c.Request().Context(), int32(memberID), authUser.FamilyId)
 	if err != nil {
 		return err
 	}

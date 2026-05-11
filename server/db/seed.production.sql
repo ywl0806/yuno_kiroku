@@ -1,14 +1,12 @@
 INSERT INTO
     families (id, name)
 VALUES
-    (1, 'family1');
+    (1, 'lee');
 
 INSERT INTO
     groups (id, family_id, name, is_admin)
 VALUES
-    (1, 1, 'admin', true),
-    (2, 1, 'lee', false),
-    (3, 1, 'muraoka', false);
+    (1, 1, '', true),
 
 INSERT INTO
     users (
@@ -20,35 +18,18 @@ INSERT INTO
         group_id
     )
 VALUES
-    (1, 'admin', 'admin', 'password', 1, 1),
-    (2, 'yongwoo', 'lee', 'password', 1, 2),
-    (3, 'yukina', 'muraoka', 'password', 1, 3);
+    (1, '용우', 'ywl0806', 'password', 1, 1)
 
 INSERT INTO
     albums (id, family_id, name, is_common)
 VALUES
-    (1, 1, '공용', TRUE),
-    (2, 1, 'lee', FALSE),
-    (3, 1, 'muraoka', FALSE),
-    (4, 1, 'admin', FALSE);
+    (1, 1, '', TRUE),
 
 INSERT INTO
     album_groups_permissions (album_id, group_id, permission)
 VALUES
     (1, 1, 'R'),
-    (1, 1, 'W'),
-    (1, 2, 'R'),
-    (1, 3, 'R'),
-    (2, 1, 'R'),
-    (2, 1, 'W'),
-    (2, 2, 'R'),
-    (2, 2, 'W'),
-    (3, 1, 'R'),
-    (3, 1, 'W'),
-    (3, 3, 'R'),
-    (3, 3, 'W'),
-    (4, 1, 'R'),
-    (4, 1, 'W');
+    (1, 1, 'W')
 
 INSERT INTO tags (name, is_preset) VALUES
     ('誕生日',      true),

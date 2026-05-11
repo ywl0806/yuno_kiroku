@@ -161,16 +161,46 @@ FROM
     users
 WHERE
     id = $1
+`
+
+func (q *Queries) FindUserByID(ctx context.Context, id int32) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
+		&i.Password,
+		&i.FamilyID,
+		&i.GroupID,
+		&i.IdentityID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const findUserByIDAndFamilyID = `-- name: FindUserByIDAndFamilyID :one
+SELECT
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+FROM
+    users
+WHERE
+    id = $1
     AND family_id = $2
 `
 
-type FindUserByIDParams struct {
+type FindUserByIDAndFamilyIDParams struct {
 	ID       int32
 	FamilyID int32
 }
 
-func (q *Queries) FindUserByID(ctx context.Context, arg FindUserByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, findUserByID, arg.ID, arg.FamilyID)
+func (q *Queries) FindUserByIDAndFamilyID(ctx context.Context, arg FindUserByIDAndFamilyIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByIDAndFamilyID, arg.ID, arg.FamilyID)
 	var i User
 	err := row.Scan(
 		&i.ID,

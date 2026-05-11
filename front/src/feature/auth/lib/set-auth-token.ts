@@ -1,9 +1,7 @@
-import { MyAxiosWithAuth } from '@/lib/my-axios'
+import { MyAxios } from '@/lib/my-axios'
 
-export function setAuthToken(token: string): void {
-  MyAxiosWithAuth.interceptors.request.use((config) => {
-    config.headers.Authorization = `Bearer ${token}`
-    return config
-  })
-  localStorage.setItem('token', token)
+export async function clearAuthToken(): Promise<void> {
+  try {
+    await MyAxios.post('/auth/logout', null, { withCredentials: true })
+  } catch {}
 }

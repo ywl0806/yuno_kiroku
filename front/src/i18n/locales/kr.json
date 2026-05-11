@@ -176,7 +176,10 @@
       "editTitle": "앨범 그룹 편집",
       "nameLabel": "그룹 이름",
       "namePlaceholder": "이름 입력",
-      "deleteConfirm": "정말 삭제하시겠습니까?"
+      "deleteConfirm": "정말 삭제하시겠습니까?",
+      "adminName": "관리자",
+      "adminBadge": "관리자",
+      "adminNotEditable": "관리자 그룹은 수정하거나 삭제할 수 없습니다."
     },
     "album": {
       "title": "앨범 목록",

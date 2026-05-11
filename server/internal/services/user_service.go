@@ -19,8 +19,12 @@ func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, gr
 	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, userID, familyID int32) (db.User, error) {
-	return s.userStore.FindUserByID(ctx, userID, familyID)
+func (s *UserService) GetUserByID(ctx context.Context, userID int32) (db.User, error) {
+	return s.userStore.FindUserByID(ctx, userID)
+}
+
+func (s *UserService) GetUserByIDAndFamilyID(ctx context.Context, userID, familyID int32) (db.User, error) {
+	return s.userStore.FindUserByIDAndFamilyID(ctx, userID, familyID)
 }
 
 func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.User, error) {
@@ -116,6 +120,14 @@ func (s *UserService) validateFamilyExists(ctx context.Context, familyID int32) 
 		return apperr.NewAppErrorWithData(apperr.NotFound, "error.not_found", map[string]string{"field": "field.family"})
 	}
 	return nil
+}
+
+func (s *UserService) GetGroupIsAdmin(ctx context.Context, groupID int32) (bool, error) {
+	group, err := s.groupStore.FindGroupByID(ctx, groupID)
+	if err != nil {
+		return false, err
+	}
+	return group.IsAdmin, nil
 }
 
 func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) error {
