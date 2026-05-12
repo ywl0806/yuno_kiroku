@@ -28,6 +28,8 @@
     "password": "パスワード",
     "loginWithLine": "LINEでログイン",
     "loginWithKakao": "カカオでログイン",
+    "loginWithEmail": "メールでログイン",
+    "loginWithOther": "他の方法でログイン",
     "loggingIn": "ログイン中...",
     "error": {
       "line_token": "LINEログインに失敗しました。",

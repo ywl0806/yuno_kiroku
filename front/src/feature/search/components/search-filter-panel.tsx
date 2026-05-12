@@ -110,7 +110,7 @@ export const SearchFilterPanel: FC<Props> = ({ filter, onFilterChange }) => {
                   : 'border-border bg-background text-muted-foreground',
               )}
             >
-              {album.name}
+              {album.is_common ? t('settings.album.commonName') : album.name}
             </button>
           ))}
         </div>

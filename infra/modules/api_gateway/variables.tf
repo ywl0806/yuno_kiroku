@@ -30,3 +30,8 @@ variable "acm_certificate_arn" {
   description = "API Gateway 커스텀 도메인용 ACM 인증서 ARN (ap-northeast-1)"
   default     = ""
 }
+
+variable "app_url" {
+  type        = string
+  description = "앱 URL"
+}

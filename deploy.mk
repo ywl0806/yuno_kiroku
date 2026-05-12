@@ -11,7 +11,7 @@ build-api-lambda:
 	aws-vault exec $(AWS_VAULT_PROFILE) -- aws s3 cp function.zip s3://$(LAMBDA_ZIP_BUCKET)/function.zip && \
 	rm function.zip
 
-update-api-lambda:
+deploy-api-lambda:
 	aws-vault exec $(AWS_VAULT_PROFILE) -- aws lambda update-function-code \
 		--function-name $(LAMBDA_API_NAME) \
 		--s3-bucket $(LAMBDA_ZIP_BUCKET) --s3-key function.zip
@@ -39,16 +39,17 @@ deploy-ai-task:
 	aws-vault exec $(AWS_VAULT_PROFILE) -- aws ecs update-service \
 		--cluster $(ECS_CLUSTER) --service $(ECS_AI_SERVICE) --force-new-deployment
 
+deploy-frontend:
+	cd front && yarn build:production && \
+	aws-vault exec $(AWS_VAULT_PROFILE) -- aws s3 sync dist s3://$(FRONTEND_BUCKET) --delete
+	aws-vault exec $(AWS_VAULT_PROFILE) -- aws cloudfront create-invalidation \
+		--distribution-id $(CLOUDFRONT_ID) --paths "/*"
+
 deploy-production:
 	make -f deploy.mk build-ai-task
 	make -f deploy.mk deploy-ai-task
 	make -f deploy.mk build-resize-lambda
 	make -f deploy.mk deploy-resize-lambda
 	make -f deploy.mk build-api-lambda
-	make -f deploy.mk update-api-lambda
-
-deploy-frontend:
-	cd front && yarn build:production && \
-	aws-vault exec $(AWS_VAULT_PROFILE) -- aws s3 sync dist s3://$(FRONTEND_BUCKET) --delete
-	aws-vault exec $(AWS_VAULT_PROFILE) -- aws cloudfront create-invalidation \
-		--distribution-id $(CLOUDFRONT_ID) --paths "/*"
+	make -f deploy.mk deploy-api-lambda
+	make -f deploy.mk deploy-frontend

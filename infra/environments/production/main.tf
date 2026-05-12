@@ -144,6 +144,7 @@ module "api_gateway" {
   api_lambda_invoke_arn = module.lambda.api_lambda_function_invoke_arn
   api_domain          = "api.${var.domain_name}"
   acm_certificate_arn = data.terraform_remote_state.acm.outputs.api_gw_certificate_arn
+  app_url = local.shared_app_env["APP_URL"]
 }
 
 # ── Route53 DNS 레코드 ─────────────────────────────────────────
