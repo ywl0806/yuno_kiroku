@@ -111,7 +111,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
 
         {/* 태그 버튼 (상단 좌측) */}
         {currentMediaItemId && (
-          <div className="absolute bottom-[calc(4rem+env(safe-area-inset-top))] left-4 z-50">
+          <div className="absolute bottom-[calc(4rem+env(safe-area-inset-top)+0.5rem)] left-4 z-50">
             <TagSelector mediaItemId={currentMediaItemId} />
           </div>
         )}
