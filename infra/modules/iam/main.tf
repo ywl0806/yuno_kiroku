@@ -179,7 +179,26 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes"
         ]
-        Resource = var.face_recognition_queue_arn
+        Resource = [
+          var.face_recognition_queue_arn,
+          var.video_queue_arn,
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "resize_lambda_video_sqs" {
+  name = "sqs-video-send"
+  role = aws_iam_role.resize_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage"]
+        Resource = var.video_queue_arn
       }
     ]
   })

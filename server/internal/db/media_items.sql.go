@@ -288,6 +288,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -303,6 +304,7 @@ FROM
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = $2::int
     AND agp.permission = 'R'
@@ -335,6 +337,7 @@ type GetMediaItemsByTakenAtRow struct {
 	OriginalStorageKey     sql.NullString
 	ThumbnailStorageKey    sql.NullString
 	ViewStorageKey         sql.NullString
+	VideoStorageKey        sql.NullString
 	OriginalWidth          sql.NullInt32
 	OriginalHeight         sql.NullInt32
 	ThumbnailWidth         sql.NullInt32
@@ -373,6 +376,7 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
 			&i.ViewStorageKey,
+			&i.VideoStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,
@@ -400,6 +404,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -412,6 +417,7 @@ LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id =
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE mi.upload_batch_id = $2::int AND mi.upload_status = '03'
 ORDER BY mi.taken_at ASC
 LIMIT $4::int
@@ -440,6 +446,7 @@ type GetMediaItemsByUploadBatchIdRow struct {
 	OriginalStorageKey     sql.NullString
 	ThumbnailStorageKey    sql.NullString
 	ViewStorageKey         sql.NullString
+	VideoStorageKey        sql.NullString
 	OriginalWidth          sql.NullInt32
 	OriginalHeight         sql.NullInt32
 	ThumbnailWidth         sql.NullInt32
@@ -478,6 +485,7 @@ func (q *Queries) GetMediaItemsByUploadBatchId(ctx context.Context, arg GetMedia
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
 			&i.ViewStorageKey,
+			&i.VideoStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,
@@ -604,6 +612,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -619,6 +628,7 @@ FROM
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = $2::int
     AND agp.permission = 'R'
@@ -684,6 +694,7 @@ type SearchMediaItemsRow struct {
 	OriginalStorageKey     sql.NullString
 	ThumbnailStorageKey    sql.NullString
 	ViewStorageKey         sql.NullString
+	VideoStorageKey        sql.NullString
 	OriginalWidth          sql.NullInt32
 	OriginalHeight         sql.NullInt32
 	ThumbnailWidth         sql.NullInt32
@@ -728,6 +739,7 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
 			&i.ViewStorageKey,
+			&i.VideoStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,

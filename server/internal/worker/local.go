@@ -28,8 +28,9 @@ func InitLocal(e *echo.Echo) {
 	storageService := providers.NewStorageProvider().StorageService()
 	imageUploader := services.NewImageUploader(storageService)
 	faceDispatcher := services.NewSQSFaceRecognitionDispatcher(nil, "")
+	videoDispatcher := services.NewSQSVideoJobDispatcher(nil, "")
 
-	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
+	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher, videoDispatcher)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())

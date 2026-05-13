@@ -30,6 +30,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -45,6 +46,7 @@ FROM
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = sqlc.arg(group_id)::int
     AND agp.permission = 'R'
@@ -116,6 +118,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -131,6 +134,7 @@ FROM
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = sqlc.arg(group_id)::int
     AND agp.permission = 'R'
@@ -201,6 +205,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -213,6 +218,7 @@ LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id =
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE mi.upload_batch_id = sqlc.arg(upload_batch_id)::int AND mi.upload_status = '03'
 ORDER BY mi.taken_at ASC
 LIMIT sqlc.arg(page_size)::int

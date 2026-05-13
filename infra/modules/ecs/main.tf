@@ -159,7 +159,7 @@ resource "aws_appautoscaling_policy" "ai_task" {
 
     step_adjustment {
       scaling_adjustment          = 1
-      metric_interval_lower_bound = 1
+      metric_interval_lower_bound = 0
       metric_interval_upper_bound = 20
     }
 
@@ -187,9 +187,139 @@ resource "aws_appautoscaling_policy" "ai_task_scale_in" {
     adjustment_type = "ExactCapacity"
     cooldown = 300
     metric_aggregation_type = "Maximum"
-    
+
     step_adjustment {
       scaling_adjustment = 0
+      metric_interval_upper_bound = 0
+    }
+  }
+}
+
+# ── CloudWatch Log Group (Video Worker) ──────────────────────
+
+resource "aws_cloudwatch_log_group" "video_task" {
+  name              = "/ecs/yuno-video-${var.env}"
+  retention_in_days = 30
+  tags              = var.common_tags
+}
+
+# ── ECS Task Definition (Video Processing) ───────────────────
+
+resource "aws_ecs_task_definition" "video" {
+  family                   = "yuno-video-task-${var.env}"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "2048" # 2 vCPU
+  memory                   = "4096" # 4 GB
+  task_role_arn            = var.ecs_task_role_arn
+  execution_role_arn       = var.ecs_task_execution_role_arn
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
+
+  container_definitions = jsonencode([
+    {
+      name      = "yuno-video-worker"
+      image     = var.video_image_uri
+      essential = true
+
+      environment = [for k, v in var.app_env_vars : { name = k, value = v }]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.video_task.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
+
+  ephemeral_storage {
+    size_in_gib = 50
+  }
+
+  tags = var.common_tags
+}
+
+# ── ECS Service (Video Processing) ───────────────────────────
+
+resource "aws_ecs_service" "video" {
+  name            = "yuno-video-service-${var.env}"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.video.arn
+  desired_count   = 0
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+    base              = 0
+  }
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = [aws_security_group.ecs_ai.id]
+    assign_public_ip = true
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
+  tags = var.common_tags
+}
+
+# ── App Auto Scaling (Video) ──────────────────────────────────
+
+resource "aws_appautoscaling_target" "video_task" {
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.video.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+  min_capacity       = 0
+  max_capacity       = 5
+}
+
+resource "aws_appautoscaling_policy" "video_task_scale_out" {
+  name               = "yuno-video-task-scale-out-${var.env}"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.video_task.resource_id
+  scalable_dimension = aws_appautoscaling_target.video_task.scalable_dimension
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ExactCapacity"
+    cooldown                = 600
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      scaling_adjustment          = 1
+      metric_interval_lower_bound = 0
+      metric_interval_upper_bound = 10
+    }
+
+    step_adjustment {
+      scaling_adjustment          = 3
+      metric_interval_lower_bound = 10
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "video_task_scale_in" {
+  name               = "yuno-video-task-scale-in-${var.env}"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.video_task.resource_id
+  scalable_dimension = aws_appautoscaling_target.video_task.scalable_dimension
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ExactCapacity"
+    cooldown                = 600
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      scaling_adjustment          = 0
       metric_interval_upper_bound = 0
     }
   }

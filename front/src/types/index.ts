@@ -15,6 +15,7 @@ export interface MediaItem {
   original_url: string
   view_url: string
   live_url: string
+  video_url: string
   original_live_url: string
   original_width: number
   original_height: number

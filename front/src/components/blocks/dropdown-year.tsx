@@ -8,24 +8,22 @@ type Props = {
 }
 export const DropdownYear: FC<Props> = ({ years, selectedYear, onChange }) => {
   return (
-    <div className="">
-      <Select
-        value={selectedYear.toString()}
-        onValueChange={(value) => {
-          onChange(parseInt(value))
-        }}
-      >
-        <SelectTrigger className="min-w-[80px] border-none shadow-none ring-0 focus:ring-0">
-          <SelectValue placeholder="YYYY" />
-        </SelectTrigger>
-        <SelectContent className="z-999">
-          {years.map((year) => (
-            <SelectItem key={year} value={year.toString()}>
-              {year}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select
+      value={selectedYear.toString()}
+      onValueChange={(value) => {
+        onChange(parseInt(value))
+      }}
+    >
+      <SelectTrigger className="min-w-[80px] border-none shadow-none ring-0 focus:ring-0">
+        <SelectValue placeholder="YYYY" />
+      </SelectTrigger>
+      <SelectContent className="z-999">
+        {years.map((year) => (
+          <SelectItem key={year} value={year.toString()}>
+            {year}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

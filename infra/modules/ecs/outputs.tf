@@ -21,3 +21,11 @@ output "ai_task_scale_out_policy_arn" {
 output "ai_task_scale_in_policy_arn" {
   value = aws_appautoscaling_policy.ai_task_scale_in.arn
 }
+
+output "video_task_scale_out_policy_arn" {
+  value = aws_appautoscaling_policy.video_task_scale_out.arn
+}
+
+output "video_task_scale_in_policy_arn" {
+  value = aws_appautoscaling_policy.video_task_scale_in.arn
+}

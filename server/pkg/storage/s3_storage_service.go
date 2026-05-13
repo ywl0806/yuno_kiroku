@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -123,4 +124,48 @@ func (s *S3StorageService) SaveFile(ctx context.Context, file []byte, filePath s
 		return "", err
 	}
 	return fileKey, nil
+}
+
+func (s *S3StorageService) DownloadToFile(ctx context.Context, key string, destPath string) error {
+	result, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("S3 GetObject 실패 (key=%s): %w", key, err)
+	}
+	defer result.Body.Close()
+
+	f, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("로컬 파일 생성 실패: %w", err)
+	}
+	defer f.Close()
+
+	if _, err = io.Copy(f, result.Body); err != nil {
+		return fmt.Errorf("스트리밍 다운로드 실패: %w", err)
+	}
+	return nil
+}
+
+func (s *S3StorageService) UploadFromFile(ctx context.Context, key string, contentType string, srcPath string) error {
+	f, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("로컬 파일 열기 실패: %w", err)
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("파일 정보 읽기 실패: %w", err)
+	}
+
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(s.bucketName),
+		Key:           aws.String(key),
+		Body:          f,
+		ContentType:   aws.String(contentType),
+		ContentLength: aws.Int64(fi.Size()),
+	})
+	return err
 }

@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 type Props = {
   year: number
   month: number
-  date: string
+  isActive: boolean
   onScroll: (scrollTop: number) => void
 }
 
@@ -19,25 +19,17 @@ type OpenMediaItemState = {
   month: number
 }
 
-export const PhotoGridContainer: FC<Props> = ({ year, month, date, onScroll }) => {
-  const { data: photos, refetch, isFetched } = useGetMediaItems({
+export const PhotoGridContainer: FC<Props> = ({ year, month, isActive, onScroll }) => {
+  const { data: photos } = useGetMediaItems({
     year,
     month,
-    enabled: false,
+    enabled: isActive,
   })
   const [detailViewIndex, setDetailViewIndex] = useState<number>(0)
   const [openDetailView, setOpenDetailView] = useState<boolean>(false)
 
   const location = useLocation()
   const nav = useNavigate()
-
-  useEffect(() => {
-    if (!date || isFetched) return
-    const [y, m] = date.split('-')
-    if (parseInt(y) === year && parseInt(m) === month) {
-      refetch()
-    }
-  }, [date, year, month, refetch])
 
   // URL state로 특정 사진 상세뷰 자동 열기
   useEffect(() => {
@@ -61,6 +53,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, date, onScroll }) =
         width: mediaItem.thumbnail_width,
         height: mediaItem.thumbnail_height,
         alt: mediaItem.file_name,
+        isVideo: !!mediaItem.video_url,
       }
     }) ?? []
   }, [photos])

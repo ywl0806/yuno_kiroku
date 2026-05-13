@@ -34,6 +34,7 @@ locals {
     MEDIA_URL           = "https://media.${var.domain_name}"
     MEDIA_BUCKET_NAME   = module.s3.media_bucket_id
     SQS_QUEUE_URL       = module.sqs.queue_url
+    VIDEO_SQS_QUEUE_URL = module.sqs.video_queue_url
     STORAGE_TYPE        = "s3"
     DATABASE_URL        = var.database_url
     AUTH_SECRET_KEY     = var.auth_secret_key

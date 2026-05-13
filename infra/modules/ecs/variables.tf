@@ -18,6 +18,11 @@ variable "ai_image_uri" {
   description = "ECS AI Task 컨테이너 이미지 URI"
 }
 
+variable "video_image_uri" {
+  type        = string
+  description = "ECS Video Processing Worker 컨테이너 이미지 URI"
+}
+
 variable "ecs_task_role_arn" {
   type        = string
   description = "ECS Task Role ARN"

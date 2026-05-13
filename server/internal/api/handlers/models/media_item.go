@@ -15,6 +15,13 @@ type PresignedUploadRequest struct {
 	ContentType string `json:"content_type" validate:"required"`
 }
 
+// VideoUploadCompleteRequest 비디오 업로드 완료 요청
+type VideoUploadCompleteRequest struct {
+	MediaItemID string `json:"media_item_id" validate:"required"`
+	FileName    string `json:"file_name" validate:"required"`
+	MimeType    string `json:"mime_type" validate:"required"`
+}
+
 // PresignedUploadResponse Presigned URL 발급 응답
 type PresignedUploadResponse struct {
 	MediaItemID  string `json:"media_item_id"`
@@ -95,6 +102,8 @@ type MediaItemResponse struct {
 	ViewUrl         string        `json:"view_url"`
 	ViewWidth       int32         `json:"view_width"`
 	ViewHeight      int32         `json:"view_height"`
+	LiveUrl         string        `json:"live_url"`
+	VideoUrl        string        `json:"video_url"`
 	IsLiked         bool          `json:"is_liked"`
 	Tags            []TagResponse `json:"tags"`
 }
@@ -117,6 +126,7 @@ func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemRes
 		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey.String),
 		ViewWidth:       mediaItem.ViewWidth.Int32,
 		ViewHeight:      mediaItem.ViewHeight.Int32,
+		VideoUrl:        internalutils.ParseStoragePath(mediaItem.VideoStorageKey.String),
 		IsLiked:         mediaItem.IsLiked.Int32 > 0,
 		Tags:            []TagResponse{},
 	}
@@ -215,6 +225,7 @@ func NewUploadBatchItemResponse(item *db.GetMediaItemsByUploadBatchIdRow) *Media
 		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey.String),
 		ViewWidth:       item.ViewWidth.Int32,
 		ViewHeight:      item.ViewHeight.Int32,
+		VideoUrl:        internalutils.ParseStoragePath(item.VideoStorageKey.String),
 		IsLiked:         item.IsLiked.Int32 > 0,
 		Tags:            []TagResponse{},
 	}
@@ -259,6 +270,7 @@ func NewSearchMediaItemResponse(item *db.SearchMediaItemsRow) *MediaItemResponse
 		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey.String),
 		ViewWidth:       item.ViewWidth.Int32,
 		ViewHeight:      item.ViewHeight.Int32,
+		VideoUrl:        internalutils.ParseStoragePath(item.VideoStorageKey.String),
 		IsLiked:         item.IsLiked.Int32 > 0,
 		Tags:            []TagResponse{},
 	}

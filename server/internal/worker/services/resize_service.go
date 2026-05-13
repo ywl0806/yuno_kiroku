@@ -16,25 +16,30 @@ import (
 
 // ResizeService MinIO webhook으로 수신한 원본 이미지를 리사이즈하고
 // view/thumbnail을 생성한 뒤 face_recognition_job을 등록합니다.
+// 비디오 파일의 경우 video-processing SQS 큐에 job을 발행합니다.
 type ResizeService struct {
-	mediaItemStore store.MediaItemStore
-	imageUploader  *services.ImageUploader
-	faceDispatcher services.FaceRecognitionDispatcher
+	mediaItemStore  store.MediaItemStore
+	imageUploader   *services.ImageUploader
+	faceDispatcher  services.FaceRecognitionDispatcher
+	videoDispatcher services.VideoJobDispatcher
 }
 
 func NewResizeService(
 	mediaItemStore store.MediaItemStore,
 	imageUploader *services.ImageUploader,
 	faceDispatcher services.FaceRecognitionDispatcher,
+	videoDispatcher services.VideoJobDispatcher,
 ) *ResizeService {
 	return &ResizeService{
-		mediaItemStore: mediaItemStore,
-		imageUploader:  imageUploader,
-		faceDispatcher: faceDispatcher,
+		mediaItemStore:  mediaItemStore,
+		imageUploader:   imageUploader,
+		faceDispatcher:  faceDispatcher,
+		videoDispatcher: videoDispatcher,
 	}
 }
 
-// ProcessResize 원본 이미지 키를 받아 리사이즈 파이프라인 전체를 처리합니다.
+// ProcessResize 원본 파일 키를 받아 파이프라인 전체를 처리합니다.
+// 비디오 파일이면 video-processing SQS job을 발행하고, 이미지이면 리사이즈 처리합니다.
 func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) error {
 	// 1. 키에서 mediaItemID / familyID 파싱 (key = "original/{familyId}/{mediaItemId}.ext")
 	mediaItemID, err := extractMediaItemIDFromKey(originalKey)
@@ -44,6 +49,25 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 	familyID, err := extractFamilyIDFromKey(originalKey)
 	if err != nil {
 		return fmt.Errorf("family_id 파싱 실패 (key=%s): %w", originalKey, err)
+	}
+
+	// 비디오 파일이면 video-processing SQS job 발행 후 반환
+	if isVideoKey(originalKey) {
+		log.Printf("비디오 파일 감지, video-processing job 발행: %s", originalKey)
+		if _, err = s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
+			ID:           mediaItemID,
+			UploadStatus: string(enums.UploadStatusProcessing),
+		}); err != nil {
+			return fmt.Errorf("status 업데이트 실패: %w", err)
+		}
+		ext := extractStorageKeyExt(originalKey)
+		return s.videoDispatcher.Dispatch(ctx, services.VideoJobParams{
+			MediaItemID:        mediaItemID,
+			FamilyID:           familyID,
+			OriginalStorageKey: originalKey,
+			FileName:           mediaItemID + "." + ext,
+			MimeType:           videoMimeType(ext),
+		})
 	}
 
 	// 2. 처리 중으로 상태 변경
@@ -220,6 +244,28 @@ func extractMediaItemIDFromKey(key string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no extension in key: %s", key)
+}
+
+var videoExtensions = map[string]string{
+	"mp4":  "video/mp4",
+	"mov":  "video/quicktime",
+	"avi":  "video/x-msvideo",
+	"mkv":  "video/x-matroska",
+	"webm": "video/webm",
+	"m4v":  "video/x-m4v",
+}
+
+func isVideoKey(key string) bool {
+	ext := extractStorageKeyExt(key)
+	_, ok := videoExtensions[ext]
+	return ok
+}
+
+func videoMimeType(ext string) string {
+	if mime, ok := videoExtensions[ext]; ok {
+		return mime
+	}
+	return "video/mp4"
 }
 
 func splitStorageKey(key string) []string {

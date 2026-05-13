@@ -6,5 +6,8 @@ import (
 )
 
 func ParseStoragePath(storageKey string) string {
+	if storageKey == "" {
+		return ""
+	}
 	return utils.ParsePath(viper.GetString("MEDIA_URL"), storageKey)
 }

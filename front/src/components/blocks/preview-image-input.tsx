@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { UPLOAD_STATUS } from '@/enums'
 import { useUploadPhoto } from '@/providers/upload-photo-provider'
 import { UploadMediaItem } from '@/types'
-import { BrushCleaning, Check, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
+import { BrushCleaning, Check, Loader2, Play, Plus, RefreshCcw, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef, FC, Dispatch, SetStateAction, RefObject } from 'react'
 import { Photo as AlbumPhoto } from 'react-photo-album'
 import { useTranslation } from 'react-i18next'
@@ -16,25 +16,33 @@ const getColumnCount = (width: number) => {
   return Math.abs(Math.floor(width / 300))
 }
 
-// 이미지의 실제 크기를 가져오는 헬퍼 함수
-const getImageDimensions = (file: File): Promise<ImageDimensions> => {
+const getMediaDimensions = (file: File): Promise<ImageDimensions> => {
+  if (file.type.startsWith('video/')) {
+    return new Promise((resolve) => {
+      const video = document.createElement('video')
+      const url = URL.createObjectURL(file)
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(url)
+        resolve({ width: video.videoWidth || 16, height: video.videoHeight || 9 })
+      }
+      video.onerror = () => {
+        URL.revokeObjectURL(url)
+        resolve({ width: 16, height: 9 })
+      }
+      video.src = url
+    })
+  }
   return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
-
     img.onload = () => {
       URL.revokeObjectURL(url)
-      resolve({
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      })
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
     }
-
     img.onerror = () => {
       URL.revokeObjectURL(url)
       reject(new Error('Failed to load image'))
     }
-
     img.src = url
   })
 }
@@ -54,7 +62,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
   // 이미지 크기를 비동기로 로드
   useEffect(() => {
     const loadDimensions = async () => {
-      const dimensions = await Promise.all(images.map((image) => getImageDimensions(image.file)))
+      const dimensions = await Promise.all(images.map((image) => getMediaDimensions(image.file)))
       setImageDimensions(dimensions)
     }
 
@@ -126,7 +134,7 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
             </Button>
           )}
         </div>
-        <input ref={imgInputRef} hidden type="file" accept="image/*" name="images" multiple onChange={handleChange} />
+        <input ref={imgInputRef} hidden type="file" accept="image/*, video/*" name="images" multiple onChange={handleChange} />
       </div>
 
       {images.length > 0 && (
@@ -134,7 +142,9 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
           <PhotoGrid
             photos={photoAlbum}
             columnCount={columnCount}
-            renderPhoto={(props) => (
+            renderPhoto={(props) => {
+              const isVideo = images[props.layout.index]?.file.type.startsWith('video/')
+              return (
               <div className="relative" key={props.photo.key}>
                 {!isUploaded && (
                   <div className="absolute right-2 top-2 z-10">
@@ -205,9 +215,27 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
                     </div>
                   )
                 })()}
-                {props.renderDefaultPhoto()}
+                {isVideo && !isUploaded && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="rounded-full bg-black/40 p-2">
+                      <Play className="size-5 fill-white text-white" />
+                    </div>
+                  </div>
+                )}
+                {isVideo ? (
+                  <video
+                    src={images[props.layout.index].src}
+                    style={{ width: props.layout.width, height: props.layout.height, objectFit: 'cover', display: 'block' }}
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  props.renderDefaultPhoto()
+                )}
               </div>
-            )}
+              )
+            }}
           />
         </div>
       )}

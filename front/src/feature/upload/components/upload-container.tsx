@@ -116,7 +116,7 @@ export const UploadContainer: FC = () => {
             ref={imgInputRef}
             hidden
             type="file"
-            accept="image/*"
+            accept="image/*, video/*"
             name="images"
             multiple
             onChange={handleAddImages}

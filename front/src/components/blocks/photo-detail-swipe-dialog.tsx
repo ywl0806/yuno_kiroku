@@ -53,21 +53,23 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
   return (
     <FullScreenModal open={open}>
       <div className="relative h-screen">
-        {/* 닫기 버튼 */}
-        <Button className="absolute right-5 top-5 z-50" variant="default" size="icon" onClick={onClose}>
-          <X className="size-6" />
-        </Button>
+        <div className='flex items-center gap-3 px-4 py-3 h-[4rem]'>
+          {/* 닫기 버튼 */}
+          <Button className="" variant="default" size="icon" onClick={onClose}>
+            <X className="size-6" />
+          </Button>
 
-        {/* 좋아요 버튼 */}
-        <button
-          className="absolute right-16 top-5 z-50 flex size-10 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm transition-colors hover:bg-black/50 disabled:opacity-50"
-          onClick={handleLike}
-          disabled={isLikePending}
-        >
-          <Heart className={`size-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-        </button>
+          {/* 좋아요 버튼 */}
+          <button
+            className="flex size-10 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm transition-colors hover:bg-black/50 disabled:opacity-50"
+            onClick={handleLike}
+            disabled={isLikePending}
+          >
+            <Heart className={`size-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+          </button>
 
-        <div className="h-full w-full overflow-y-auto">
+        </div>
+        <div className="h-[calc(100vh-4rem)] w-full overflow-y-auto">
           <Swiper
             modules={[Zoom]}
             zoom={{ maxRatio: 4 }}
@@ -82,8 +84,16 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
           >
             {photos.map((photo) => (
               <SwiperSlide key={photo.id}>
-                <div className="swiper-zoom-container relative h-full w-full flex items-center justify-center">
-                  {photo.live_url ? (
+                <div className="swiper-zoom-container relative flex h-full w-full items-center justify-center">
+                  {photo.video_url ? (
+                    <video
+                      className="max-h-[calc(100vh-5rem)] w-fit object-contain"
+                      src={photo.video_url}
+                      poster={photo.thumbnail_url}
+                      controls
+                      playsInline
+                    />
+                  ) : photo.live_url ? (
                     <LivePhoto photo={photo} />
                   ) : (
                     <LazyLoadImage
@@ -101,7 +111,7 @@ export const PhotoDetailSwipeDialog: FC<Props> = ({ photos, index, setIndex, ope
 
         {/* 태그 버튼 (상단 좌측) */}
         {currentMediaItemId && (
-          <div className="absolute top-6 left-4 z-50">
+          <div className="absolute bottom-[calc(4rem+env(safe-area-inset-top))] left-4 z-50">
             <TagSelector mediaItemId={currentMediaItemId} />
           </div>
         )}

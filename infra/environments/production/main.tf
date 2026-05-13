@@ -63,6 +63,7 @@ module "iam" {
   aws_region = "ap-northeast-1"
   aws_account_id = data.aws_caller_identity.current.account_id
   face_recognition_queue_arn = module.sqs.queue_arn
+  video_queue_arn            = module.sqs.video_queue_arn
 }
 
 # ── S3 ────────────────────────────────────────────────────────
@@ -129,7 +130,8 @@ module "ecs" {
   ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
   vpc_id      = data.aws_vpc.default.id
   subnet_ids  = data.aws_subnets.public.ids
-  ai_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-ai"]}:${local.env}"
+  ai_image_uri    = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-ai"]}:${local.env}"
+  video_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-video-processing"]}:${local.env}"
   app_env_vars = local.shared_app_env
 }
 
@@ -175,7 +177,10 @@ module "cloudwatch" {
   source = "../../modules/cloudwatch"
   env = local.env
   common_tags = local.common_tags
-  ai_task_scale_out_policy_arn = module.ecs.ai_task_scale_out_policy_arn
-  ai_task_scale_in_policy_arn = module.ecs.ai_task_scale_in_policy_arn
-  face_recognition_queue_name = module.sqs.queue_name
+  ai_task_scale_out_policy_arn    = module.ecs.ai_task_scale_out_policy_arn
+  ai_task_scale_in_policy_arn     = module.ecs.ai_task_scale_in_policy_arn
+  face_recognition_queue_name     = module.sqs.queue_name
+  video_queue_name                = module.sqs.video_queue_name
+  video_task_scale_out_policy_arn = module.ecs.video_task_scale_out_policy_arn
+  video_task_scale_in_policy_arn  = module.ecs.video_task_scale_in_policy_arn
 }

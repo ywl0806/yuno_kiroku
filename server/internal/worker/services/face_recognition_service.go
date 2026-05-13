@@ -206,7 +206,7 @@ func (s *FaceRecognitionService) CropFaceAndUpload(
 		ctx,
 		croppedBytes,
 		fmt.Sprintf("identities/%d", identityID),
-		fmt.Sprintf("face_%d.webp", mediaItemID),
+		fmt.Sprintf("face_%s.webp", mediaItemID),
 	)
 	if err != nil {
 		return "", fmt.Errorf("얼굴 크롭 이미지 업로드 실패: %w", err)
