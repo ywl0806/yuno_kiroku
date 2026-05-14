@@ -29,22 +29,10 @@ func NewMediaItemHandler(
 // @Tags MediaItem
 // @Description S3 직접 업로드를 위한 Presigned PUT URL 발급
 // @Accept json
-// @Param album_id query string true "Album ID"
-// @Param upload_batch_id query string true "Upload Batch ID"
 // @Param body body models.PresignedUploadRequest true "파일 정보"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/presigned-url [post]
 func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
-	albumId := c.QueryParam("album_id")
-	if albumId == "" {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "album_id"})
-	}
-
-	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "upload_batch_id"})
-	}
-
 	req := new(models.PresignedUploadRequest)
 	if err := c.Bind(req); err != nil {
 		return err
@@ -56,7 +44,7 @@ func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
-	result, err := con.mediaItemService.CreatePresignedUpload(ctx, req.FileName, req.ContentType, authUser.FamilyId, albumId, uploadBatchID)
+	result, err := con.mediaItemService.CreatePresignedUpload(ctx, req.FileName, req.ContentType, authUser.FamilyId, req.AlbumID, req.UploadBatchID)
 	if err != nil {
 		log.Println("create presigned upload error:", err)
 		return err
@@ -68,6 +56,51 @@ func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
 		StorageKey:   result.StorageKey,
 		ExpiresIn:    3600,
 	})
+}
+
+// @Tags MediaItem
+// @Description S3 직접 업로드를 위한 Presigned PUT URL 배치 발급
+// @Accept json
+// @Param body body models.BatchPresignedUploadRequest true "파일 정보 배열"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/presigned-urls [post]
+func (con *MediaItemHandler) CreateBatchPresignedUpload(c echo.Context) error {
+	req := new(models.BatchPresignedUploadRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+
+	items := make([]services.BatchPresignedUploadItem, len(req.Files))
+	for i, f := range req.Files {
+		items[i] = services.BatchPresignedUploadItem{
+			FileName:    f.FileName,
+			ContentType: f.ContentType,
+		}
+	}
+
+	results, err := con.mediaItemService.CreateBatchPresignedUpload(ctx, items, authUser.FamilyId, req.AlbumID, req.UploadBatchID)
+	if err != nil {
+		log.Println("create batch presigned upload error:", err)
+		return err
+	}
+
+	responseItems := make([]models.BatchPresignedUploadResponseItem, len(results))
+	for i, r := range results {
+		responseItems[i] = models.BatchPresignedUploadResponseItem{
+			MediaItemID:  r.MediaItemID,
+			PresignedURL: r.PresignedURL,
+			StorageKey:   r.StorageKey,
+			ExpiresIn:    3600,
+		}
+	}
+
+	return c.JSON(200, models.BatchPresignedUploadResponse{Items: responseItems})
 }
 
 // @Tags MediaItem

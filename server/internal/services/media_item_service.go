@@ -204,6 +204,30 @@ func (s *MediaItemService) CreatePresignedUpload(
 	}, nil
 }
 
+// BatchPresignedUploadItem는 배치 Presigned URL 발급 요청 항목
+type BatchPresignedUploadItem struct {
+	FileName    string
+	ContentType string
+}
+
+// CreateBatchPresignedUpload는 여러 파일에 대한 Presigned PUT URL을 한 번에 발급
+func (s *MediaItemService) CreateBatchPresignedUpload(
+	ctx context.Context,
+	items []BatchPresignedUploadItem,
+	familyId, albumId string,
+	uploadBatchID int32,
+) ([]*PresignedUploadResult, error) {
+	results := make([]*PresignedUploadResult, len(items))
+	for i, item := range items {
+		result, err := s.CreatePresignedUpload(ctx, item.FileName, item.ContentType, familyId, albumId, uploadBatchID)
+		if err != nil {
+			return nil, err
+		}
+		results[i] = result
+	}
+	return results, nil
+}
+
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성
 func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId string) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)

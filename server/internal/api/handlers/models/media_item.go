@@ -11,8 +11,36 @@ import (
 
 // PresignedUploadRequest Presigned URL 발급 요청
 type PresignedUploadRequest struct {
+	AlbumID       string `json:"album_id" validate:"required"`
+	UploadBatchID int32  `json:"upload_batch_id" validate:"required"`
+	FileName      string `json:"file_name" validate:"required"`
+	ContentType   string `json:"content_type" validate:"required"`
+}
+
+// BatchPresignedUploadRequestItem 배치 Presigned URL 발급 요청 항목
+type BatchPresignedUploadRequestItem struct {
 	FileName    string `json:"file_name" validate:"required"`
 	ContentType string `json:"content_type" validate:"required"`
+}
+
+// BatchPresignedUploadRequest 배치 Presigned URL 발급 요청
+type BatchPresignedUploadRequest struct {
+	AlbumID       string                            `json:"album_id" validate:"required"`
+	UploadBatchID int32                             `json:"upload_batch_id" validate:"required"`
+	Files         []BatchPresignedUploadRequestItem `json:"files" validate:"required,min=1,dive"`
+}
+
+// BatchPresignedUploadResponseItem 배치 Presigned URL 발급 응답 항목
+type BatchPresignedUploadResponseItem struct {
+	MediaItemID  string `json:"media_item_id"`
+	PresignedURL string `json:"presigned_url"`
+	StorageKey   string `json:"storage_key"`
+	ExpiresIn    int    `json:"expires_in"`
+}
+
+// BatchPresignedUploadResponse 배치 Presigned URL 발급 응답
+type BatchPresignedUploadResponse struct {
+	Items []BatchPresignedUploadResponseItem `json:"items"`
 }
 
 // VideoUploadCompleteRequest 비디오 업로드 완료 요청
