@@ -45,7 +45,7 @@ func Init(e *echo.Echo) {
 	storageService := storageProvider.StorageService()
 
 	// service (store 계층을 통해 데이터 접근)
-	userService := services.NewUserService(st.User, st.Family, st.Group)
+	userService := services.NewUserService(st.User, st.Family, st.Group, st.AlbumGroupPermission)
 	inviteService := services.NewInviteService(st.InviteToken, st.Family, st.Group)
 	authService := services.NewAuthService(
 		userService,
@@ -63,7 +63,7 @@ func Init(e *echo.Echo) {
 		},
 	)
 	imageUploader := services.NewImageUploader(storageService)
-	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader)
+	mediaItemService := services.NewMediaItemService(st.MediaItem, st.AlbumGroupPermission, imageUploader)
 	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
 	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission, st)
 	groupService := services.NewGroupService(st.Family, st.Group)

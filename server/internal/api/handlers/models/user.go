@@ -9,14 +9,15 @@ import (
 )
 
 type MeResponse struct {
-	ID       string  `json:"id"`
-	Name     *string `json:"name"`
-	Username string  `json:"username"`
-	Provider *string `json:"provider"`
-	IsAdmin  bool    `json:"is_admin"`
+	ID               string   `json:"id"`
+	Name             *string  `json:"name"`
+	Username         string   `json:"username"`
+	Provider         *string  `json:"provider"`
+	IsAdmin          bool     `json:"is_admin"`
+	WritableAlbumIDs []string `json:"writable_album_ids"`
 }
 
-func NewMeResponse(u *db.User, isAdmin bool) *MeResponse {
+func NewMeResponse(u *db.User, isAdmin bool, writableAlbumIDs []string) *MeResponse {
 	var name *string
 	if u.Name.Valid {
 		name = &u.Name.String
@@ -25,12 +26,16 @@ func NewMeResponse(u *db.User, isAdmin bool) *MeResponse {
 	if u.Provider.Valid {
 		provider = &u.Provider.String
 	}
+	if writableAlbumIDs == nil {
+		writableAlbumIDs = []string{}
+	}
 	return &MeResponse{
-		ID:       u.ID,
-		Name:     name,
-		Username: u.Username,
-		Provider: provider,
-		IsAdmin:  isAdmin,
+		ID:               u.ID,
+		Name:             name,
+		Username:         u.Username,
+		Provider:         provider,
+		IsAdmin:          isAdmin,
+		WritableAlbumIDs: writableAlbumIDs,
 	}
 }
 

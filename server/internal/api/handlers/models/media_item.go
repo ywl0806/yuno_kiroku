@@ -231,6 +231,10 @@ func NewUploadBatchItemResponse(item *db.GetMediaItemsByUploadBatchIdRow) *Media
 	}
 }
 
+type UpdateMediaItemAlbumRequest struct {
+	AlbumID string `json:"album_id" validate:"required"`
+}
+
 type GetMediaItemsRequest struct {
 	From *time.Time `query:"from" validate:"required"`
 	To   *time.Time `query:"to" validate:"required"`

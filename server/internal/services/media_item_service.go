@@ -12,20 +12,25 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
+
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 )
 
 type MediaItemService struct {
-	mediaItemStore store.MediaItemStore
-	imageUploader  *ImageUploader
+	mediaItemStore            store.MediaItemStore
+	albumGroupPermissionStore store.AlbumGroupPermissionStore
+	imageUploader             *ImageUploader
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
+	albumGroupPermissionStore store.AlbumGroupPermissionStore,
 	imageUploader *ImageUploader,
 ) *MediaItemService {
 	return &MediaItemService{
-		mediaItemStore: mediaItemStore,
-		imageUploader:  imageUploader,
+		mediaItemStore:            mediaItemStore,
+		albumGroupPermissionStore: albumGroupPermissionStore,
+		imageUploader:             imageUploader,
 	}
 }
 
@@ -321,4 +326,46 @@ func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploa
 		items = items[:SearchPageSize]
 	}
 	return &UploadBatchItemsResult{Items: items, HasNext: hasNext}, nil
+}
+
+// DeleteMediaItem는 미디어 아이템을 삭제합니다.
+func (s *MediaItemService) DeleteMediaItem(ctx context.Context, mediaItemID string, familyID string, userID string) error {
+	// media_item 조회
+	mediaItem, err := s.mediaItemStore.GetMediaItemByIDAndFamilyID(ctx, mediaItemID, familyID)
+	if err != nil {
+		return err
+	}
+
+	hasPermission, err := s.albumGroupPermissionStore.CheckUserHasPermissionForAlbum(ctx, mediaItem.AlbumID, userID, "W")
+	if err != nil {
+		return err
+	}
+
+	if !hasPermission {
+		return apperr.NewForbiddenError("error.forbidden", nil)
+	}
+
+	return s.mediaItemStore.DeleteMediaItem(ctx, mediaItemID)
+}
+
+// UpdateMediaItemAlbum는 미디어 아이템의 앨범을 업데이트합니다.
+func (s *MediaItemService) UpdateMediaItemAlbum(ctx context.Context, id string, familyID string, userID string, albumID string) error {
+	mediaItem, err := s.mediaItemStore.GetMediaItemByIDAndFamilyID(ctx, id, familyID)
+	if err != nil {
+		return err
+	}
+
+	hasPermission, err := s.albumGroupPermissionStore.CheckUserHasPermissionForAlbum(ctx, mediaItem.AlbumID, userID, "W")
+	if err != nil {
+		return err
+	}
+
+	if !hasPermission {
+		return apperr.NewForbiddenError("error.forbidden", nil)
+	}
+
+	return s.mediaItemStore.UpdateMediaItemAlbum(ctx, db.UpdateMediaItemAlbumParams{
+		ID:      id,
+		AlbumID: albumID,
+	})
 }

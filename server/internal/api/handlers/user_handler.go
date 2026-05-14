@@ -61,7 +61,11 @@ func (con *UserHandler) GetMe(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(200, models.NewMeResponse(&user, isAdmin))
+	writableAlbumIDs, err := con.userService.GetWritableAlbumIDs(ctx, user.GroupID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMeResponse(&user, isAdmin, writableAlbumIDs))
 }
 
 // @Tags User
@@ -85,7 +89,11 @@ func (con *UserHandler) UpdateMe(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(200, models.NewMeResponse(&user, isAdmin))
+	writableAlbumIDs, err := con.userService.GetWritableAlbumIDs(ctx, user.GroupID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, models.NewMeResponse(&user, isAdmin, writableAlbumIDs))
 }
 
 // @Tags User

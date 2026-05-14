@@ -103,6 +103,7 @@ export interface Me {
   username: string
   provider: string | null
   is_admin: boolean
+  writable_album_ids: string[]
 }
 
 export interface AlbumGroupPermission {

@@ -11,7 +11,7 @@ type MediaItemStore interface {
 	CreateMediaItem(ctx context.Context, arg db.CreateMediaItemParams) (db.MediaItem, error)
 	CreateMediaFile(ctx context.Context, arg db.CreateMediaFileParams) (db.MediaFile, error)
 	GetMediaItemByFaceDetection(ctx context.Context, arg db.GetMediaItemByFaceDetectionParams) (db.MediaItem, error)
-	GetMediaItemByID(ctx context.Context, id string) (db.MediaItem, error)
+	GetMediaItemByIDAndFamilyID(ctx context.Context, id string, familyID string) (db.MediaItem, error)
 	UpdateMediaItemTakenAt(ctx context.Context, arg db.UpdateMediaItemTakenAtParams) error
 	GetMediaItemsByTakenAt(ctx context.Context, arg db.GetMediaItemsByTakenAtParams) ([]db.GetMediaItemsByTakenAtRow, error)
 	GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error)
@@ -22,6 +22,8 @@ type MediaItemStore interface {
 	GetUploadBatchesAndMediaItemCounts(ctx context.Context, arg db.GetUploadBatchesAndMediaItemCountsParams) ([]db.GetUploadBatchesAndMediaItemCountsRow, error)
 	GetMediaItemsByUploadBatchId(ctx context.Context, arg db.GetMediaItemsByUploadBatchIdParams) ([]db.GetMediaItemsByUploadBatchIdRow, error)
 	GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]db.GetUploadBatchWithThumbnailsRow, error)
+	DeleteMediaItem(ctx context.Context, id string) error
+	UpdateMediaItemAlbum(ctx context.Context, arg db.UpdateMediaItemAlbumParams) error
 }
 
 type mediaItemStore struct {
@@ -69,8 +71,11 @@ func (s *mediaItemStore) SearchMediaItems(ctx context.Context, arg db.SearchMedi
 	return wrapErr(s.queries.SearchMediaItems(ctx, arg))
 }
 
-func (s *mediaItemStore) GetMediaItemByID(ctx context.Context, id string) (db.MediaItem, error) {
-	return wrapErr(s.queries.GetMediaItemByID(ctx, id))
+func (s *mediaItemStore) GetMediaItemByIDAndFamilyID(ctx context.Context, id string, familyID string) (db.MediaItem, error) {
+	return wrapErr(s.queries.GetMediaItemByIDAndFamilyID(ctx, db.GetMediaItemByIDAndFamilyIDParams{
+		ID:       id,
+		FamilyID: familyID,
+	}))
 }
 
 func (s *mediaItemStore) UpdateMediaItemTakenAt(ctx context.Context, arg db.UpdateMediaItemTakenAtParams) error {
@@ -87,4 +92,12 @@ func (s *mediaItemStore) GetMediaItemsByUploadBatchId(ctx context.Context, arg d
 
 func (s *mediaItemStore) GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]db.GetUploadBatchWithThumbnailsRow, error) {
 	return wrapErr(s.queries.GetUploadBatchWithThumbnails(ctx, batchIds))
+}
+
+func (s *mediaItemStore) DeleteMediaItem(ctx context.Context, id string) error {
+	return mapDBError(s.queries.DeleteMediaItem(ctx, id))
+}
+
+func (s *mediaItemStore) UpdateMediaItemAlbum(ctx context.Context, arg db.UpdateMediaItemAlbumParams) error {
+	return mapDBError(s.queries.UpdateMediaItemAlbum(ctx, arg))
 }

@@ -90,6 +90,8 @@ export const API_ROUTES = {
     LIKE: (id: string) => `/media-item/${id}/like`,
     TAGS: (id: string) => `/media-item/${id}/tag`,
     TAG_REMOVE: (id: string, tagId: number) => `/media-item/${id}/tag/${tagId}`,
+    DELETE: (id: string) => `/media-item/${id}`,
+    UPDATE_ALBUM: (id: string) => `/media-item/${id}/album`,
   },
 
   // Tag

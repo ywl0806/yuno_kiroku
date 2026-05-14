@@ -78,6 +78,15 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 	return i, err
 }
 
+const deleteMediaItem = `-- name: DeleteMediaItem :exec
+DELETE FROM media_items WHERE id = $1
+`
+
+func (q *Queries) DeleteMediaItem(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteMediaItem, id)
+	return err
+}
+
 const getMediaItemByFaceDetection = `-- name: GetMediaItemByFaceDetection :one
 SELECT
     mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
@@ -116,12 +125,17 @@ func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaI
 	return i, err
 }
 
-const getMediaItemByID = `-- name: GetMediaItemByID :one
-SELECT id, family_id, album_id, upload_batch_id, upload_status, taken_location_latitude, taken_location_longitude, taken_at, file_name, created_at, updated_at FROM media_items WHERE id = $1 LIMIT 1
+const getMediaItemByIDAndFamilyID = `-- name: GetMediaItemByIDAndFamilyID :one
+SELECT id, family_id, album_id, upload_batch_id, upload_status, taken_location_latitude, taken_location_longitude, taken_at, file_name, created_at, updated_at FROM media_items WHERE id = $1 AND family_id = $2 LIMIT 1
 `
 
-func (q *Queries) GetMediaItemByID(ctx context.Context, id string) (MediaItem, error) {
-	row := q.db.QueryRowContext(ctx, getMediaItemByID, id)
+type GetMediaItemByIDAndFamilyIDParams struct {
+	ID       string
+	FamilyID string
+}
+
+func (q *Queries) GetMediaItemByIDAndFamilyID(ctx context.Context, arg GetMediaItemByIDAndFamilyIDParams) (MediaItem, error) {
+	row := q.db.QueryRowContext(ctx, getMediaItemByIDAndFamilyID, arg.ID, arg.FamilyID)
 	var i MediaItem
 	err := row.Scan(
 		&i.ID,
@@ -759,6 +773,20 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateMediaItemAlbum = `-- name: UpdateMediaItemAlbum :exec
+UPDATE media_items SET album_id = $2 WHERE id = $1
+`
+
+type UpdateMediaItemAlbumParams struct {
+	ID      string
+	AlbumID string
+}
+
+func (q *Queries) UpdateMediaItemAlbum(ctx context.Context, arg UpdateMediaItemAlbumParams) error {
+	_, err := q.db.ExecContext(ctx, updateMediaItemAlbum, arg.ID, arg.AlbumID)
+	return err
 }
 
 const updateMediaItemTakenAt = `-- name: UpdateMediaItemTakenAt :exec

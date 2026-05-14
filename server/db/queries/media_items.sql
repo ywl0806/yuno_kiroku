@@ -109,8 +109,8 @@ SET taken_at = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
--- name: GetMediaItemByID :one
-SELECT * FROM media_items WHERE id = $1 LIMIT 1;
+-- name: GetMediaItemByIDAndFamilyID :one
+SELECT * FROM media_items WHERE id = $1 AND family_id = $2 LIMIT 1;
 
 -- name: SearchMediaItems :many
 SELECT
@@ -245,3 +245,10 @@ LEFT JOIN LATERAL (
 WHERE ub.id = ANY(sqlc.arg(batch_ids)::int[])
 AND mf_thumb.storage_key IS NOT NULL
 ORDER BY ub.upload_at DESC;
+
+
+-- name: DeleteMediaItem :exec
+DELETE FROM media_items WHERE id = $1;
+
+-- name: UpdateMediaItemAlbum :exec
+UPDATE media_items SET album_id = $2 WHERE id = $1;

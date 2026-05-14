@@ -25,4 +25,6 @@ func (mr *MediaItemRouter) Register(root *echo.Group) {
 	mediaItemRouter.GET("/upload-batch/status", mr.mediaItemHandler.GetUploadBatchStatus, guard.Handler)
 	mediaItemRouter.GET("/upload-batch/:id/items", mr.mediaItemHandler.GetUploadBatchItems, guard.Handler)
 	mediaItemRouter.POST("/presigned-url", mr.mediaItemHandler.CreatePresignedUpload, guard.Handler)
+	mediaItemRouter.DELETE("/:id", mr.mediaItemHandler.DeleteMediaItem, guard.Handler)
+	mediaItemRouter.PATCH("/:id/album", mr.mediaItemHandler.UpdateMediaItemAlbum, guard.Handler)
 }

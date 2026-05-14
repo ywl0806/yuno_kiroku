@@ -9,6 +9,56 @@ import (
 	"context"
 )
 
+const getWritableAlbumIDsByGroupID = `-- name: GetWritableAlbumIDsByGroupID :many
+SELECT album_id FROM album_groups_permissions
+WHERE group_id = $1 AND permission = 'W'
+`
+
+func (q *Queries) GetWritableAlbumIDsByGroupID(ctx context.Context, groupID int32) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getWritableAlbumIDsByGroupID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var album_id string
+		if err := rows.Scan(&album_id); err != nil {
+			return nil, err
+		}
+		items = append(items, album_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const checkUserHasPermissionForAlbum = `-- name: CheckUserHasPermissionForAlbum :one
+SELECT EXISTS(
+    SELECT 1 FROM album_groups_permissions as agp
+    INNER JOIN groups as g on agp.group_id = g.id
+    INNER JOIN users as u on g.id = u.group_id AND u.id = $1::uuid
+    WHERE agp.album_id = $2::uuid AND agp.permission = $3::varchar
+) AS has_permission
+`
+
+type CheckUserHasPermissionForAlbumParams struct {
+	UserID     string
+	AlbumID    string
+	Permission string
+}
+
+func (q *Queries) CheckUserHasPermissionForAlbum(ctx context.Context, arg CheckUserHasPermissionForAlbumParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, checkUserHasPermissionForAlbum, arg.UserID, arg.AlbumID, arg.Permission)
+	var has_permission bool
+	err := row.Scan(&has_permission)
+	return has_permission, err
+}
+
 const deleteAlbumGroupPermissionsByAlbumID = `-- name: DeleteAlbumGroupPermissionsByAlbumID :exec
 DELETE FROM album_groups_permissions
 WHERE

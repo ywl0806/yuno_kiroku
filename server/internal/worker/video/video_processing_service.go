@@ -3,6 +3,7 @@ package video
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -64,19 +65,24 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		return fmt.Errorf("원본 비디오 다운로드 실패: %w", err)
 	}
 
-	// 3. 썸네일 추출 (1초 지점, WebP)
-	log.Printf("[video-worker] 썸네일 추출 중: %s", params.MediaItemID)
-	if err = extractThumbnail(ctx, inputPath, thumbPath); err != nil {
-		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("썸네일 추출 실패: %w", err)
-	}
-
-	// 4. 비디오 리사이즈 (최대 1280px, H.264, faststart)
+	// 3. 비디오 리사이즈 (최대 1280px, H.264, faststart)
 	log.Printf("[video-worker] 비디오 리사이즈 중: %s", params.MediaItemID)
 	if err = resizeVideo(ctx, inputPath, outputPath); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
 		return fmt.Errorf("비디오 리사이즈 실패: %w", err)
 	}
+	videoW, videoH, err := probeSize(outputPath)
+	if err != nil {
+		log.Printf("[video-worker] 비디오 치수 조회 실패 (무시): %v", err)
+	}
+
+	// 4. 썸네일 추출 (리사이즈된 영상의 1초 지점, WebP)
+	log.Printf("[video-worker] 썸네일 추출 중: %s", params.MediaItemID)
+	if err = extractThumbnail(ctx, outputPath, thumbPath); err != nil {
+		s.setFailed(ctx, params.MediaItemID, err)
+		return fmt.Errorf("썸네일 추출 실패: %w", err)
+	}
+	thumbW, thumbH := videoW, videoH
 
 	// 5. 썸네일 S3 업로드
 	thumbKey := consts.THUMBNAIL_STORAGE_PREFIX + "/" + params.FamilyID + "/" + params.MediaItemID + ".webp"
@@ -98,6 +104,8 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		Role:        string(enums.MediaItemRoleThumbnail),
 		StorageKey:  thumbKey,
 		MimeType:    sql.NullString{String: "image/webp", Valid: true},
+		Width:       sql.NullInt32{Int32: thumbW, Valid: thumbW > 0},
+		Height:      sql.NullInt32{Int32: thumbH, Valid: thumbH > 0},
 	}); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
 		return fmt.Errorf("thumbnail media_file 생성 실패: %w", err)
@@ -107,6 +115,8 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		Role:        string(enums.MediaItemRoleVideo),
 		StorageKey:  videoKey,
 		MimeType:    sql.NullString{String: "video/mp4", Valid: true},
+		Width:       sql.NullInt32{Int32: videoW, Valid: videoW > 0},
+		Height:      sql.NullInt32{Int32: videoH, Valid: videoH > 0},
 	}); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
 		return fmt.Errorf("video media_file 생성 실패: %w", err)
@@ -148,6 +158,29 @@ func extractThumbnail(ctx context.Context, inputPath, outputPath string) error {
 		OverWriteOutput().
 		ErrorToStdOut().
 		Run()
+}
+
+// probeSize ffprobe로 미디어 파일의 첫 번째 비디오 스트림 치수를 반환합니다.
+func probeSize(path string) (width, height int32, err error) {
+	data, err := ffmpeg.Probe(path)
+	if err != nil {
+		return 0, 0, fmt.Errorf("ffprobe 실패: %w", err)
+	}
+	var result struct {
+		Streams []struct {
+			Width  int32 `json:"width"`
+			Height int32 `json:"height"`
+		} `json:"streams"`
+	}
+	if err = json.Unmarshal([]byte(data), &result); err != nil {
+		return 0, 0, fmt.Errorf("ffprobe JSON 파싱 실패: %w", err)
+	}
+	for _, s := range result.Streams {
+		if s.Width > 0 && s.Height > 0 {
+			return s.Width, s.Height, nil
+		}
+	}
+	return 0, 0, fmt.Errorf("스트림에서 치수를 찾을 수 없음")
 }
 
 // resizeVideo 가로 최대 1280px(짝수 맞춤), H.264 CRF23, faststart로 재인코딩합니다.

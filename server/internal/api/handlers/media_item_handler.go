@@ -249,6 +249,50 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 }
 
 // @Tags MediaItem
+// @Description 미디어 아이템 삭제
+// @Param id path string true "MediaItem ID"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/{id} [delete]
+func (con *MediaItemHandler) DeleteMediaItem(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
+	}
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+	if err := con.mediaItemService.DeleteMediaItem(ctx, id, authUser.FamilyId, authUser.ID); err != nil {
+		return err
+	}
+	return c.NoContent(204)
+}
+
+// @Tags MediaItem
+// @Description 미디어 아이템 앨범 변경
+// @Param id path string true "MediaItem ID"
+// @Param body body models.UpdateMediaItemAlbumRequest true "앨범 변경 요청"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/{id}/album [patch]
+func (con *MediaItemHandler) UpdateMediaItemAlbum(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
+	}
+	req := new(models.UpdateMediaItemAlbumRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+	if err := con.mediaItemService.UpdateMediaItemAlbum(ctx, id, authUser.FamilyId, authUser.ID, req.AlbumID); err != nil {
+		return err
+	}
+	return c.NoContent(204)
+}
+
+// @Tags MediaItem
 // @Description 업로드 배치 상태 조회
 // @Param upload_batch_id query string true "Upload Batch ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)

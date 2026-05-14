@@ -10,13 +10,14 @@ import (
 )
 
 type UserService struct {
-	userStore   store.UserStore
-	familyStore store.FamilyStore
-	groupStore  store.GroupStore
+	userStore                 store.UserStore
+	familyStore               store.FamilyStore
+	groupStore                store.GroupStore
+	albumGroupPermissionStore store.AlbumGroupPermissionStore
 }
 
-func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, groupStore store.GroupStore) *UserService {
-	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
+func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, groupStore store.GroupStore, albumGroupPermissionStore store.AlbumGroupPermissionStore) *UserService {
+	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore, albumGroupPermissionStore: albumGroupPermissionStore}
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, userID string) (db.User, error) {
@@ -113,6 +114,17 @@ func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.Cr
 func (s *UserService) validateFamilyExists(ctx context.Context, familyID string) error {
 	_, err := s.familyStore.FindFamilyByID(ctx, familyID)
 	return err
+}
+
+func (s *UserService) GetWritableAlbumIDs(ctx context.Context, groupID int32) ([]string, error) {
+	ids, err := s.albumGroupPermissionStore.GetWritableAlbumIDsByGroupID(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if ids == nil {
+		return []string{}, nil
+	}
+	return ids, nil
 }
 
 func (s *UserService) GetGroupIsAdmin(ctx context.Context, groupID int32) (bool, error) {

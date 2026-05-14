@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS media_files (
 CREATE TABLE IF NOT EXISTS identity_face_imgs (
     id SERIAL PRIMARY KEY, -- 얼굴 이미지 ID
     identity_id INTEGER NOT NULL REFERENCES identities (id), -- 연결된 신원 ID
-    media_item_id UUID NOT NULL REFERENCES media_items (id), -- 소속 미디어 아이템 ID
+    media_item_id UUID NOT NULL REFERENCES media_items (id) ON DELETE CASCADE, -- 소속 미디어 아이템 ID
     storage_key VARCHAR(255) NOT NULL, -- 스토리지 저장 경로
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS identity_face_imgs (
 -- 얼굴 감지 테이블
 CREATE TABLE IF NOT EXISTS face_detections (
     id SERIAL PRIMARY KEY, -- 얼굴 감지 ID
-    media_item_id UUID NOT NULL REFERENCES media_items (id), -- 소속 미디어 아이템 ID
+    media_item_id UUID NOT NULL REFERENCES media_items (id) ON DELETE CASCADE, -- 소속 미디어 아이템 ID
     identity_id INTEGER NOT NULL REFERENCES identities (id), -- 감지된 신원 ID
     location_top INTEGER NOT NULL, -- 얼굴 위치 상단(px)
     location_right INTEGER NOT NULL, -- 얼굴 위치 우측(px)
