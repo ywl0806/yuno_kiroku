@@ -27,29 +27,15 @@ func (s *LocalStorageService) GeneratePresignedPutURL(ctx context.Context, key s
 	return "", fmt.Errorf("local storage does not support presigned URLs")
 }
 
-func (s *LocalStorageService) SaveFile(ctx context.Context, file []byte, filePath string, fileName string) (string, error) {
-
-	dirPath := filepath.Join("uploads", s.rootDir, filePath)
-
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	path := filepath.Join(dirPath, fileName)
-
-	if err != nil {
+func (s *LocalStorageService) SaveFile(ctx context.Context, key string, file []byte) (string, error) {
+	path := filepath.Join("uploads", s.rootDir, key)
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return "", err
 	}
-
-	dst, err := os.Create(path)
-
-	if err != nil {
+	if err := os.WriteFile(path, file, 0644); err != nil {
 		return "", err
 	}
-	defer dst.Close()
-
-	if _, err := dst.Write(file); err != nil {
-		return "", err
-	}
-
-	return path, err
+	return path, nil
 }
 
 func (s *LocalStorageService) DownloadToFile(ctx context.Context, key string, destPath string) error {

@@ -11,7 +11,9 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
+	"github.com/ywl0806/yuno_kiroku/internal/utils"
 	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
+	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
 
 // ResizeService MinIO webhook으로 수신한 원본 이미지를 리사이즈하고
@@ -19,20 +21,20 @@ import (
 // 비디오 파일의 경우 video-processing SQS 큐에 job을 발행합니다.
 type ResizeService struct {
 	mediaItemStore  store.MediaItemStore
-	imageUploader   *services.ImageUploader
+	storage         storage.StorageService
 	faceDispatcher  services.FaceRecognitionDispatcher
 	videoDispatcher services.VideoJobDispatcher
 }
 
 func NewResizeService(
 	mediaItemStore store.MediaItemStore,
-	imageUploader *services.ImageUploader,
+	storageService storage.StorageService,
 	faceDispatcher services.FaceRecognitionDispatcher,
 	videoDispatcher services.VideoJobDispatcher,
 ) *ResizeService {
 	return &ResizeService{
 		mediaItemStore:  mediaItemStore,
-		imageUploader:   imageUploader,
+		storage:         storageService,
 		faceDispatcher:  faceDispatcher,
 		videoDispatcher: videoDispatcher,
 	}
@@ -41,7 +43,7 @@ func NewResizeService(
 // ProcessResize 원본 파일 키를 받아 파이프라인 전체를 처리합니다.
 // 비디오 파일이면 video-processing SQS job을 발행하고, 이미지이면 리사이즈 처리합니다.
 func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) error {
-	// 1. 키에서 mediaItemID / familyID 파싱 (key = "original/{familyId}/{mediaItemId}.ext")
+	// 1. 키에서 mediaItemID / familyID 파싱 (key = "{familyId}/original/{mediaItemId}.ext")
 	mediaItemID, err := extractMediaItemIDFromKey(originalKey)
 	if err != nil {
 		return fmt.Errorf("media_item_id 파싱 실패 (key=%s): %w", originalKey, err)
@@ -79,7 +81,7 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 	}
 
 	// 3. 원본 파일 다운로드
-	originalData, err := s.imageUploader.GetFile(ctx, originalKey)
+	originalData, err := s.storage.GetFile(ctx, originalKey)
 	if err != nil {
 		s.setFailed(ctx, mediaItemID, err)
 		return fmt.Errorf("원본 파일 다운로드 실패: %w", err)
@@ -135,24 +137,22 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	}
 	originalData = nil
 
-	// 2. view 업로드 (view/{familyId}/{mediaItemId}.ext)
-	viewKey, err := s.imageUploader.SaveFile(
+	// 2. view 업로드 ({familyId}/view/{mediaItemId}.ext)
+	viewKey, err := s.storage.SaveFile(
 		ctx,
+		utils.BuildMediaKey(familyID, consts.VIEW_STORAGE_PREFIX, mediaItemID, viewImg.Ext),
 		viewImg.Data,
-		consts.VIEW_STORAGE_PREFIX+"/"+familyID,
-		mediaItemID+viewImg.Ext,
 	)
 	viewImg.Data = nil
 	if err != nil {
 		return fmt.Errorf("view 업로드 실패: %w", err)
 	}
 
-	// 3. thumbnail 업로드 (thumbnail/{familyId}/{mediaItemId}.ext)
-	thumbKey, err := s.imageUploader.SaveFile(
+	// 3. thumbnail 업로드 ({familyId}/thumbnail/{mediaItemId}.ext)
+	thumbKey, err := s.storage.SaveFile(
 		ctx,
+		utils.BuildMediaKey(familyID, consts.THUMBNAIL_STORAGE_PREFIX, mediaItemID, thumbImg.Ext),
 		thumbImg.Data,
-		consts.THUMBNAIL_STORAGE_PREFIX+"/"+familyID,
-		mediaItemID+thumbImg.Ext,
 	)
 	thumbImg.Data = nil
 	if err != nil {
@@ -222,13 +222,13 @@ func extractStorageKeyExt(key string) string {
 	return "jpg"
 }
 
-// "original/1/456.jpg" → familyId=1
+// "familyId/original/456.jpg" → familyId
 func extractFamilyIDFromKey(key string) (string, error) {
 	parts := splitStorageKey(key)
 	if len(parts) < 3 {
 		return "", fmt.Errorf("invalid key format: %s", key)
 	}
-	return parts[1], nil
+	return parts[0], nil
 }
 
 // "original/1/456.jpg" → mediaItemId="456"

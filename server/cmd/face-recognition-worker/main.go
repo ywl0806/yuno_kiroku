@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
-	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 	"github.com/ywl0806/yuno_kiroku/pkg/setting"
@@ -38,14 +37,13 @@ func main() {
 
 	st := store.New(conn, db.New(conn))
 	storageService := providers.NewStorageProvider().StorageService()
-	imageUploader := services.NewImageUploader(storageService)
 
 	svc := workerServices.NewFaceRecognitionService(
 		st,
 		st.Face,
 		st.Identity,
 		st.IdentityFaceImg,
-		imageUploader,
+		storageService,
 	)
 
 	ctx := context.Background()

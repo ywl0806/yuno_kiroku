@@ -84,7 +84,7 @@ resource "aws_s3_bucket_notification" "media_put" {
   lambda_function {
     lambda_function_arn = aws_lambda_function.resize.arn
     events              = ["s3:ObjectCreated:Put"]
-    filter_prefix       = "original/"
+    filter_prefix       = "*/original/"
   }
 
   depends_on = [aws_lambda_permission.allow_s3_resize]

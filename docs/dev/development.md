@@ -1,157 +1,141 @@
-# ローカル開発環境セットアップ
+# 로컬 개발 환경 설정
 
 ---
 
-## 前提条件
+## 사전 준비
 
-以下のツールが事前にインストールされている必要があります。
-
-| ツール                  | バージョン | 用途                     |
-| ----------------------- | ---------- | ------------------------ |
-| Docker + Docker Compose | 最新版     | ローカルインフラ         |
-| Go                      | 1.24.0+    | バックエンド開発         |
-| Node.js                 | 18+        | フロントエンド・モバイル |
-| Python                  | 3.10+      | AIサービス               |
-| air                     | 最新版     | Goホットリロード         |
-| sqlc                    | 最新版     | SQLコード生成            |
-| golang-migrate          | 最新版     | DBマイグレーション       |
+| 도구 | 버전 | 용도 |
+|------|------|------|
+| Docker + Docker Compose | 최신 | 로컬 인프라 전체 |
+| Go | 1.24.0+ | 백엔드 개발 |
+| Node.js | 18+ | 프론트엔드·모바일 |
+| Python | 3.10+ | AI 서비스 |
 
 ---
 
-## 1. Dockerサービスの起動
+## 1. Docker 서비스 시작
 
-`server/` ディレクトリでDockerサービスを起動します。
+프로젝트 루트에서 실행합니다.
 
 ```bash
-cd server
-docker-compose up -d
+# 전체 서비스 시작
+make up
+
+# 또는 직접
+docker compose up -d
+docker compose logs -f app resize-worker ai-batch
 ```
 
-### 起動されるサービス
+### 구동 서비스
 
-| サービス   | ポート      | 説明                         |
-| ---------- | ----------- | ---------------------------- |
-| `postgres` | 5433        | PostgreSQL 17 (pgvector)     |
-| `minio`    | 9000 / 9090 | S3互換オブジェクトストレージ |
-| `ai`       | 8000        | Python顔認識サービス         |
-| `app`      | 1323        | Goバックエンドサーバー       |
+| 서비스 | 포트 | 설명 |
+|--------|------|------|
+| `app` | 1323 | Go 백엔드 서버 |
+| `resize-worker` | 1325 | 이미지 리사이즈 워커 (MinIO Webhook 수신) |
+| `ai-batch` | - | AI 얼굴인식 배치 (SQS 폴링) |
+| `video-processing-worker` | - | 동영상 처리 워커 (SQS 폴링) |
+| `postgres` | 5433 | PostgreSQL 17 (pgvector) |
+| `minio` | 9001 / 9090 | S3 호환 오브젝트 스토리지 |
+| `queue` | 9324 / 9325 | ElasticMQ (SQS 호환) |
 
-> **Note:** `app` と `ai` は個別に起動する場合は除外できます。
->
+> MinIO 콘솔: `http://localhost:9090` (root / password)
+
+> `app`과 `ai-batch`만 따로 시작하려면:
 > ```bash
-> docker-compose up -d postgres minio
+> docker compose up -d postgres minio queue
 > ```
 
 ---
 
-## 2. バックエンドサーバーのセットアップ
+## 2. DB 초기화
 
 ```bash
-cd server
+# 마이그레이션 실행
+make migrate
 
-# 環境変数設定
-cp .env.example .env
-# .env を編集して各値を設定
+# 시드 데이터 삽입
+make seed
 
-# DBマイグレーション実行
-make migrate-up
+# 한 번에 (destroy + migrate + seed)
+make refresh
 
-# 開発サーバー起動 (ホットリロード)
-air
-```
-
-サーバーは `http://localhost:1323` で起動します。
-
-### Swaggerドキュメント
-
-```
-http://localhost:1323/swagger/index.html
+# DB 초기화만
+make destroy
 ```
 
 ---
 
-## 3. Webフロントエンドのセットアップ
+## 3. Web 프론트엔드 설정
 
 ```bash
 cd front
 
-# 依存関係インストール
+# 의존성 설치
 npm install
 
-# 開発サーバー起動
+# 개발 서버 시작
 npm run dev
 ```
 
-Webアプリは `http://localhost:5173` で起動します。
+Web 앱: `http://localhost:5155`
+
+Vite proxy 설정:
+- `/api` → `http://127.0.0.1:1323`
+- `/uploads` → `http://127.0.0.1:1323`
 
 ---
 
-## 4. モバイルアプリのセットアップ
+## 4. 모바일 앱 설정
 
 ```bash
 cd mobile
 
-# 依存関係インストール
+# 의존성 설치
 npm install
 
-# iOSの場合: Podインストール
+# iOS: Pod 설치
 cd ios && pod install && cd ..
 
-# Metro開発サーバー起動
+# Metro 개발 서버 시작
 npm start
 
-# 別ターミナルでiOS起動
+# iOS 실행 (별도 터미널)
 npm run ios
 
-# またはAndroid起動
+# Android 실행
 npm run android
 ```
 
 ---
 
-## 5. AIサービスのセットアップ (Dockerを使わない場合)
+## 5. AI 배치 서비스 (Docker 미사용 시)
+
+AI 서비스는 기본적으로 docker-compose의 `ai-batch`로 실행됩니다.
+직접 실행하려면:
 
 ```bash
 cd ai
 
-# 仮想環境作成
+# 가상환경 생성
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 
-# 依存関係インストール
+# 의존성 설치
 pip install -r requirements.txt
 
-# サーバー起動
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+# 배치 실행 (SQS 폴링 모드)
+python -m src.batch.sqs
 ```
 
 ---
 
-## MinIO の設定
+## 환경 변수
 
-MinIOが起動したら、初回はバケットを作成する必要があります。
-
-**MinIOコンソール:** `http://localhost:9090`
-
-- ユーザー名: `minioadmin`
-- パスワード: `minioadmin`
-
-以下のバケットを作成してください:
-
-- `thumbnails`
-- `originals`
-
-> docker-compose の `create-buckets` サービスが自動作成します。
-
----
-
-## 環境変数一覧
-
-### server/.env
+### server/.env (또는 docker-compose 환경변수 참고)
 
 ```env
-# データベース
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/yuno
+# 데이터베이스
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/yuno?sslmode=disable
 
 # JWT
 JWT_SECRET=your-secret-key
@@ -165,55 +149,86 @@ LINE_REDIRECT_URL=http://localhost:1323/auth/callback/line
 KAKAO_CLIENT_ID=your-kakao-client-id
 KAKAO_REDIRECT_URL=http://localhost:1323/auth/callback/kakao
 
-# ストレージ (MinIO)
-STORAGE_ENDPOINT=localhost:9001
-STORAGE_ACCESS_KEY=minioadmin
-STORAGE_SECRET_KEY=minioadmin
-STORAGE_USE_SSL=false
+# 스토리지 (MinIO)
+STORAGE_TYPE=minio
+S3_ENDPOINT=http://minio:9000
+MINIO_ROOT_USER=root
+MINIO_ROOT_PASSWORD=password
+MEDIA_BUCKET_NAME=my-bucket
+
+# SQS (ElasticMQ)
+SQS_ENDPOINT_URL=http://queue:9324
+VIDEO_SQS_QUEUE_URL=http://queue:9324/000000000000/video-processing
+SQS_QUEUE_URL=http://queue:9324/000000000000/face-recognition
 ```
 
 ---
 
-## よく使う Makefile コマンド
+## 자주 쓰는 Make 명령어
 
 ```bash
-# DBマイグレーション
-make migrate-up       # マイグレーション適用
-make migrate-down     # 最後のマイグレーションを戻す
+# 서비스 시작 + 로그 확인
+make up
 
-# コード生成
-make sqlc             # sqlc でDBコードを生成
-make swag             # Swagger ドキュメントを生成
+# 서비스 중지
+make stop
 
-# データ投入
-make seed             # テストデータ投入
+# 재시작 (app, resize-worker, ai-batch)
+make reload
+
+# DB 관련
+make migrate    # 마이그레이션 실행
+make seed       # 시드 데이터 삽입
+make destroy    # DB 초기화
+make refresh    # destroy + migrate + seed
+
+# 코드 생성
+make sqlc       # sqlc로 DB 쿼리 코드 생성
+make swag       # Swagger 문서 생성
+
+# 포트 정리
+make kill       # 1323 포트 프로세스 종료
 ```
 
 ---
 
-## トラブルシューティング
+## Swagger UI
 
-### PostgreSQLに接続できない
+서버 시작 후 API 문서 확인:
 
-```bash
-# コンテナの状態確認
-docker-compose ps
-
-# ログ確認
-docker-compose logs postgres
+```
+http://localhost:1323/swagger/index.html
 ```
 
-### pgvector拡張が有効でない
+---
+
+## 트러블슈팅
+
+### PostgreSQL 연결 오류
+
+```bash
+docker compose ps
+docker compose logs postgres
+```
+
+### pgvector 확장이 없는 경우
 
 ```sql
--- PostgreSQLに接続して実行
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-### AIサービスが起動しない
+### AI 서비스가 시작되지 않는 경우
 
-モデルファイルが `ai/models/` に存在するか確認してください。存在しない場合は初回起動時に自動ダウンロードが実行されます（ネットワーク接続が必要）。
+모델 파일이 `ai/models/`에 있는지 확인하세요. 없으면 초회 시작 시 자동 다운로드됩니다.
 
-### ポートが競合する
+### MinIO Webhook 이벤트가 오지 않는 경우
 
-`.env` ファイルでポート番号を変更してください。docker-compose.yml と合わせて修正が必要です。
+`create-buckets` 컨테이너 로그를 확인하세요:
+
+```bash
+docker compose logs create-buckets
+```
+
+### 포트 충돌
+
+`docker-compose.yml`에서 포트 번호를 변경하고, `.env` 파일도 맞게 수정하세요.

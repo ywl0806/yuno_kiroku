@@ -16,6 +16,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
+	"github.com/ywl0806/yuno_kiroku/internal/utils"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
 
@@ -85,14 +86,14 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 	thumbW, thumbH := videoW, videoH
 
 	// 5. 썸네일 S3 업로드
-	thumbKey := consts.THUMBNAIL_STORAGE_PREFIX + "/" + params.FamilyID + "/" + params.MediaItemID + ".webp"
+	thumbKey := utils.BuildMediaKey(params.FamilyID, consts.THUMBNAIL_STORAGE_PREFIX, params.MediaItemID, "webp")
 	if err = s.storage.UploadFromFile(ctx, thumbKey, "image/webp", thumbPath); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
 		return fmt.Errorf("썸네일 업로드 실패: %w", err)
 	}
 
 	// 6. 처리된 비디오 S3 업로드
-	videoKey := "video/" + params.FamilyID + "/" + params.MediaItemID + ".mp4"
+	videoKey := utils.BuildMediaKey(params.FamilyID, consts.VIDEO_STORAGE_PREFIX, params.MediaItemID, "mp4")
 	if err = s.storage.UploadFromFile(ctx, videoKey, "video/mp4", outputPath); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
 		return fmt.Errorf("비디오 업로드 실패: %w", err)

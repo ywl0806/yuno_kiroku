@@ -111,19 +111,16 @@ func (s *S3StorageService) GeneratePresignedPutURL(ctx context.Context, key stri
 	return req.URL, nil
 }
 
-func (s *S3StorageService) SaveFile(ctx context.Context, file []byte, filePath string, fileName string) (string, error) {
-	fileKey := fmt.Sprintf("%s/%s", filePath, fileName)
-
+func (s *S3StorageService) SaveFile(ctx context.Context, key string, file []byte) (string, error) {
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fileKey),
+		Key:    aws.String(key),
 		Body:   bytes.NewReader(file),
 	})
-
 	if err != nil {
 		return "", err
 	}
-	return fileKey, nil
+	return key, nil
 }
 
 func (s *S3StorageService) DownloadToFile(ctx context.Context, key string, destPath string) error {

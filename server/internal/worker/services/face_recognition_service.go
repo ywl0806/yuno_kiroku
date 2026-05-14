@@ -9,9 +9,9 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
-	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
+	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
@@ -27,6 +27,17 @@ type FaceLocation struct {
 	Left   int `json:"left"`
 }
 
+// FaceCropInput 얼굴 크롭에 필요한 이미지 정보와 bbox 좌표
+type FaceCropInput struct {
+	ImgWidth  int
+	ImgHeight int
+	Top       int32
+	Right     int32
+	Bottom    int32
+	Left      int32
+	Padding   float64
+}
+
 // FaceResult Python batch에서 전달받는 단일 얼굴 결과
 type FaceResult struct {
 	FaceLocation FaceLocation `json:"face_location"`
@@ -39,7 +50,7 @@ type FaceRecognitionService struct {
 	faceStore       store.FaceStore
 	identityStore   store.IdentityStore
 	identityFaceImg store.IdentityFaceImgStore
-	imageUploader   *services.ImageUploader
+	storage         storage.StorageService
 }
 
 func NewFaceRecognitionService(
@@ -47,14 +58,14 @@ func NewFaceRecognitionService(
 	faceStore store.FaceStore,
 	identityStore store.IdentityStore,
 	identityFaceImg store.IdentityFaceImgStore,
-	imageUploader *services.ImageUploader,
+	storageService storage.StorageService,
 ) *FaceRecognitionService {
 	return &FaceRecognitionService{
 		transactor:      transactor,
 		faceStore:       faceStore,
 		identityStore:   identityStore,
 		identityFaceImg: identityFaceImg,
-		imageUploader:   imageUploader,
+		storage:         storageService,
 	}
 }
 
@@ -133,15 +144,23 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 			}
 		}
 
-		storageKey, err := s.CropFaceAndUpload(
-			ctx,
-			viewData, viewWidth, viewHeight,
-			int32(face.FaceLocation.Top), int32(face.FaceLocation.Right),
-			int32(face.FaceLocation.Bottom), int32(face.FaceLocation.Left),
-			0.3, identityID, params.MediaItemID,
-		)
+		cropInput := FaceCropInput{
+			ImgWidth:  viewWidth,
+			ImgHeight: viewHeight,
+			Top:       int32(face.FaceLocation.Top),
+			Right:     int32(face.FaceLocation.Right),
+			Bottom:    int32(face.FaceLocation.Bottom),
+			Left:      int32(face.FaceLocation.Left),
+			Padding:   0.3,
+		}
+		croppedBytes, err := cropFace(viewData, cropInput)
 		if err != nil {
 			log.Printf("얼굴 크롭 실패 (무시): %v", err)
+			continue
+		}
+		storageKey, err := s.uploadFaceImage(ctx, croppedBytes, params.FamilyID, identityID, params.MediaItemID)
+		if err != nil {
+			log.Printf("얼굴 이미지 업로드 실패 (무시): %v", err)
 			continue
 		}
 
@@ -166,52 +185,39 @@ func imageDimensions(data []byte) (width, height int, err error) {
 	return parsed.Width, parsed.Height, nil
 }
 
-// 얼굴 bbox에 패딩을 적용한 크롭 영역을 계산하고,
-// cropper로 크롭·리사이즈한 뒤 스토리지에 업로드합니다.
-func (s *FaceRecognitionService) CropFaceAndUpload(
-	ctx context.Context,
-	viewData []byte, imgWidth, imgHeight int,
-	top, right, bottom, left int32, padding float64,
-	identityID int32,
-	mediaItemID string,
-) (string, error) {
-	// bbox 패딩 계산
-	faceW := int(right - left)
-	faceH := int(bottom - top)
+// cropFace bbox에 패딩을 적용한 크롭 영역을 계산하고 크롭·리사이즈한 이미지 바이트를 반환합니다.
+func cropFace(imageData []byte, in FaceCropInput) ([]byte, error) {
+	faceW := int(in.Right - in.Left)
+	faceH := int(in.Bottom - in.Top)
 
-	padX := int(float64(faceW) * padding)
-	padY := int(float64(faceH) * padding)
+	padX := int(float64(faceW) * in.Padding)
+	padY := int(float64(faceH) * in.Padding)
 
 	if faceW > faceH {
-		padY += int(float64(faceW-faceH)*padding) + (faceW-faceH)/2
+		padY += int(float64(faceW-faceH)*in.Padding) + (faceW-faceH)/2
 	} else {
-		padX += int(float64(faceH-faceW)*padding) + (faceH-faceW)/2
+		padX += int(float64(faceH-faceW)*in.Padding) + (faceH-faceW)/2
 	}
 
-	cropLeft := clampMin(int(left)-padX, 0)
-	cropTop := clampMin(int(top)-padY, 0)
-	cropRight := clampMax(int(right)+padX, imgWidth)
-	cropBottom := clampMax(int(bottom)+padY, imgHeight)
+	cropLeft := clampMin(int(in.Left)-padX, 0)
+	cropTop := clampMin(int(in.Top)-padY, 0)
+	cropRight := clampMax(int(in.Right)+padX, in.ImgWidth)
+	cropBottom := clampMax(int(in.Bottom)+padY, in.ImgHeight)
 
-	cropW := cropRight - cropLeft
-	cropH := cropBottom - cropTop
-
-	croppedBytes, err := imagepkg.CropAndResize(viewData, cropLeft, cropTop, cropW, cropH, 512)
+	croppedBytes, err := imagepkg.CropAndResize(imageData, cropLeft, cropTop, cropRight-cropLeft, cropBottom-cropTop, 512)
 	if err != nil {
-		return "", fmt.Errorf("얼굴 크롭 실패: %w", err)
+		return nil, fmt.Errorf("얼굴 크롭 실패: %w", err)
 	}
-	defer func() { croppedBytes = nil }()
+	return croppedBytes, nil
+}
 
-	storageKey, err := s.imageUploader.SaveFile(
-		ctx,
-		croppedBytes,
-		fmt.Sprintf("identities/%d", identityID),
-		fmt.Sprintf("face_%s.webp", mediaItemID),
-	)
+// uploadFaceImage 크롭된 얼굴 이미지를 스토리지에 업로드하고 storage key를 반환합니다.
+func (s *FaceRecognitionService) uploadFaceImage(ctx context.Context, data []byte, familyID string, identityID int32, mediaItemID string) (string, error) {
+	key := fmt.Sprintf("%s/%s/%d/face_%s.webp", familyID, consts.IDENTITY_STORAGE_PREFIX, identityID, mediaItemID)
+	storageKey, err := s.storage.SaveFile(ctx, key, data)
 	if err != nil {
 		return "", fmt.Errorf("얼굴 크롭 이미지 업로드 실패: %w", err)
 	}
-
 	return storageKey, nil
 }
 

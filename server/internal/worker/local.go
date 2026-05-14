@@ -26,11 +26,10 @@ func InitLocal(e *echo.Echo) {
 	st := store.New(conn, db.New(conn))
 
 	storageService := providers.NewStorageProvider().StorageService()
-	imageUploader := services.NewImageUploader(storageService)
 	faceDispatcher := services.NewSQSFaceRecognitionDispatcher(nil, "")
 	videoDispatcher := services.NewSQSVideoJobDispatcher(nil, "")
 
-	resizeService := workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher, videoDispatcher)
+	resizeService := workerServices.NewResizeService(st.MediaItem, storageService, faceDispatcher, videoDispatcher)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())

@@ -8,29 +8,30 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
-
-	"github.com/ywl0806/yuno_kiroku/internal/apperr"
+	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
 
 type MediaItemService struct {
 	mediaItemStore            store.MediaItemStore
 	albumGroupPermissionStore store.AlbumGroupPermissionStore
-	imageUploader             *ImageUploader
+	storage                   storage.StorageService
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
 	albumGroupPermissionStore store.AlbumGroupPermissionStore,
-	imageUploader *ImageUploader,
+	storageService storage.StorageService,
 ) *MediaItemService {
 	return &MediaItemService{
 		mediaItemStore:            mediaItemStore,
 		albumGroupPermissionStore: albumGroupPermissionStore,
-		imageUploader:             imageUploader,
+		storage:                   storageService,
 	}
 }
 
@@ -179,8 +180,8 @@ func (s *MediaItemService) CreatePresignedUpload(
 		return nil, err
 	}
 
-	// 2. mediaItemID 확정 후 키 생성 (original/{familyId}/{mediaItemId}.ext)
-	storageKey := s.imageUploader.BuildOriginalKey(familyId, mediaItem.ID, fileName)
+	// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
+	storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
 
 	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
 		MediaItemID: mediaItem.ID,
@@ -191,7 +192,7 @@ func (s *MediaItemService) CreatePresignedUpload(
 		return nil, err
 	}
 
-	presignedURL, err := s.imageUploader.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
+	presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
 	if err != nil {
 		return nil, err
 	}

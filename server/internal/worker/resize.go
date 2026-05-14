@@ -22,10 +22,9 @@ func InitResize() *workerServices.ResizeService {
 	st := store.New(conn, db.New(conn))
 
 	storageService := providers.NewStorageProvider().StorageService()
-	imageUploader := services.NewImageUploader(storageService)
 
 	faceDispatcher := services.NewSQSFaceRecognitionDispatcher(nil, "")
 	videoDispatcher := services.NewSQSVideoJobDispatcher(nil, "")
 
-	return workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher, videoDispatcher)
+	return workerServices.NewResizeService(st.MediaItem, storageService, faceDispatcher, videoDispatcher)
 }

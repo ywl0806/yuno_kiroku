@@ -329,17 +329,3 @@
 # 5. Tracing 전략
 
 ⸻
-
-📘 🔟 Migration Plan (AWS → Home Server)
-
-# 1. Migration Goals
-
-# 2. Component Replacement Map
-
-# 3. Data Migration Plan
-
-# 4. Downtime Strategy
-
-# 5. Rollback Strategy
-
-# 6. Risk Analysis
