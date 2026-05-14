@@ -96,7 +96,7 @@ YUNO는 가족 단위의 사진·동영상을 공유하고, 얼굴 인식 기반
       │ S3 이벤트 → Resize Worker (ECS Service)
       ▼
 [ Resize Worker ECS Service (Go + govips) ]
-  이미지/동영상 분기 후 SQS 발행 (Phase 1과 동일 로직)
+  이미지/동영상 분기 후 SQS 발행
       │
       ├─▶ [ SQS: face-recognition-queue ]
       │         ↓ ECS AI Service (상시 가동, Auto Scaling)
@@ -105,6 +105,10 @@ YUNO는 가족 단위의 사진·동영상을 공유하고, 얼굴 인식 기반
       └─▶ [ SQS: video-processing-queue ]
                 ↓ ECS Video Service (상시 가동)
           [ Video Processing Worker ]
+      │
+      ▼
+[ RDS PostgreSQL ]
+
 ```
 
 ---
@@ -249,26 +253,5 @@ families
 | **Advisory Lock** | `family_id` 해시 기반 잠금으로 동시 identity 생성 충돌 방지 |
 
 ---
-
-## 7. Deployment Topology
-
-### 네트워크 구성 (VPC 없음)
-
-```
-Region: ap-northeast-1 (도쿄)
-
-외부 서비스:
-  [ Supabase ]  ← Lambda / ECS가 공용 인터넷으로 접근 (TLS)
-
-AWS:
-  [ API Gateway ]              → Go API Lambda (VPC 없음)
-  [ S3 PutObject 이벤트 ]      → Resize Worker (ECS or Lambda)
-  [ SQS: face-recognition ]    ← Resize Worker 발행, AI Batch 소비
-  [ SQS: video-processing ]    ← Resize Worker 발행, Video Worker 소비
-  [ ECS Fargate Spot ]         AI Batch + face-recognition-worker
-  [ ECS Fargate Spot ]         Video Processing Worker
-  [ CloudFront + OAC ]         ← 클라이언트 미디어 요청
-  [ ECR ]                      → Docker 이미지 저장소
-```
 
 ---

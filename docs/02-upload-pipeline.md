@@ -2,14 +2,13 @@
 
 ## 1. Design Goals
 
-| 목표 | 내용 |
-|------|------|
-| **데이터 무결성** | 처리 실패 시 media_item 레코드는 반드시 존재, 상태로 추적 가능 |
-| **Idempotency** | 동일 요청 중복 처리 시 DB에 중복 레코드 생성되지 않음 |
-| **재처리 가능 구조** | failed 상태의 미디어는 상태 초기화로 재처리 가능 |
-| **비용 효율** | S3 직접 업로드 (API 서버 대역폭 절약) |
-| **역할 분리** | ML 추론(Python)과 DB/스토리지(Go) 명확히 분리 |
-| **동영상 지원** | 이미지/동영상 자동 분기, ffmpeg 기반 재인코딩 |
+| 목표                 | 내용                                                           |
+| -------------------- | -------------------------------------------------------------- |
+| **데이터 무결성**    | 처리 실패 시 media_item 레코드는 반드시 존재, 상태로 추적 가능 |
+| **재처리 가능 구조** | failed 상태의 미디어는 상태 초기화로 재처리 가능               |
+| **비용 효율**        | S3 직접 업로드 (API 서버 대역폭 절약)                          |
+| **역할 분리**        | ML 추론(Python)과 DB/스토리지(Go) 명확히 분리                  |
+| **동영상 지원**      | 이미지/동영상 자동 분기, ffmpeg 기반 재인코딩                  |
 
 ---
 
@@ -17,140 +16,116 @@
 
 ### 상태 정의
 
-| 코드 | 이름 | 설명 |
-|------|------|------|
-| `01` | pending | Presigned URL 발급 완료, S3 업로드 대기 또는 완료 |
-| `02` | processing | Resize Worker 수신, 처리 진행 중 |
-| `03` | completed | 처리 완료 (이미지: 리사이즈 완료 / 동영상: 재인코딩 완료) |
-| `04` | failed | 처리 실패 |
-| `05` | duplicate | 중복 사진으로 판정 |
+| 코드 | 이름       | 설명                                                      |
+| ---- | ---------- | --------------------------------------------------------- |
+| `01` | pending    | Presigned URL 발급 완료, S3 업로드 대기 또는 완료         |
+| `02` | processing | Resize Worker 수신, 처리 진행 중                          |
+| `03` | completed  | 처리 완료 (이미지: 리사이즈 완료 / 동영상: 재인코딩 완료) |
+| `04` | failed     | 처리 실패                                                 |
 
 ### 상태 전이 다이어그램
 
-```
-              ┌──────────────────────────┐
-              │  Presigned URL 발급      │
-              │  + DB 레코드 생성        │
-              └────────────┬─────────────┘
-                           │
-                           ▼
-                      ┌─────────┐
-                      │   01    │  pending
-                      └────┬────┘
-                           │  MinIO/S3 Webhook → resize-worker
-                           ▼
-                      ┌─────────┐
-                      │   02    │  processing
-                      └────┬────┘
-                           │
-              ┌────────────┼────────────┐
-              │ 이미지      │ 동영상      │
-              ▼            ▼            ▼
-       resize-worker   video-worker   실패
-       완료 후 03       완료 후 03      04
-              │            │
-              ▼            ▼
-         ┌─────────┐  ┌─────────┐
-         │   03    │  │   03    │
-         │completed│  │completed│
-         └─────────┘  └─────────┘
-              │
-              ▼  (이미지만)
-         SQS face-recognition
-              ↓
-         ai-batch → face-recognition-worker
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> pending : Presigned URL 발급\n+ DB 레코드 생성
+
+    pending --> processing : MinIO/S3 Webhook 수신\n(resize-worker)
+
+    processing --> completed : 리사이즈 완료 (이미지)\n재인코딩 완료 (동영상)
+    processing --> failed : 처리 실패
+
+    completed --> SQS_face_recognition : 이미지만
+    SQS_face_recognition --> [*] : ai-batch → face-recognition-worker
+
+    completed --> [*] : 동영상
+    failed --> [*]
 ```
 
 ### 전이 조건
 
-| 전이 | 조건 | 담당 컴포넌트 |
-|------|------|-------------|
-| 생성 → `01` | Presigned URL 발급 요청 | API Server |
-| `01` → `02` | MinIO/S3 Webhook 수신 | resize-worker |
-| `02` → `03` (이미지) | 리사이즈 완료 — **이 시점부터 사진 조회 가능** | resize-worker |
-| `02` → `03` (동영상) | 재인코딩 완료 | video-processing-worker |
-| `* ` → `04` | 처리 실패 | resize-worker / video-worker |
+| 전이                 | 조건                                           | 담당 컴포넌트                |
+| -------------------- | ---------------------------------------------- | ---------------------------- |
+| 생성 → `01`          | Presigned URL 발급 요청                        | API Server                   |
+| `01` → `02`          | MinIO/S3 Webhook 수신                          | resize-worker                |
+| `02` → `03` (이미지) | 리사이즈 완료 — **이 시점부터 사진 조회 가능** | resize-worker                |
+| `02` → `03` (동영상) | 재인코딩 완료                                  | video-processing-worker      |
+| `* ` → `04`          | 처리 실패                                      | resize-worker / video-worker |
 
 ---
 
 ## 3. 이미지 업로드 시퀀스
 
-```
-클라이언트     API Server      S3/MinIO    resize-worker      ai-batch(Python)   face-recognition-worker(Go)
-    │              │               │               │                   │                    │
-    │ POST /presigned-url          │               │                   │                    │
-    │─────────────▶│               │               │                   │                    │
-    │              │ INSERT        │               │                   │                    │
-    │              │ media_items(01)│              │                   │                    │
-    │              │ media_files   │               │                   │                    │
-    │              │ PresignPut    │               │                   │                    │
-    │              │──────────────▶│               │                   │                    │
-    │ {media_item_id, presigned_url}│              │                   │                    │
-    │◀─────────────│               │               │                   │                    │
-    │              │               │               │                   │                    │
-    │ PUT (직접 업로드)             │               │                   │                    │
-    │──────────────────────────────▶               │                   │                    │
-    │ 200 OK       │               │               │                   │                    │
-    │◀──────────────────────────────               │                   │                    │
-    │              │               │               │                   │                    │
-    │              │               │ Webhook POST /resize              │                    │
-    │              │               │──────────────▶│                   │                    │
-    │              │               │               │ status=02         │                    │
-    │              │               │◀──────────────│ 원본 다운로드      │                    │
-    │              │               │               │ EXIF 파싱          │                    │
-    │              │               │◀──────────────│ view/thumbnail 업로드                  │
-    │              │               │               │ media_files INSERT│                    │
-    │              │               │               │ status=03 ← 조회가능                   │
-    │              │               │               │ SQS SendMessage   │                    │
-    │              │               │               │ {media_item_id,   │                    │
-    │              │               │               │  family_id,       │                    │
-    │              │               │               │  view_storage_key}│                    │
-    │              │               │               │──────────────────▶│ SQS ReceiveMessage │
-    │              │               │               │                   │ view 이미지 다운로드 │
-    │              │               │               │                   │ InsightFace 추론    │
-    │              │               │               │                   │ faces: [{bbox, emb}]│
-    │              │               │               │                   │ subprocess stdin:  │
-    │              │               │               │                   │─────────────────────▶
-    │              │               │               │                   │                    │ advisory lock
-    │              │               │               │                   │                    │ pgvector match
-    │              │               │               │                   │                    │ identity upsert
-    │              │               │               │                   │                    │ face_detections INSERT
-    │              │               │◀────────────────────────────────────────────────────────── 얼굴 크롭 업로드
-    │              │               │               │                   │                    │ identity_face_imgs INSERT
-    │ GET /upload-batch/status (폴링)               │                   │                    │
-    │─────────────▶│               │               │                   │                    │
-    │ { is_completed: true }        │               │                   │                    │
-    │◀─────────────│               │               │                   │                    │
+```mermaid
+sequenceDiagram
+    participant C as 클라이언트
+    participant API as API Server
+    participant S3 as S3/MinIO
+    participant RW as resize-worker
+    participant SQS as SQS
+    participant AI as ai-batch (Python)
+    participant FRW as face-recognition-worker (Go)
+    participant DB as PostgreSQL
+
+    C->>API: POST /presigned-url
+    API->>DB: INSERT media_items(status=01) + media_files
+    API->>S3: Presigned PUT URL 생성
+    API-->>C: {media_item_id, presigned_url}
+
+    C->>S3: PUT (직접 업로드)
+    S3-->>C: 200 OK
+
+    S3->>RW: Webhook POST /resize
+    RW->>DB: status=02
+    RW->>S3: 원본 다운로드
+    RW->>RW: EXIF 파싱
+    RW->>S3: view / thumbnail 업로드
+    RW->>DB: media_files INSERT, status=03 (조회 가능)
+    RW->>SQS: SendMessage {media_item_id, family_id, view_storage_key}
+
+    SQS-->>AI: ReceiveMessage
+    AI->>S3: view 이미지 다운로드
+    AI->>AI: InsightFace 추론 → faces [{bbox, embedding}]
+    AI->>FRW: subprocess stdin JSON
+
+    FRW->>DB: advisory lock 획득
+    FRW->>DB: pgvector 코사인 유사도 검색
+    FRW->>DB: identity upsert + face_detections INSERT
+    FRW->>S3: 얼굴 크롭 업로드 (512×512 WebP)
+    FRW->>DB: identity_face_imgs INSERT
+
+    C->>API: GET /upload-batch/status (폴링)
+    API-->>C: {is_completed: true}
 ```
 
 ---
 
 ## 4. 동영상 업로드 시퀀스
 
-```
-클라이언트     API Server      S3/MinIO    resize-worker    video-processing-worker
-    │              │               │               │                │
-    │ PUT (직접 업로드)             │               │                │
-    │──────────────────────────────▶               │                │
-    │              │               │ Webhook POST /resize           │
-    │              │               │──────────────▶│                │
-    │              │               │               │ 동영상 확장자 감지
-    │              │               │               │ (mp4/mov/avi/mkv/webm/m4v)
-    │              │               │               │ status=02      │
-    │              │               │               │ SQS video-processing
-    │              │               │               │ {media_item_id, │
-    │              │               │               │  family_id,     │
-    │              │               │               │  original_key,  │
-    │              │               │               │  ...}           │
-    │              │               │               │────────────────▶│ SQS ReceiveMessage
-    │              │               │               │                │ 원본 동영상 다운로드
-    │              │               │               │                │ ffmpeg 리사이즈
-    │              │               │               │                │ (최대 1280px, H.264)
-    │              │               │               │                │ ffmpeg 썸네일 추출
-    │              │               │               │                │ (1초, WebP)
-    │              │               │◀──────────────────────────────── thumbnail/video 업로드
-    │              │               │               │                │ media_files INSERT
-    │              │               │               │                │ status=03
+```mermaid
+sequenceDiagram
+    participant C as 클라이언트
+    participant S3 as S3/MinIO
+    participant RW as resize-worker
+    participant SQS as SQS
+    participant VW as video-processing-worker
+    participant DB as PostgreSQL
+
+    C->>S3: PUT (직접 업로드)
+    S3-->>C: 200 OK
+
+    S3->>RW: Webhook POST /resize
+    RW->>RW: 동영상 확장자 감지 (mp4/mov/avi/mkv/webm/m4v)
+    RW->>DB: status=02
+    RW->>SQS: SendMessage {media_item_id, family_id, original_key, file_name, mime_type}
+
+    SQS-->>VW: ReceiveMessage
+    VW->>S3: 원본 동영상 다운로드
+    VW->>VW: ffmpeg 리사이즈 (최대 1280px, H.264)
+    VW->>VW: ffmpeg 썸네일 추출 (1초, WebP)
+    VW->>S3: thumbnail / video 업로드
+    VW->>DB: media_files INSERT, status=03
 ```
 
 ---
@@ -175,9 +150,9 @@ S3 업로드 전에 DB 레코드를 먼저 생성하여 고아 파일(orphan fil
 
 ### 큐 목록
 
-| 큐 이름 | 발행자 | 소비자 | 메시지 형식 |
-|---------|--------|--------|-----------|
-| `face-recognition` | resize-worker | ai-batch (Python) | `{media_item_id, family_id, view_storage_key}` |
+| 큐 이름            | 발행자        | 소비자                       | 메시지 형식                                                              |
+| ------------------ | ------------- | ---------------------------- | ------------------------------------------------------------------------ |
+| `face-recognition` | resize-worker | ai-batch (Python)            | `{media_item_id, family_id, view_storage_key}`                           |
 | `video-processing` | resize-worker | video-processing-worker (Go) | `{media_item_id, family_id, original_storage_key, file_name, mime_type}` |
 
 ### face-recognition 큐 메시지
@@ -241,27 +216,7 @@ proc = subprocess.run([FACE_RECOGNITION_WORKER], input=payload.encode(), capture
 
 ---
 
-## 8. Idempotency Strategy
-
-### Presigned URL 중복 방지
-
-```sql
--- 동일 upload_batch 내 같은 파일명 중복 방지
-UNIQUE (upload_batch_id, file_name)
-```
-
-### SQS 중복 메시지 처리
-
-SQS 메시지가 중복 수신되더라도 ai-batch는 처리 후 메시지를 삭제한다.
-face-recognition-worker의 DB UNIQUE 제약으로 중복 삽입을 방지한다.
-
-```sql
-CONSTRAINT uq_fd_media_item_identity UNIQUE (media_item_id, identity_id)
-```
-
----
-
-## 9. Failure Handling
+## 8. Failure Handling
 
 ### resize-worker 실패
 
@@ -308,7 +263,7 @@ signal.signal(signal.SIGINT, _handle_signal)
 
 ---
 
-## 10. 컴포넌트 상세 스펙
+## 9. 컴포넌트 상세 스펙
 
 ### resize-worker (Go + govips)
 
@@ -324,7 +279,7 @@ DI:      SQSFaceRecognitionDispatcher, SQSVideoJobDispatcher
 ### ai-batch (Python + InsightFace)
 
 ```
-런타임:  Python 3.11 + InsightFace(buffalo_s) + boto3
+런타임:  Python 3.11 + InsightFace(buffalo_l) + boto3
 메모리:  ~4-8 GB (ArcFace 모델 ~2GB + 배치 이미지)
 실행:    SQS long-polling (WaitTimeSeconds=20, MaxMessages=10)
 역할:    ML 추론만 수행 (얼굴 감지 + 임베딩)
@@ -350,7 +305,7 @@ DI:      SQSFaceRecognitionDispatcher, SQSVideoJobDispatcher
 
 ---
 
-## 11. S3 버킷 구조
+## 10. S3 버킷 구조
 
 ```
 yuno-media-bucket/
@@ -366,16 +321,16 @@ yuno-media-bucket/
     └── {identityId}/face_{mediaItemId}.webp
 ```
 
-| prefix | 접근 방법 | 이유 |
-|--------|----------|------|
-| `original/` | Presigned URL만 쓰기, 퍼블릭 읽기 불가 | 원본 보호 |
-| `view/`, `thumbnail/` | CloudFront OAC로만 읽기 | 인증된 사용자만 접근 |
-| `video/` | CloudFront OAC로만 읽기 | 인증된 사용자만 접근 |
-| `identities/` | CloudFront OAC로만 읽기 | 얼굴 크롭 보호 |
+| prefix                | 접근 방법                              | 이유                 |
+| --------------------- | -------------------------------------- | -------------------- |
+| `original/`           | Presigned URL만 쓰기, 퍼블릭 읽기 불가 | 원본 보호            |
+| `view/`, `thumbnail/` | CloudFront OAC로만 읽기                | 인증된 사용자만 접근 |
+| `video/`              | CloudFront OAC로만 읽기                | 인증된 사용자만 접근 |
+| `identities/`         | CloudFront OAC로만 읽기                | 얼굴 크롭 보호       |
 
 ---
 
-## 12. 클라이언트 폴링 설계
+## 11. 클라이언트 폴링 설계
 
 ### 폴링 엔드포인트
 
@@ -394,13 +349,34 @@ Response:
 
 ### 단계별 예상 대기 시간
 
-| 단계 | 예상 시간 | 비고 |
-|------|----------|------|
-| S3 업로드 | 클라이언트 결정 | 파일 크기 / 네트워크 |
-| MinIO Webhook → resize-worker | < 1초 | |
-| 이미지 리사이즈 처리 | 1-10초 | 원본 파일 크기 |
-| 동영상 재인코딩 | 30초~수분 | 영상 길이·해상도 |
-| SQS → ai-batch (이미지) | 수 초 | Long Polling |
-| 얼굴 감지 + Go CLI 처리 | 1-10초/장 | 얼굴 수, 해상도 |
-| **이미지 총 예상** | **~10-30초** | 얼굴 없는 사진은 리사이즈 직후 완료 |
-| **동영상 총 예상** | **1-5분** | 영상 길이에 비례 |
+#### 이미지 파이프라인
+
+| 단계                                    | 예상 시간       | 비고                                      |
+| --------------------------------------- | --------------- | ----------------------------------------- |
+| S3 업로드                               | 클라이언트 결정 | 파일 크기 / 네트워크                      |
+| MinIO Webhook → resize-worker           | < 1초           |                                           |
+| 이미지 리사이즈 처리                    | 1-10초          | 원본 파일 크기                            |
+| SQS → ai-batch 수신                     | 수 초           | Long Polling (WaitTimeSeconds=20)         |
+| ↳ _CloudWatch SQS 적체 감지_            | _1-3분_         | _평가 기간 1분 × 연속 1-3회_              |
+| ↳ _ECS ai-batch Task 스케일아웃 트리거_ | _수 초_         | _Application Auto Scaling 반응_           |
+| ↳ _ECS Fargate 컨테이너 기동_           | _30-60초_       | _이미지 Pull 포함. 모델 로드(~10초) 추가_ |
+| 얼굴 감지 + Go CLI 처리                 | 1-10초/장       | 얼굴 수, 해상도                           |
+| **이미지 총 예상 (태스크 기동 전)**     | **~4-6분**      | **CloudWatch 감지 + 컨테이너 기동 포함**  |
+| **이미지 총 예상 (태스크 가동 중)**     | **~10-30초**    | **얼굴 없는 사진은 리사이즈 직후 완료**   |
+
+#### 동영상 파이프라인
+
+| 단계                                              | 예상 시간       | 비고                                     |
+| ------------------------------------------------- | --------------- | ---------------------------------------- |
+| S3 업로드                                         | 클라이언트 결정 | 파일 크기 / 네트워크                     |
+| MinIO Webhook → resize-worker                     | < 1초           |                                          |
+| SQS video-processing → Worker 수신                | 수 초           | Long Polling (WaitTimeSeconds=20)        |
+| ↳ _CloudWatch SQS 적체 감지_                      | _1-3분_         | _평가 기간 1분 × 연속 1-3회_             |
+| ↳ _ECS video-processing-worker 스케일아웃 트리거_ | _수 초_         | _Application Auto Scaling 반응_          |
+| ↳ _ECS Fargate 컨테이너 기동_                     | _30-60초_       | _이미지 Pull 포함. ffmpeg 바이너리 포함_ |
+| 동영상 재인코딩 (ffmpeg)                          | 30초~수분       | 영상 길이·해상도                         |
+| **동영상 총 예상 (태스크 기동 전)**               | **~5-10분**     | **CloudWatch 감지 + 컨테이너 기동 포함** |
+| **동영상 총 예상 (태스크 가동 중)**               | **~1-5분**      | **영상 길이에 비례**                     |
+
+> _이탤릭_ 항목은 태스크가 0대일 때 처음 스케일아웃 되는 경우에만 발생하는 오버헤드입니다.  
+> 태스크가 이미 가동 중이면 스케일아웃 없이 Long Polling 수신 즉시 처리됩니다.

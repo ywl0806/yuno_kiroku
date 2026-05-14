@@ -10,7 +10,6 @@
 graph TB
     subgraph Client["클라이언트"]
         WEB[Web Browser]
-        MOB[Mobile App]
     end
 
     subgraph CDN["CDN / 진입점"]
@@ -53,7 +52,6 @@ graph TB
     %% 클라이언트 → 진입점
     WEB -->|HTTPS| CF_FRONT
     WEB -->|HTTPS| APIGW
-    MOB -->|HTTPS| APIGW
 
     %% Frontend 정적 파일
     CF_FRONT -->|OAC| S3_FRONT
@@ -65,12 +63,10 @@ graph TB
 
     %% 미디어 파일 서빙
     WEB -->|이미지/동영상 요청| CF_MEDIA
-    MOB -->|이미지/동영상 요청| CF_MEDIA
     CF_MEDIA -->|OAC| S3_MEDIA
 
     %% 클라이언트 → S3 직접 업로드
     WEB -->|Presigned PUT| S3_MEDIA
-    MOB -->|Presigned PUT| S3_MEDIA
 
     %% S3 이벤트 → Resize Worker
     S3_MEDIA -->|"PutObject Webhook\nprefix: original/"| ECS_RESIZE
@@ -202,71 +198,7 @@ sequenceDiagram
 
 ---
 
-## 4. 네트워크 토폴로지 (Phase 1 — VPC 없음)
-
-```mermaid
-graph TB
-    subgraph Internet["인터넷"]
-        USER[사용자]
-    end
-
-    subgraph AWS_Region["AWS ap-northeast-1 (도쿄)"]
-        subgraph Global["글로벌 / 엣지"]
-            ACM_US[ACM 인증서\nus-east-1]
-            CF[CloudFront\n엣지 POP]
-        end
-
-        subgraph NoVPC["VPC 없음 — 퍼블릭 인터넷 접근"]
-            APIGW[API Gateway\nHTTP API]
-
-            subgraph Lambda_Group["Lambda"]
-                L_API[API Lambda\n512MB / arm64\n타임아웃: 30s]
-            end
-
-            subgraph ECS_Group["ECS Fargate Spot"]
-                ECS_RESIZE["Resize Worker\n1vCPU / 2GB\nassignPublicIp: ENABLED\n─────────────\nHTTP 서버\nPOST /resize (Webhook)"]
-                ECS_AI["AI Batch\n2vCPU / 8GB\nassignPublicIp: ENABLED\n─────────────\nSQS face-recognition 폴링\n+ face-recognition-worker 내장"]
-                ECS_VIDEO["Video Worker\n2vCPU / 4GB\nassignPublicIp: ENABLED\n─────────────\nSQS video-processing 폴링\nffmpeg 재인코딩"]
-            end
-
-            subgraph Managed["관리형 서비스"]
-                S3[S3\nyuno-media-bucket\nyuno-frontend]
-                SQS_FACE[SQS\nface-recognition]
-                SQS_VIDEO[SQS\nvideo-processing]
-                ECR[ECR\nDocker 이미지 저장소]
-            end
-        end
-    end
-
-    subgraph External["외부 서비스"]
-        SUPA[Supabase\nPostgreSQL + pgvector\n공용 인터넷 TLS]
-    end
-
-    USER -->|HTTPS| CF
-    CF -->|OAC| S3
-    CF -->|Route| APIGW
-    APIGW --> L_API
-    L_API -->|인터넷 TLS| SUPA
-    L_API -->|AWS SDK| S3
-    ECS_RESIZE -->|인터넷 TLS| SUPA
-    ECS_RESIZE -->|AWS SDK| S3
-    ECS_RESIZE -->|AWS SDK| SQS_FACE
-    ECS_RESIZE -->|AWS SDK| SQS_VIDEO
-    SQS_FACE -->|Long Polling| ECS_AI
-    ECS_AI -->|인터넷 TLS| SUPA
-    ECS_AI -->|AWS SDK| S3
-    SQS_VIDEO -->|Long Polling| ECS_VIDEO
-    ECS_VIDEO -->|인터넷 TLS| SUPA
-    ECS_VIDEO -->|AWS SDK| S3
-    ECR -.->|image pull| L_API
-    ECR -.->|image pull| ECS_RESIZE
-    ECR -.->|image pull| ECS_AI
-    ECR -.->|image pull| ECS_VIDEO
-```
-
----
-
-## 5. 역할 분담 요약
+## 4. 역할 분담 요약
 
 ```mermaid
 graph LR
@@ -313,7 +245,7 @@ graph LR
 
 ---
 
-## 6. S3 버킷 구조
+## 5. S3 버킷 구조
 
 ```mermaid
 graph LR
@@ -334,7 +266,7 @@ graph LR
 
 ---
 
-## 7. IAM 권한 구조
+## 6. IAM 권한 구조
 
 ```mermaid
 graph LR
@@ -362,30 +294,3 @@ graph LR
 ```
 
 ---
-
-## 8. Phase 1 vs Phase 2 비교
-
-```mermaid
-graph LR
-    subgraph P1["Phase 1 — 현재 (개인 운용)"]
-        direction TB
-        P1_DB[Supabase\n외부 PostgreSQL]
-        P1_RESIZE[Resize Worker\nECS Fargate Spot\nOn-demand]
-        P1_AI[AI Batch\nECS Fargate Spot\nOn-demand]
-        P1_VIDEO[Video Worker\nECS Fargate Spot\nOn-demand]
-        P1_NET[VPC 없음\nNAT Gateway 없음]
-        P1_COST[비용: 사용량 기반\n유휴 시 과금 없음]
-    end
-
-    subgraph P2["Phase 2 — 미래 (실 서비스)"]
-        direction TB
-        P2_DB[RDS PostgreSQL 17\nVPC 내부]
-        P2_RESIZE[Resize Worker\nECS Fargate Service\n상시 가동]
-        P2_AI[AI Batch\nECS Fargate Service\nSQS Auto Scaling]
-        P2_VIDEO[Video Worker\nECS Fargate Service\n상시 가동]
-        P2_NET[VPC + NAT Gateway\nPrivate Subnet]
-        P2_COST[비용: 고정 + 사용량\n안정성 우선]
-    end
-
-    P1 -->|"트리거: 사용자 증가\n트리거: 안정성 요구"| P2
-```
