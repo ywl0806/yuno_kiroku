@@ -100,10 +100,8 @@ type MediaFile struct {
 	MediaItemID string
 	Role        string
 	StorageKey  string
-	MimeType    sql.NullString
 	Width       sql.NullInt32
 	Height      sql.NullInt32
-	FileSize    sql.NullInt64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

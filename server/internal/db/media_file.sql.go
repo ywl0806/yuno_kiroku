@@ -16,22 +16,18 @@ INSERT INTO
         media_item_id,
         role,
         storage_key,
-        mime_type,
         width,
-        height,
-        file_size
+        height
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5)
 RETURNING
     id,
     media_item_id,
     role,
     storage_key,
-    mime_type,
     width,
     height,
-    file_size,
     created_at,
     updated_at
 `
@@ -40,10 +36,8 @@ type CreateMediaFileParams struct {
 	MediaItemID string
 	Role        string
 	StorageKey  string
-	MimeType    sql.NullString
 	Width       sql.NullInt32
 	Height      sql.NullInt32
-	FileSize    sql.NullInt64
 }
 
 func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams) (MediaFile, error) {
@@ -51,10 +45,8 @@ func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams
 		arg.MediaItemID,
 		arg.Role,
 		arg.StorageKey,
-		arg.MimeType,
 		arg.Width,
 		arg.Height,
-		arg.FileSize,
 	)
 	var i MediaFile
 	err := row.Scan(
@@ -62,10 +54,8 @@ func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams
 		&i.MediaItemID,
 		&i.Role,
 		&i.StorageKey,
-		&i.MimeType,
 		&i.Width,
 		&i.Height,
-		&i.FileSize,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

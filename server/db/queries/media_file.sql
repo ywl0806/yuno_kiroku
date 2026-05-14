@@ -4,21 +4,17 @@ INSERT INTO
         media_item_id,
         role,
         storage_key,
-        mime_type,
         width,
-        height,
-        file_size
+        height
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5)
 RETURNING
     id,
     media_item_id,
     role,
     storage_key,
-    mime_type,
     width,
     height,
-    file_size,
     created_at,
     updated_at;

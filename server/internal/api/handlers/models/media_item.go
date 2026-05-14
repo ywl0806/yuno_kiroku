@@ -48,7 +48,6 @@ type MediaFileResponse struct {
 	MediaItemID string `json:"media_item_id"`
 	Role        string `json:"role"`
 	Url         string `json:"url"`
-	MimeType    string `json:"mime_type"`
 	Width       int32  `json:"width"`
 	Height      int32  `json:"height"`
 }

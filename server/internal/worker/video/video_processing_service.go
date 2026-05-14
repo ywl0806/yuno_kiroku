@@ -104,7 +104,6 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		MediaItemID: params.MediaItemID,
 		Role:        string(enums.MediaItemRoleThumbnail),
 		StorageKey:  thumbKey,
-		MimeType:    sql.NullString{String: "image/webp", Valid: true},
 		Width:       sql.NullInt32{Int32: thumbW, Valid: thumbW > 0},
 		Height:      sql.NullInt32{Int32: thumbH, Valid: thumbH > 0},
 	}); err != nil {
@@ -115,7 +114,6 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		MediaItemID: params.MediaItemID,
 		Role:        string(enums.MediaItemRoleVideo),
 		StorageKey:  videoKey,
-		MimeType:    sql.NullString{String: "video/mp4", Valid: true},
 		Width:       sql.NullInt32{Int32: videoW, Valid: videoW > 0},
 		Height:      sql.NullInt32{Int32: videoH, Valid: videoH > 0},
 	}); err != nil {

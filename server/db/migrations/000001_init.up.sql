@@ -120,7 +120,6 @@ CREATE TABLE IF NOT EXISTS media_items (
     taken_location_latitude DOUBLE PRECISION, -- 촬영 위치 위도
     taken_location_longitude DOUBLE PRECISION, -- 촬영 위치 경도
     taken_at TIMESTAMP NOT NULL, -- 촬영 일시
-    file_name VARCHAR(255), -- 원본 파일명
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
@@ -133,11 +132,9 @@ CREATE TABLE IF NOT EXISTS media_files (
 
     role VARCHAR(2) NOT NULL, -- 파일 역할 (01: original | 02: thumbnail | 03: view | 04: live)
     storage_key VARCHAR(512) NOT NULL, -- 스토리지 저장 경로
-    mime_type VARCHAR(50), -- MIME 타입 (image/jpeg, image/png, video/mp4, ...)
 
     width INTEGER, -- 가로 크기(px)
     height INTEGER, -- 세로 크기(px)
-    file_size BIGINT, -- 파일 크기(bytes)
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
