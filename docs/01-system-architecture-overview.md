@@ -26,94 +26,53 @@ YUNO는 가족 단위의 사진·동영상을 공유하고, 얼굴 인식 기반
 
 ---
 
-## 2. 아키텍처 단계
+## 2. High-Level Architecture
 
-### Phase 1 — 개인 운용 (현재)
+### 전체 아키텍처 다이어그램
 
-**목표**: 소규모 사용, 비용 최소화.
+```mermaid
+graph TD
+    Client["클라이언트\n(Web / iOS / Android)"]
 
-```
-[ 클라이언트 ]
-      │ HTTPS
-      ▼
-[ API Gateway + Go API Lambda ]
-      │  DB: Supabase PostgreSQL (외부)
-      │  S3: Presigned URL 발급
-      ▼
-[ S3: yuno-media-bucket ]
-  original/ prefix → S3 이벤트 알림
-      │
-      ▼
-[ Resize Worker (Go + govips) ]  ← HTTP 서버, S3/MinIO Webhook 수신
-  이미지:
-    - 리사이즈: view(2048px), thumbnail(512px)
-    - DB: media_items status=completed
-    - SQS: face-recognition 큐에 job 발행
-  동영상:
-    - SQS: video-processing 큐에 job 발행
-      │
-      ├─▶ [ SQS: face-recognition-queue ]
-      │         ↓
-      │   [ AI Batch (Python + InsightFace) ]
-      │     - SQS 폴링
-      │     - 얼굴 감지 + 512차원 임베딩 계산
-      │     - subprocess: face-recognition-worker (Go CLI) 호출
-      │         ↓
-      │   [ face-recognition-worker (Go CLI) ]
-      │     - pgvector 코사인 유사도 → identity 매칭/생성
-      │     - face_detections INSERT
-      │     - 얼굴 크롭(512×512) → S3 identities/ 저장
-      │     - identity_face_imgs INSERT
-      │
-      └─▶ [ SQS: video-processing-queue ]
-                ↓
-          [ Video Processing Worker (Go + ffmpeg) ]
-            - SQS 폴링
-            - 비디오 리사이즈 (최대 1280px, H.264)
-            - 썸네일 추출 (1초, WebP)
-            - DB: media_files 저장
-            - DB: media_items status=completed
-      │
-      ▼
-[ Supabase PostgreSQL + pgvector ]
+    subgraph AWS
+        API["API Server\n(Go + Echo)"]
+        S3["Storage\n(S3)"]
+        SQS["Queue\n(SQS)"]
+        DB["Database\n(Supabase PostgreSQL + pgvector)"]
+        CDN["CDN\n(CloudFront)"]
+
+        subgraph Workers
+            RW["Resize Worker\n(Go + govips)"]
+            AI["AI Batch\n(Python + InsightFace)"]
+            FR["Face Recognition Worker\n(Go CLI)"]
+            VW["Video Worker\n(Go + ffmpeg)"]
+        end
+    end
+
+    Client -->|"REST API"| API
+    Client -->|"Presigned URL 직접 업로드"| S3
+    Client -->|"미디어 서빙"| CDN
+    API <-->|"메타데이터"| DB
+    API -->|"Presigned URL 발급"| S3
+    CDN --> S3
+
+    S3 -->|"PutObject Event"| RW
+    RW -->|"리사이즈 완료"| S3
+    RW -->|"face-recognition 큐"| SQS
+    RW -->|"video-processing 큐"| SQS
+    RW --> DB
+
+    SQS -->|"폴링"| AI
+    AI -->|"subprocess stdin JSON"| FR
+    FR --> DB
+    FR --> S3
+
+    SQS -->|"폴링"| VW
+    VW --> S3
+    VW --> DB
 ```
 
----
-
-### Phase 2 — 실 서비스 (미래)
-
-**목표**: 다수 사용자 대응, 안정성 우선.
-
-```
-[ 클라이언트 ]
-      │ HTTPS
-      ▼
-[ API Gateway + Go API Lambda (VPC) ]
-      │  RDS PostgreSQL (VPC 내부)
-      │  S3: Presigned URL 발급
-      ▼
-[ S3: yuno-media-bucket ]
-      │ S3 이벤트 → Resize Worker (ECS Service)
-      ▼
-[ Resize Worker ECS Service (Go + govips) ]
-  이미지/동영상 분기 후 SQS 발행
-      │
-      ├─▶ [ SQS: face-recognition-queue ]
-      │         ↓ ECS AI Service (상시 가동, Auto Scaling)
-      │   [ AI Batch + face-recognition-worker ]
-      │
-      └─▶ [ SQS: video-processing-queue ]
-                ↓ ECS Video Service (상시 가동)
-          [ Video Processing Worker ]
-      │
-      ▼
-[ RDS PostgreSQL ]
-
-```
-
----
-
-## 3. 주요 컴포넌트
+### 주요 컴포넌트
 
 | 컴포넌트                    | 기술                                    | 역할                                                                    |
 | --------------------------- | --------------------------------------- | ----------------------------------------------------------------------- |
@@ -123,13 +82,13 @@ YUNO는 가족 단위의 사진·동영상을 공유하고, 얼굴 인식 기반
 | **face-recognition-worker** | Go CLI 바이너리                         | identity 매칭, face_detections INSERT, 얼굴 크롭                        |
 | **Video Worker**            | Go + ffmpeg                             | SQS 폴링, 동영상 리사이즈·썸네일 추출                                   |
 | **Queue**                   | SQS (로컬: ElasticMQ)                   | face-recognition / video-processing 큐                                  |
-| **Database**                | Supabase / RDS PostgreSQL 17 + pgvector | 메타데이터, 벡터 검색                                                   |
+| **Database**                | Supabase PostgreSQL 17 + pgvector       | 메타데이터, 벡터 검색                                                   |
 | **Storage**                 | S3 (로컬: MinIO)                        | 미디어 파일 저장                                                        |
 | **CDN**                     | CloudFront + OAC                        | 미디어 파일 서빙                                                        |
 
 ---
 
-## 4. Request Flow
+## 3. Request Flow
 
 ### 이미지 업로드 흐름
 
@@ -202,7 +161,7 @@ GET /media-item/search?identity_ids=[1,2]
 
 ---
 
-## 5. AI 처리 아키텍처 — Python + Go 하이브리드
+## 4. AI 처리 아키텍처 — Python + Go 하이브리드
 
 Python과 Go의 역할을 명확히 분리한다.
 
@@ -227,7 +186,7 @@ Python과 Go의 역할을 명확히 분리한다.
 
 ---
 
-## 6. Multi-Tenancy Strategy
+## 5. Multi-Tenancy Strategy
 
 ### family_id 기반 설계
 

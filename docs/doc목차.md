@@ -75,7 +75,11 @@
 
 ⸻
 
-# 3. Data Model Design
+# 3. AWS Infrastructure Design
+
+...
+
+# 4. Data Model Design
 
 ## 1. Design Principles
 
@@ -119,7 +123,7 @@
 
 ⸻
 
-# 4. Failure Scenario & Recovery Strategy
+# 5. Failure Scenario & Recovery Strategy
 
 ## 1. 운영 목표
 
@@ -172,7 +176,7 @@
 
 ⸻
 
-# 5. Cost Analysis & Scaling Strategy
+# 6. Cost Analysis & Scaling Strategy
 
 ## 1. Current Traffic Assumption
 
@@ -210,7 +214,7 @@
 
 ⸻
 
-# 6. Security & Multi-Tenancy Model
+# 7. Security & Multi-Tenancy Model
 
 ## 1. Authentication Model
 
@@ -226,7 +230,7 @@
 
 ⸻
 
-# 7. Observability & Monitoring Design
+# 8. Observability & Monitoring Design
 
 ## 1. Logging Strategy
 
