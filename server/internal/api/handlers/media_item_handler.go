@@ -90,17 +90,23 @@ func (con *MediaItemHandler) CreateBatchPresignedUpload(c echo.Context) error {
 		return err
 	}
 
-	responseItems := make([]models.BatchPresignedUploadResponseItem, len(results))
-	for i, r := range results {
-		responseItems[i] = models.BatchPresignedUploadResponseItem{
-			MediaItemID:  r.MediaItemID,
-			PresignedURL: r.PresignedURL,
-			StorageKey:   r.StorageKey,
-			ExpiresIn:    3600,
+	successItems := make([]models.BatchPresignedUploadSuccessItem, len(results.Success))
+	for i, r := range results.Success {
+		successItems[i] = models.BatchPresignedUploadSuccessItem{
+			MediaItemID:   r.MediaItemID,
+			PresignedURL:  r.PresignedURL,
+			StorageKey:    r.StorageKey,
+			ExpiresIn:     3600,
+			OriginalIndex: r.OriginalIndex,
 		}
 	}
 
-	return c.JSON(200, models.BatchPresignedUploadResponse{Items: responseItems})
+	failedItems := make([]models.BatchPresignedUploadFailedItem, len(results.Failed))
+	for i, f := range results.Failed {
+		failedItems[i] = models.BatchPresignedUploadFailedItem{FileName: f.FileName, Index: f.Index}
+	}
+
+	return c.JSON(200, models.BatchPresignedUploadResponse{Success: successItems, Failed: failedItems})
 }
 
 // @Tags MediaItem

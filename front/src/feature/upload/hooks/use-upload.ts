@@ -148,11 +148,28 @@ export function useUpload() {
           content_type: item.file.type || 'image/jpeg',
         })),
       })
-      const { items } = presignedRes.data as { items: { media_item_id: string; presigned_url: string }[] }
-      presignedItems = items.map((item, index) => ({
+      type BatchPresignedResponse = {
+        success: { media_item_id: string; presigned_url: string; index: number }[]
+        failed: { file_name: string; index: number }[]
+      }
+      const { success, failed } = presignedRes.data as BatchPresignedResponse
+      if (failed.length > 0) {
+        setMediaItems((prev) => {
+          const next = [...prev]
+          failed.forEach(({ index }) => {
+            next[index] = {
+              ...next[index],
+              status: UPLOAD_STATUS.FAILED,
+              error: { code: UPLOAD_MEDIA_ITEM_ERROR_CODE.INTERNAL_SERVER_ERROR, message: 'presigned URL 발급 실패' },
+            }
+          })
+          return next
+        })
+      }
+      presignedItems = success.map((item) => ({
         mediaItemId: item.media_item_id,
         presignedUrl: item.presigned_url,
-        index,
+        index: item.index,
       }))
     } catch {
       console.error('presigned URL 배치 요청 실패')

@@ -62,7 +62,7 @@ func Init(e *echo.Echo) {
 			RedirectURI:  viper.GetString("API_URL") + "/api/auth/kakao/callback",
 		},
 	)
-	mediaItemService := services.NewMediaItemService(st.MediaItem, st.AlbumGroupPermission, storageService)
+	mediaItemService := services.NewMediaItemService(st.MediaItem, st.AlbumGroupPermission, storageService, st)
 	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
 	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission, st)
 	groupService := services.NewGroupService(st.Family, st.Group)

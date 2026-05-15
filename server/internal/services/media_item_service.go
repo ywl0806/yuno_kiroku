@@ -21,17 +21,20 @@ type MediaItemService struct {
 	mediaItemStore            store.MediaItemStore
 	albumGroupPermissionStore store.AlbumGroupPermissionStore
 	storage                   storage.StorageService
+	transactor                store.Transactor
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
 	albumGroupPermissionStore store.AlbumGroupPermissionStore,
 	storageService storage.StorageService,
+	transactor store.Transactor,
 ) *MediaItemService {
 	return &MediaItemService{
 		mediaItemStore:            mediaItemStore,
 		albumGroupPermissionStore: albumGroupPermissionStore,
 		storage:                   storageService,
+		transactor:                transactor,
 	}
 }
 
@@ -156,52 +159,60 @@ func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, 
 
 // PresignedUploadResult는 Presigned URL 발급 후 반환하는 응답
 type PresignedUploadResult struct {
-	MediaItemID  string
-	PresignedURL string
-	StorageKey   string
+	MediaItemID   string
+	PresignedURL  string
+	StorageKey    string
+	OriginalIndex int
 }
 
 // CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급
-// DB 레코드를 먼저 생성(DB-first)하여 고아 파일을 방지
+// DB INSERT와 URL 발급을 단일 트랜잭션으로 묶어, URL 발급 실패 시 DB 레코드가 자동 롤백됨
 func (s *MediaItemService) CreatePresignedUpload(
 	ctx context.Context,
 	fileName, contentType string,
 	familyId, albumId string, uploadBatchID int32,
 ) (*PresignedUploadResult, error) {
-	// 1. media_item 먼저 생성 (storageKey에 mediaItemID 필요)
-	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, db.CreateMediaItemParams{
-		FamilyID:      familyId,
-		AlbumID:       albumId,
-		UploadBatchID: uploadBatchID,
-		TakenAt:       time.Now(), // Resize Worker가 EXIF 파싱 후 실제 값으로 업데이트
-		FileName:      sql.NullString{String: fileName, Valid: true},
+	var result *PresignedUploadResult
+
+	err := s.transactor.Transact(ctx, func(tx *store.Store) error {
+		// 1. media_item 먼저 생성 (storageKey에 mediaItemID 필요)
+		mediaItem, err := tx.MediaItem.CreateMediaItem(ctx, db.CreateMediaItemParams{
+			FamilyID:      familyId,
+			AlbumID:       albumId,
+			UploadBatchID: uploadBatchID,
+			TakenAt:       time.Now(), // Resize Worker가 EXIF 파싱 후 실제 값으로 업데이트
+			FileName:      sql.NullString{String: fileName, Valid: true},
+		})
+		if err != nil {
+			return err
+		}
+
+		// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
+		storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
+
+		_, err = tx.MediaItem.CreateMediaFile(ctx, db.CreateMediaFileParams{
+			MediaItemID: mediaItem.ID,
+			Role:        string(enums.MediaItemRoleOriginal),
+			StorageKey:  storageKey,
+		})
+		if err != nil {
+			return err
+		}
+
+		presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
+		if err != nil {
+			return err // 에러 반환 시 트랜잭션 자동 롤백
+		}
+
+		result = &PresignedUploadResult{
+			MediaItemID:  mediaItem.ID,
+			PresignedURL: presignedURL,
+			StorageKey:   storageKey,
+		}
+		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
-	storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
-
-	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
-		MediaItemID: mediaItem.ID,
-		Role:        string(enums.MediaItemRoleOriginal),
-		StorageKey:  storageKey,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PresignedUploadResult{
-		MediaItemID:  mediaItem.ID,
-		PresignedURL: presignedURL,
-		StorageKey:   storageKey,
-	}, nil
+	return result, err
 }
 
 // BatchPresignedUploadItem는 배치 Presigned URL 발급 요청 항목
@@ -210,22 +221,41 @@ type BatchPresignedUploadItem struct {
 	ContentType string
 }
 
+// BatchPresignedUploadResult는 배치 Presigned URL 발급 결과 (부분 성공 지원)
+type BatchPresignedUploadResult struct {
+	Success []*PresignedUploadResult
+	Failed  []BatchPresignedUploadFailedItem
+}
+
+// BatchPresignedUploadFailedItem은 배치 발급 실패 항목
+type BatchPresignedUploadFailedItem struct {
+	FileName string
+	Index    int
+}
+
 // CreateBatchPresignedUpload는 여러 파일에 대한 Presigned PUT URL을 한 번에 발급
+// 개별 항목 실패 시 해당 항목 DB 레코드는 트랜잭션 롤백으로 자동 정리되며, 나머지 항목은 계속 처리
 func (s *MediaItemService) CreateBatchPresignedUpload(
 	ctx context.Context,
 	items []BatchPresignedUploadItem,
 	familyId, albumId string,
 	uploadBatchID int32,
-) ([]*PresignedUploadResult, error) {
-	results := make([]*PresignedUploadResult, len(items))
-	for i, item := range items {
-		result, err := s.CreatePresignedUpload(ctx, item.FileName, item.ContentType, familyId, albumId, uploadBatchID)
-		if err != nil {
-			return nil, err
-		}
-		results[i] = result
+) (*BatchPresignedUploadResult, error) {
+	result := &BatchPresignedUploadResult{
+		Success: make([]*PresignedUploadResult, 0, len(items)),
+		Failed:  make([]BatchPresignedUploadFailedItem, 0),
 	}
-	return results, nil
+	for i, item := range items {
+		r, err := s.CreatePresignedUpload(ctx, item.FileName, item.ContentType, familyId, albumId, uploadBatchID)
+		if err != nil {
+			log.Printf("batch presigned upload 실패 (index=%d, file=%s): %v", i, item.FileName, err)
+			result.Failed = append(result.Failed, BatchPresignedUploadFailedItem{FileName: item.FileName, Index: i})
+			continue
+		}
+		r.OriginalIndex = i
+		result.Success = append(result.Success, r)
+	}
+	return result, nil
 }
 
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성

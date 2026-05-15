@@ -30,17 +30,25 @@ type BatchPresignedUploadRequest struct {
 	Files         []BatchPresignedUploadRequestItem `json:"files" validate:"required,min=1,dive"`
 }
 
-// BatchPresignedUploadResponseItem 배치 Presigned URL 발급 응답 항목
-type BatchPresignedUploadResponseItem struct {
-	MediaItemID  string `json:"media_item_id"`
-	PresignedURL string `json:"presigned_url"`
-	StorageKey   string `json:"storage_key"`
-	ExpiresIn    int    `json:"expires_in"`
+// BatchPresignedUploadSuccessItem 배치 Presigned URL 발급 성공 항목
+type BatchPresignedUploadSuccessItem struct {
+	MediaItemID   string `json:"media_item_id"`
+	PresignedURL  string `json:"presigned_url"`
+	StorageKey    string `json:"storage_key"`
+	ExpiresIn     int    `json:"expires_in"`
+	OriginalIndex int    `json:"index"`
 }
 
-// BatchPresignedUploadResponse 배치 Presigned URL 발급 응답
+// BatchPresignedUploadFailedItem 배치 Presigned URL 발급 실패 항목
+type BatchPresignedUploadFailedItem struct {
+	FileName string `json:"file_name"`
+	Index    int    `json:"index"`
+}
+
+// BatchPresignedUploadResponse 배치 Presigned URL 발급 응답 (부분 실패 지원)
 type BatchPresignedUploadResponse struct {
-	Items []BatchPresignedUploadResponseItem `json:"items"`
+	Success []BatchPresignedUploadSuccessItem `json:"success"`
+	Failed  []BatchPresignedUploadFailedItem  `json:"failed"`
 }
 
 // VideoUploadCompleteRequest 비디오 업로드 완료 요청
