@@ -5,7 +5,7 @@ ECR_BASE := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
 build-api-lambda:
 	cd server && \
-	GOOS=linux GOARCH=arm64 go build -o bootstrap cmd/lambda/api/main.go && \
+	GOOS=linux GOARCH=arm64 go build -o bootstrap cmd/lambda-api/main.go && \
 	zip function.zip bootstrap && \
 	rm bootstrap && \
 	aws-vault exec $(AWS_VAULT_PROFILE) -- aws s3 cp function.zip s3://$(LAMBDA_ZIP_BUCKET)/function.zip && \

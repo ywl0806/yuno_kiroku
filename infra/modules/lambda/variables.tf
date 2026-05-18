@@ -56,3 +56,8 @@ variable "app_env_vars" {
     sensitive   = true
     default     = {}
 }
+
+variable "resize_queue_arn" {
+    type        = string
+    description = "Resize SQS Queue ARN"
+}

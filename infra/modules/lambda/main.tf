@@ -55,7 +55,7 @@ resource "aws_lambda_function" "resize" {
   package_type  = "Image"
   image_uri     = var.resize_ecr_image_uri
   architectures = ["arm64"]
-  memory_size   = 2048
+  memory_size   = 1024
   timeout       = 600
 
   environment {
@@ -68,24 +68,22 @@ resource "aws_lambda_function" "resize" {
 
 }
 
-# ── S3 → Resize Lambda 이벤트 트리거 ────────────────────────
-
-resource "aws_lambda_permission" "allow_s3_resize" {
-  statement_id  = "AllowS3InvokeResize"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.resize.function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = var.media_bucket_arn
-}
+# ── S3 → SQS 이벤트 알림 ────────────────────────────────────
 
 resource "aws_s3_bucket_notification" "media_put" {
   bucket = var.media_bucket_id
 
-  lambda_function {
-    lambda_function_arn = aws_lambda_function.resize.arn
-    events              = ["s3:ObjectCreated:Put"]
-    filter_prefix       = "*/original/"
+  queue {
+    queue_arn     = var.resize_queue_arn
+    events        = ["s3:ObjectCreated:Put"]
+    filter_prefix = "*/original/"
   }
+}
 
-  depends_on = [aws_lambda_permission.allow_s3_resize]
+# ── SQS → Resize Lambda 이벤트 소스 매핑 ────────────────────
+
+resource "aws_lambda_event_source_mapping" "resize_sqs" {
+  event_source_arn = var.resize_queue_arn
+  function_name    = aws_lambda_function.resize.arn
+  batch_size       = 1
 }

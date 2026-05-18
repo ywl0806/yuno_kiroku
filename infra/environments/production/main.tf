@@ -64,6 +64,7 @@ module "iam" {
   aws_account_id = data.aws_caller_identity.current.account_id
   face_recognition_queue_arn = module.sqs.queue_arn
   video_queue_arn            = module.sqs.video_queue_arn
+  resize_queue_arn           = module.sqs.resize_queue_arn
 }
 
 # ── S3 ────────────────────────────────────────────────────────
@@ -106,7 +107,8 @@ module "lambda" {
   api_lambda_zip_bucket_arn = module.s3.lambda_zip_bucket_arn
   api_lambda_zip_bucket_name = module.s3.lambda_zip_bucket_name
   api_lambda_zip_bucket_key = aws_s3_object.api_lambda_zip.key
-  app_env_vars = local.shared_app_env
+  app_env_vars     = local.shared_app_env
+  resize_queue_arn = module.sqs.resize_queue_arn
 }
 
 
@@ -165,9 +167,10 @@ module "route53" {
 # ── SQS ────────────────────────────────────────────────────────
 
 module "sqs" {
-  source = "../../modules/sqs"
-  env = local.env
-  common_tags = local.common_tags
+  source           = "../../modules/sqs"
+  env              = local.env
+  common_tags      = local.common_tags
+  media_bucket_arn = module.s3.media_bucket_arn
 }
 
 

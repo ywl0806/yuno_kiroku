@@ -204,6 +204,26 @@ resource "aws_iam_role_policy" "resize_lambda_video_sqs" {
   })
 }
 
+resource "aws_iam_role_policy" "resize_lambda_sqs_consume" {
+  name = "sqs-resize-consume"
+  role = aws_iam_role.resize_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = var.resize_queue_arn
+      }
+    ]
+  })
+}
+
 # ── ECS Task Execution Role (ECS 에이전트가 사용) ────────────
 
 resource "aws_iam_role" "ecs_task_execution" {

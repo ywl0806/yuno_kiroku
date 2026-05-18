@@ -43,3 +43,8 @@ variable "video_queue_arn" {
     type        = string
     description = "Video Processing Queue ARN"
 }
+
+variable "resize_queue_arn" {
+    type        = string
+    description = "Resize SQS Queue ARN"
+}

@@ -1,3 +1,15 @@
+output "resize_queue_arn" {
+    value = aws_sqs_queue.resize.arn
+}
+
+output "resize_queue_url" {
+    value = aws_sqs_queue.resize.url
+}
+
+output "resize_dlq_arn" {
+    value = aws_sqs_queue.resize_dlq.arn
+}
+
 output "queue_arn" {
     value = aws_sqs_queue.face_recognition.arn
 }
