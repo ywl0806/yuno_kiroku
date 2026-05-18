@@ -156,6 +156,20 @@ func (s *S3StorageService) DownloadToFile(ctx context.Context, key string, destP
 	return nil
 }
 
+func (s *S3StorageService) GetFileSize(ctx context.Context, key string) (int64, error) {
+	result, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("HeadObject 실패: %w", err)
+	}
+	if result.ContentLength == nil {
+		return 0, nil
+	}
+	return *result.ContentLength, nil
+}
+
 func (s *S3StorageService) UploadFromFile(ctx context.Context, key string, contentType string, srcPath string) error {
 	f, err := os.Open(srcPath)
 	if err != nil {

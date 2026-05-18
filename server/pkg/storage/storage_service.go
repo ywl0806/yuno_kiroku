@@ -15,4 +15,6 @@ type StorageService interface {
 	DownloadToFile(ctx context.Context, key string, destPath string) error
 	// UploadFromFile 로컬 파일을 S3에 스트리밍 업로드 (대용량 파일용)
 	UploadFromFile(ctx context.Context, key string, contentType string, srcPath string) error
+	// GetFileSize 파일을 다운로드하지 않고 크기(bytes)만 조회
+	GetFileSize(ctx context.Context, key string) (int64, error)
 }

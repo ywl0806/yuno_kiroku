@@ -81,14 +81,26 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 		return fmt.Errorf("status 업데이트 실패: %w", err)
 	}
 
-	// 3. 원본 파일 다운로드
+	// 3. 파일 크기 사전 검증 — 다운로드 전 HeadObject로 확인하여 OOM 방지
+	fileSize, err := s.storage.GetFileSize(ctx, originalKey)
+	if err != nil {
+		s.setFailedTransient(ctx, mediaItemID, err)
+		return fmt.Errorf("파일 크기 조회 실패: %w", err)
+	}
+	if fileSize > consts.MAX_IMAGE_FILE_SIZE {
+		s.setFailed(ctx, mediaItemID, originalKey, enums.FailureReasonFileTooLarge,
+			fmt.Errorf("파일 크기 초과: %d bytes", fileSize))
+		return nil
+	}
+
+	// 4. 원본 파일 다운로드
 	originalData, err := s.storage.GetFile(ctx, originalKey)
 	if err != nil {
 		s.setFailedTransient(ctx, mediaItemID, err)
 		return fmt.Errorf("원본 파일 다운로드 실패: %w", err)
 	}
 
-	// 4. 이미지 파싱 (EXIF 추출) — 영구 실패 시 nil 반환하여 SQS 재시도 방지
+	// 5. 이미지 파싱 (EXIF 추출) — 영구 실패 시 nil 반환하여 SQS 재시도 방지
 	ext := extractStorageKeyExt(originalKey)
 	meta, err := imagepkg.Parse(originalData, ext)
 	if err != nil {
@@ -97,7 +109,7 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 		return nil
 	}
 
-	// 5. taken_at을 EXIF 값으로 업데이트
+	// 6. taken_at을 EXIF 값으로 업데이트
 	var nullLat, nullLon sql.NullFloat64
 	if meta.Lat != nil {
 		nullLat = sql.NullFloat64{Float64: *meta.Lat, Valid: true}
@@ -114,7 +126,7 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 		log.Printf("taken_at 업데이트 실패 (무시): %v", err)
 	}
 
-	// 6. 리사이즈 → 업로드 → media_files 저장 → completed → face job 디스패치
+	// 7. 리사이즈 → 업로드 → media_files 저장 → completed → face job 디스패치
 	if err = s.ProcessResizeFromData(ctx, originalData, mediaItemID, familyID); err != nil {
 		s.setFailedTransient(ctx, mediaItemID, err)
 		return err

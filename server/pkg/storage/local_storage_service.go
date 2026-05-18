@@ -54,6 +54,14 @@ func (s *LocalStorageService) DownloadToFile(ctx context.Context, key string, de
 	return os.WriteFile(destPath, data, 0644)
 }
 
+func (s *LocalStorageService) GetFileSize(ctx context.Context, key string) (int64, error) {
+	fi, err := os.Stat(key)
+	if err != nil {
+		return 0, err
+	}
+	return fi.Size(), nil
+}
+
 func (s *LocalStorageService) UploadFromFile(ctx context.Context, key string, contentType string, srcPath string) error {
 	data, err := os.ReadFile(srcPath)
 	if err != nil {

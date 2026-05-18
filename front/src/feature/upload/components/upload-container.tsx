@@ -30,13 +30,31 @@ export const UploadContainer: FC = () => {
     navigate(-1)
   }
 
+  const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
+
+    const validFiles: File[] = []
+    const oversizedNames: string[] = []
+    Array.from(files).forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        oversizedNames.push(file.name)
+      } else {
+        validFiles.push(file)
+      }
+    })
+
+    if (oversizedNames.length > 0) {
+      alert(t('upload.fileTooLarge', { files: oversizedNames.join(', ') }))
+    }
+
     setMediaItems((prev: UploadMediaItem[]) => [
       ...prev,
-      ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.PENDING })),
+      ...validFiles.map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.PENDING })),
     ])
+    e.target.value = ''
   }
 
   const isEmpty = mediaItems.length === 0
