@@ -11,6 +11,7 @@ export type UploadBatchStatusResponse = {
   statuses: {
     id: string
     upload_status: UploadStatus
+    failure_reason?: string
   }[]
   is_completed: boolean
 }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
@@ -17,6 +18,7 @@ type MediaItemStore interface {
 	GetMediaItemRange(ctx context.Context, clanGroupID int32) ([]db.GetMediaItemRangeRow, error)
 	CreateUploadBatch(ctx context.Context, albumID string) (db.UploadBatch, error)
 	UpdateMediaItemUploadStatus(ctx context.Context, arg db.UpdateMediaItemUploadStatusParams) (db.UpdateMediaItemUploadStatusRow, error)
+	UpdateMediaItemFailed(ctx context.Context, id string, reason string) error
 	GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error)
 	SearchMediaItems(ctx context.Context, arg db.SearchMediaItemsParams) ([]db.SearchMediaItemsRow, error)
 	GetUploadBatchesAndMediaItemCounts(ctx context.Context, arg db.GetUploadBatchesAndMediaItemCountsParams) ([]db.GetUploadBatchesAndMediaItemCountsRow, error)
@@ -61,6 +63,13 @@ func (s *mediaItemStore) CreateUploadBatch(ctx context.Context, albumID string) 
 
 func (s *mediaItemStore) UpdateMediaItemUploadStatus(ctx context.Context, arg db.UpdateMediaItemUploadStatusParams) (db.UpdateMediaItemUploadStatusRow, error) {
 	return wrapErr(s.queries.UpdateMediaItemUploadStatus(ctx, arg))
+}
+
+func (s *mediaItemStore) UpdateMediaItemFailed(ctx context.Context, id string, reason string) error {
+	return mapDBError(s.queries.UpdateMediaItemFailed(ctx, db.UpdateMediaItemFailedParams{
+		ID:            id,
+		FailureReason: sql.NullString{String: reason, Valid: true},
+	}))
 }
 
 func (s *mediaItemStore) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {

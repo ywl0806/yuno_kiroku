@@ -117,9 +117,11 @@ CREATE TABLE IF NOT EXISTS media_items (
     album_id UUID NOT NULL REFERENCES albums (id), -- 소속 앨범 ID
     upload_batch_id INTEGER NOT NULL REFERENCES upload_batches (id), -- 업로드 배치 ID
     upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 업로드 상태 (01: pending | 02: processing | 03: completed | 04: failed | 05: duplicate)
+    failure_reason VARCHAR(50), -- 실패 사유 (unsupported_format | corrupted_file), upload_status='04' 일 때만 설정
     taken_location_latitude DOUBLE PRECISION, -- 촬영 위치 위도
     taken_location_longitude DOUBLE PRECISION, -- 촬영 위치 경도
     taken_at TIMESTAMP NOT NULL, -- 촬영 일시
+    file_name VARCHAR(255), -- 원본 파일명
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 생성일시
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );

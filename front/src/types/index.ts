@@ -153,4 +153,5 @@ export type UploadMediaItem = {
   src: string
   status: UploadStatus
   error?: UploadMediaItemError
+  failure_reason?: string
 }

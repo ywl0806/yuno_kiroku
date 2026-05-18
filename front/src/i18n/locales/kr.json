@@ -52,6 +52,11 @@
     "uploadAnyway": "다시 업로드",
     "uploadFailed": "업로드 실패",
     "reUpload": "다시 업로드",
+    "failureReason": {
+      "unsupported_format": "지원하지 않는 파일 형식입니다",
+      "corrupted_file": "손상된 파일입니다",
+      "unknown": "업로드 실패"
+    },
     "progress": {
       "uploading": "사진 업로드 중...",
       "processing": "서버에서 처리 중...",

@@ -201,7 +201,9 @@ export const PreviewImageInput: FC<Props> = ({ inputRef, images, setImages, albu
 
                       {status === UPLOAD_STATUS.FAILED && (
                         <div className="flex flex-col items-center gap-2">
-                          <p className="rounded-md bg-white/90 px-2 py-1 text-xs text-red-500">{t('upload.uploadFailed')}</p>
+                          <p className="rounded-md bg-white/90 px-2 py-1 text-xs text-red-500">
+                            {t(`upload.failureReason.${images[props.layout.index]?.failure_reason ?? 'unknown'}`)}
+                          </p>
                           <Button
                             size="sm"
                             className="rounded-full bg-white text-gray-700 hover:bg-gray-100"

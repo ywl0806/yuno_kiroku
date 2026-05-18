@@ -17,6 +17,7 @@ RETURNING
     album_id,
     upload_batch_id,
     upload_status,
+    failure_reason,
     taken_location_latitude,
     taken_location_longitude,
     taken_at,
@@ -101,6 +102,13 @@ SET upload_status = $2
 WHERE id = $1
 RETURNING id, upload_status, created_at, updated_at;
 
+-- name: UpdateMediaItemFailed :exec
+UPDATE media_items
+SET upload_status = '04',
+    failure_reason = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;
+
 -- name: UpdateMediaItemTakenAt :exec
 UPDATE media_items
 SET taken_at = $2,
@@ -174,7 +182,8 @@ OFFSET sqlc.arg(page_offset)::int;
 -- name: GetUploadStatuses :many
 SELECT
     mi.id,
-    mi.upload_status
+    mi.upload_status,
+    mi.failure_reason
 FROM media_items AS mi
 WHERE mi.upload_batch_id = $1
 ORDER BY mi.id ASC;

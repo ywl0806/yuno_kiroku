@@ -27,6 +27,14 @@ func (s *LocalStorageService) GeneratePresignedPutURL(ctx context.Context, key s
 	return "", fmt.Errorf("local storage does not support presigned URLs")
 }
 
+func (s *LocalStorageService) DeleteFile(ctx context.Context, key string) error {
+	path := filepath.Join("uploads", s.rootDir, key)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("파일 삭제 실패: %w", err)
+	}
+	return nil
+}
+
 func (s *LocalStorageService) SaveFile(ctx context.Context, key string, file []byte) (string, error) {
 	path := filepath.Join("uploads", s.rootDir, key)
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/utils"
 	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
+	"strings"
 )
 
 // ResizeService MinIO webhook으로 수신한 원본 이미지를 리사이즈하고
@@ -83,16 +84,17 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 	// 3. 원본 파일 다운로드
 	originalData, err := s.storage.GetFile(ctx, originalKey)
 	if err != nil {
-		s.setFailed(ctx, mediaItemID, err)
+		s.setFailedTransient(ctx, mediaItemID, err)
 		return fmt.Errorf("원본 파일 다운로드 실패: %w", err)
 	}
 
-	// 4. 이미지 파싱 (EXIF 추출)
+	// 4. 이미지 파싱 (EXIF 추출) — 영구 실패 시 nil 반환하여 SQS 재시도 방지
 	ext := extractStorageKeyExt(originalKey)
 	meta, err := imagepkg.Parse(originalData, ext)
 	if err != nil {
-		s.setFailed(ctx, mediaItemID, err)
-		return fmt.Errorf("이미지 파싱 실패: %w", err)
+		reason := classifyParseError(ext)
+		s.setFailed(ctx, mediaItemID, originalKey, reason, err)
+		return nil
 	}
 
 	// 5. taken_at을 EXIF 값으로 업데이트
@@ -114,7 +116,7 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 
 	// 6. 리사이즈 → 업로드 → media_files 저장 → completed → face job 디스패치
 	if err = s.ProcessResizeFromData(ctx, originalData, mediaItemID, familyID); err != nil {
-		s.setFailed(ctx, mediaItemID, err)
+		s.setFailedTransient(ctx, mediaItemID, err)
 		return err
 	}
 
@@ -199,14 +201,40 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	return nil
 }
 
-func (s *ResizeService) setFailed(ctx context.Context, mediaItemID string, err error) {
+// setFailed 영구 실패 처리 — failure_reason 기록 + S3 원본 파일 즉시 삭제
+// 호출 후 nil을 반환해야 SQS 메시지가 delete되어 재시도가 발생하지 않음
+func (s *ResizeService) setFailed(ctx context.Context, mediaItemID, originalKey string, reason enums.FailureReason, err error) {
+	if updateErr := s.mediaItemStore.UpdateMediaItemFailed(ctx, mediaItemID, string(reason)); updateErr != nil {
+		log.Printf("status failed 업데이트 실패: %v", updateErr)
+	}
+	if delErr := s.storage.DeleteFile(ctx, originalKey); delErr != nil {
+		log.Printf("원본 파일 삭제 실패 (무시): %v", delErr)
+	}
+	log.Printf("media_item_id=%s 영구 실패 (%s): %v", mediaItemID, reason, err)
+}
+
+// setFailedTransient 일시적 실패 처리 — status만 '04'로 변경, SQS 재시도 허용
+func (s *ResizeService) setFailedTransient(ctx context.Context, mediaItemID string, err error) {
 	if _, updateErr := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(enums.UploadStatusFailed),
 	}); updateErr != nil {
 		log.Printf("status failed 업데이트 실패: %v", updateErr)
 	}
-	log.Printf("media_item_id=%d 처리 실패: %v", mediaItemID, err)
+	log.Printf("media_item_id=%s 일시적 실패: %v", mediaItemID, err)
+}
+
+var supportedImageExts = map[string]bool{
+	"jpg": true, "jpeg": true, "png": true,
+	"webp": true, "heic": true, "heif": true,
+	"gif": true, "tiff": true, "tif": true,
+}
+
+func classifyParseError(ext string) enums.FailureReason {
+	if !supportedImageExts[strings.ToLower(ext)] {
+		return enums.FailureReasonUnsupportedFormat
+	}
+	return enums.FailureReasonCorruptedFile
 }
 
 // "1/2/2025-03-27/original/uuid.jpg" → "jpg"

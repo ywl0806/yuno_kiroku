@@ -9,6 +9,7 @@ import (
 type StorageService interface {
 	SaveFile(ctx context.Context, key string, file []byte) (string, error)
 	GetFile(ctx context.Context, key string) ([]byte, error)
+	DeleteFile(ctx context.Context, key string) error
 	GeneratePresignedPutURL(ctx context.Context, key string, contentType string, expiresIn time.Duration) (string, error)
 	// DownloadToFile S3 객체를 로컬 파일로 스트리밍 다운로드 (대용량 파일용)
 	DownloadToFile(ctx context.Context, key string, destPath string) error

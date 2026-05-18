@@ -38,13 +38,19 @@ export function useUpload() {
           `${API_ROUTES.MEDIA_ITEM.UPLOAD_BATCH_STATUS}?upload_batch_id=${uploadBatchId}`,
         )
 
-        const statusMap = new Map<string, UploadStatus>()
-        response.data.statuses.forEach((s) => statusMap.set(s.id, s.upload_status))
+        const statusMap = new Map<string, { status: UploadStatus; failure_reason?: string }>()
+        response.data.statuses.forEach((s) => statusMap.set(s.id, { status: s.upload_status, failure_reason: s.failure_reason }))
 
         setMediaItems((prev) => {
           const next = [...prev]
           next.forEach((item) => {
-            item.status = statusMap.get(item.media_item_id ?? '') ?? UPLOAD_STATUS.PENDING
+            const info = statusMap.get(item.media_item_id ?? '')
+            if (info) {
+              item.status = info.status
+              item.failure_reason = info.failure_reason
+            } else {
+              item.status = UPLOAD_STATUS.PENDING
+            }
           })
           return next
         })
@@ -150,16 +156,17 @@ export function useUpload() {
       })
       type BatchPresignedResponse = {
         success: { media_item_id: string; presigned_url: string; index: number }[]
-        failed: { file_name: string; index: number }[]
+        failed: { file_name: string; index: number; reason?: string }[]
       }
       const { success, failed } = presignedRes.data as BatchPresignedResponse
       if (failed.length > 0) {
         setMediaItems((prev) => {
           const next = [...prev]
-          failed.forEach(({ index }) => {
+          failed.forEach(({ index, reason }) => {
             next[index] = {
               ...next[index],
               status: UPLOAD_STATUS.FAILED,
+              failure_reason: reason,
               error: { code: UPLOAD_MEDIA_ITEM_ERROR_CODE.INTERNAL_SERVER_ERROR, message: 'presigned URL 발급 실패' },
             }
           })

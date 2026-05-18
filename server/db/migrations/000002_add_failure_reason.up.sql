@@ -1,0 +1,2 @@
+ALTER TABLE media_items
+  ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(50) DEFAULT NULL;

@@ -43,6 +43,7 @@ type BatchPresignedUploadSuccessItem struct {
 type BatchPresignedUploadFailedItem struct {
 	FileName string `json:"file_name"`
 	Index    int    `json:"index"`
+	Reason   string `json:"reason,omitempty"`
 }
 
 // BatchPresignedUploadResponse 배치 Presigned URL 발급 응답 (부분 실패 지원)
@@ -176,8 +177,9 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 }
 
 type UploadBatchStatus struct {
-	ID           string `json:"id"`
-	UploadStatus string `json:"upload_status"`
+	ID            string `json:"id"`
+	UploadStatus  string `json:"upload_status"`
+	FailureReason string `json:"failure_reason,omitempty"`
 }
 type UploadBatchStatusResponse struct {
 	Statuses    []UploadBatchStatus `json:"statuses"`
@@ -192,8 +194,9 @@ func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *Upl
 			isCompleted = false
 		}
 		statuses[i] = UploadBatchStatus{
-			ID:           uploadStatus.ID,
-			UploadStatus: uploadStatus.UploadStatus,
+			ID:            uploadStatus.ID,
+			UploadStatus:  uploadStatus.UploadStatus,
+			FailureReason: uploadStatus.FailureReason.String,
 		}
 	}
 	return &UploadBatchStatusResponse{

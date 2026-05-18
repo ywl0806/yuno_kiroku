@@ -52,6 +52,11 @@
     "uploadAnyway": "再アップロードする",
     "uploadFailed": "アップロード失敗",
     "reUpload": "再アップロード",
+    "failureReason": {
+      "unsupported_format": "対応していないファイル形式です",
+      "corrupted_file": "破損したファイルです",
+      "unknown": "アップロード失敗"
+    },
     "progress": {
       "uploading": "写真をアップロード中...",
       "processing": "サーバーで処理中...",

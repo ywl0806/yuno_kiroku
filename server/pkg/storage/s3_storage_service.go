@@ -111,6 +111,17 @@ func (s *S3StorageService) GeneratePresignedPutURL(ctx context.Context, key stri
 	return req.URL, nil
 }
 
+func (s *S3StorageService) DeleteFile(ctx context.Context, key string) error {
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("파일 삭제 실패: %w", err)
+	}
+	return nil
+}
+
 func (s *S3StorageService) SaveFile(ctx context.Context, key string, file []byte) (string, error) {
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),

@@ -103,7 +103,7 @@ func (con *MediaItemHandler) CreateBatchPresignedUpload(c echo.Context) error {
 
 	failedItems := make([]models.BatchPresignedUploadFailedItem, len(results.Failed))
 	for i, f := range results.Failed {
-		failedItems[i] = models.BatchPresignedUploadFailedItem{FileName: f.FileName, Index: f.Index}
+		failedItems[i] = models.BatchPresignedUploadFailedItem{FileName: f.FileName, Index: f.Index, Reason: f.Reason}
 	}
 
 	return c.JSON(200, models.BatchPresignedUploadResponse{Success: successItems, Failed: failedItems})

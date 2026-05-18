@@ -112,6 +112,7 @@ type MediaItem struct {
 	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
+	FailureReason          sql.NullString
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time

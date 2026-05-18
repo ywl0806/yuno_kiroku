@@ -165,6 +165,14 @@ type PresignedUploadResult struct {
 	OriginalIndex int
 }
 
+var allowedContentTypes = map[string]bool{
+	"image/jpeg": true, "image/png": true, "image/webp": true,
+	"image/heic": true, "image/heif": true, "image/gif": true,
+	"image/tiff": true, "image/bmp": true,
+	"video/mp4": true, "video/quicktime": true, "video/x-msvideo": true,
+	"video/x-matroska": true, "video/webm": true, "video/x-m4v": true,
+}
+
 // CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급
 // DB INSERT와 URL 발급을 단일 트랜잭션으로 묶어, URL 발급 실패 시 DB 레코드가 자동 롤백됨
 func (s *MediaItemService) CreatePresignedUpload(
@@ -172,6 +180,9 @@ func (s *MediaItemService) CreatePresignedUpload(
 	fileName, contentType string,
 	familyId, albumId string, uploadBatchID int32,
 ) (*PresignedUploadResult, error) {
+	if !allowedContentTypes[contentType] {
+		return nil, apperr.NewValidationError("message.validation.unsupported_format", nil)
+	}
 	var result *PresignedUploadResult
 
 	err := s.transactor.Transact(ctx, func(tx *store.Store) error {
@@ -231,6 +242,7 @@ type BatchPresignedUploadResult struct {
 type BatchPresignedUploadFailedItem struct {
 	FileName string
 	Index    int
+	Reason   string // "unsupported_format" 등
 }
 
 // CreateBatchPresignedUpload는 여러 파일에 대한 Presigned PUT URL을 한 번에 발급
@@ -249,7 +261,11 @@ func (s *MediaItemService) CreateBatchPresignedUpload(
 		r, err := s.CreatePresignedUpload(ctx, item.FileName, item.ContentType, familyId, albumId, uploadBatchID)
 		if err != nil {
 			log.Printf("batch presigned upload 실패 (index=%d, file=%s): %v", i, item.FileName, err)
-			result.Failed = append(result.Failed, BatchPresignedUploadFailedItem{FileName: item.FileName, Index: i})
+			reason := ""
+			if !allowedContentTypes[item.ContentType] {
+				reason = string(enums.FailureReasonUnsupportedFormat)
+			}
+			result.Failed = append(result.Failed, BatchPresignedUploadFailedItem{FileName: item.FileName, Index: i, Reason: reason})
 			continue
 		}
 		r.OriginalIndex = i
