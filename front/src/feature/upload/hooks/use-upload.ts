@@ -1,12 +1,11 @@
 import { API_ROUTES } from '@/consts/api-route'
-import { UPLOAD_STATUS } from '@/enums'
+import { UPLOAD_STATUS, UploadStatus } from '@/enums'
 import { MyAxiosWithAuth } from '@/lib/my-axios'
 import { UPLOAD_MEDIA_ITEM_ERROR_CODE, UploadMediaItem, UploadMediaItemError } from '@/types'
-import { UploadStatus } from '@/enums'
 import { AxiosError } from 'axios'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { unstable_useBlocker as useBlocker } from 'react-router-dom'
-import { UPLOAD_BATCH_STORAGE_KEY, StoredBatch, UploadBatchStatusResponse } from '../constants'
+import { StoredBatch, UPLOAD_BATCH_STORAGE_KEY, UploadBatchStatusResponse } from '../constants'
 
 export function useUpload() {
   const [mediaItems, setMediaItems] = useState<UploadMediaItem[]>([])
@@ -39,7 +38,9 @@ export function useUpload() {
         )
 
         const statusMap = new Map<string, { status: UploadStatus; failure_reason?: string }>()
-        response.data.statuses.forEach((s) => statusMap.set(s.id, { status: s.upload_status, failure_reason: s.failure_reason }))
+        response.data.statuses.forEach((s) =>
+          statusMap.set(s.id, { status: s.upload_status, failure_reason: s.failure_reason }),
+        )
 
         setMediaItems((prev) => {
           const next = [...prev]
@@ -92,12 +93,7 @@ export function useUpload() {
   }
 
   // 단건 재업로드 전용
-  const uploadMediaItem = async (
-    mediaItem: UploadMediaItem,
-    albumId: string,
-    uploadBatchId: number,
-    index: number,
-  ) => {
+  const uploadMediaItem = async (mediaItem: UploadMediaItem, albumId: string, uploadBatchId: number, index: number) => {
     try {
       updatePhotoStatus(index, UPLOAD_STATUS.PENDING)
 

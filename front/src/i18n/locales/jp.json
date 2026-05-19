@@ -52,11 +52,12 @@
     "uploadAnyway": "再アップロードする",
     "uploadFailed": "アップロード失敗",
     "reUpload": "再アップロード",
-    "fileTooLarge": "{{files}} は50MBを超えているためアップロードできません",
+    "fileTooLargeImage": "{{files}} は50MBを超えているためアップロードできません",
+    "fileTooLargeVideo": "{{files}} は2GBを超えているためアップロードできません",
     "failureReason": {
       "unsupported_format": "対応していないファイル形式です",
       "corrupted_file": "破損したファイルです",
-      "file_too_large": "ファイルサイズが50MBを超えています",
+      "file_too_large": "ファイルサイズ制限超過（画像50MB / 動画2GB）",
       "unknown": "アップロード失敗"
     },
     "progress": {

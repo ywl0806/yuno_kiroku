@@ -162,12 +162,35 @@ type PresignedUploadResult struct {
 	OriginalIndex int
 }
 
+const (
+	maxImageSize = 50 * 1024 * 1024       // 50MB
+	maxVideoSize = 2 * 1024 * 1024 * 1024 // 2GB
+)
+
 var allowedContentTypes = map[string]bool{
 	"image/jpeg": true, "image/png": true, "image/webp": true,
 	"image/heic": true, "image/heif": true, "image/gif": true,
 	"image/tiff": true, "image/bmp": true,
 	"video/mp4": true, "video/quicktime": true, "video/x-msvideo": true,
 	"video/x-matroska": true, "video/webm": true, "video/x-m4v": true,
+}
+
+var videoContentTypes = map[string]bool{
+	"video/mp4": true, "video/quicktime": true, "video/x-msvideo": true,
+	"video/x-matroska": true, "video/webm": true, "video/x-m4v": true,
+}
+
+func validateFileSize(contentType string, fileSize int64) error {
+	if videoContentTypes[contentType] {
+		if fileSize > maxVideoSize {
+			return apperr.NewValidationError("message.validation.file_too_large", nil)
+		}
+	} else {
+		if fileSize > maxImageSize {
+			return apperr.NewValidationError("message.validation.file_too_large", nil)
+		}
+	}
+	return nil
 }
 
 // CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급

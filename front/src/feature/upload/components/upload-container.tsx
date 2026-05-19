@@ -30,24 +30,33 @@ export const UploadContainer: FC = () => {
     navigate(-1)
   }
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+  const MAX_IMAGE_SIZE = 50 * 1024 * 1024          // 50MB
+  const MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024    // 2GB
+
+  const isVideo = (file: File) => file.type.startsWith('video/')
 
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
 
     const validFiles: File[] = []
-    const oversizedNames: string[] = []
+    const oversizedImages: string[] = []
+    const oversizedVideos: string[] = []
     Array.from(files).forEach((file) => {
-      if (file.size > MAX_FILE_SIZE) {
-        oversizedNames.push(file.name)
+      const limit = isVideo(file) ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
+      if (file.size > limit) {
+        if (isVideo(file)) oversizedVideos.push(file.name)
+        else oversizedImages.push(file.name)
       } else {
         validFiles.push(file)
       }
     })
 
-    if (oversizedNames.length > 0) {
-      alert(t('upload.fileTooLarge', { files: oversizedNames.join(', ') }))
+    if (oversizedImages.length > 0) {
+      alert(t('upload.fileTooLargeImage', { files: oversizedImages.join(', ') }))
+    }
+    if (oversizedVideos.length > 0) {
+      alert(t('upload.fileTooLargeVideo', { files: oversizedVideos.join(', ') }))
     }
 
     setMediaItems((prev: UploadMediaItem[]) => [
