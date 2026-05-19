@@ -1,6 +1,10 @@
+import logging
+
 import cv2
 from insightface.app import FaceAnalysis
 
+logger = logging.getLogger(__name__)
+_MAX_DIMENSION = 2048  # OOM 방지 다운샘플링 임계값 (px)
 
 _face_analyzer = None
 
@@ -35,9 +39,20 @@ def detect_face(image_path: str) -> dict:
     # RGB로 변환 (OpenCV는 BGR 사용)
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+    # OOM 방지: 장축이 _MAX_DIMENSION 초과 시 다운샘플링
+    h, w = image_rgb.shape[:2]
+    if max(h, w) > _MAX_DIMENSION:
+        scale = _MAX_DIMENSION / max(h, w)
+        image_rgb = cv2.resize(image_rgb, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        logger.warning(f"이미지 다운샘플링: {w}x{h} → {int(w*scale)}x{int(h*scale)} (path={image_path})")
+
     # ArcFace 모델로 얼굴 감지 및 임베딩 추출
     face_analyzer = get_face_analyzer()
-    faces = face_analyzer.get(image_rgb)
+    try:
+        faces = face_analyzer.get(image_rgb)
+    except Exception as e:
+        logger.error(f"InsightFace 추론 실패 (path={image_path}): {e}", exc_info=True)
+        return {"faces": []}
 
     result = []
     for face in faces:

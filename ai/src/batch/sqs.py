@@ -25,6 +25,8 @@ WAIT_TIME_SECONDS = 20
 MAX_MESSAGES = 10
 
 _running = True
+_sqs_client_ref = None
+_current_receipt_handles: list[str] = []
 
 
 def get_sqs_client():
@@ -35,8 +37,10 @@ def get_sqs_client():
 
 
 def run_sqs_batch_loop():
+    global _sqs_client_ref
     logger.info("AI Batch Worker 시작")
     sqs = get_sqs_client()
+    _sqs_client_ref = sqs
     s3_client = get_s3_client()
 
     while _running:
@@ -63,7 +67,12 @@ def run_sqs_batch_loop():
                     logger.error(f"메시지 파싱 실패: {e} body={msg['Body']}")
                     continue
 
-                success = process_job(s3_client, job)
+                _current_receipt_handles.append(receipt_handle)
+                try:
+                    success = process_job(s3_client, job)
+                finally:
+                    _current_receipt_handles.remove(receipt_handle)
+
                 if not success:
                     continue
 
@@ -88,6 +97,17 @@ def _handle_signal(sig, frame):
     global _running
     logger.info("종료 신호 수신 - 현재 job 완료 후 종료")
     _running = False
+    if _sqs_client_ref and _current_receipt_handles:
+        for handle in list(_current_receipt_handles):
+            try:
+                _sqs_client_ref.change_message_visibility(
+                    QueueUrl=SQS_QUEUE_URL,
+                    ReceiptHandle=handle,
+                    VisibilityTimeout=0,
+                )
+                logger.info(f"SIGTERM: SQS 메시지 즉시 재발행 (handle={handle[:20]}...)")
+            except Exception as e:
+                logger.error(f"SIGTERM: ChangeMessageVisibility 실패: {e}")
 
 
 if __name__ == "__main__":
