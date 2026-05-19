@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 
+	"strings"
+
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
@@ -14,7 +16,6 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/utils"
 	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
-	"strings"
 )
 
 // ResizeService MinIO webhook으로 수신한 원본 이미지를 리사이즈하고
@@ -54,15 +55,20 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 		return fmt.Errorf("family_id 파싱 실패 (key=%s): %w", originalKey, err)
 	}
 
+	// S2-08: pending(01) → processing(02) 원자적 전환
+	// 이미 processing 이상인 경우 (중복 이벤트) 즉시 반환
+	ok, err := s.mediaItemStore.UpdateMediaItemToProcessingIfPending(ctx, mediaItemID)
+	if err != nil {
+		return fmt.Errorf("status 업데이트 실패: %w", err)
+	}
+	if !ok {
+		log.Printf("중복 이벤트 스킵 (이미 처리 중/완료): media_item_id=%s", mediaItemID)
+		return nil
+	}
+
 	// 비디오 파일이면 video-processing SQS job 발행 후 반환
 	if isVideoKey(originalKey) {
 		log.Printf("비디오 파일 감지, video-processing job 발행: %s", originalKey)
-		if _, err = s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
-			ID:           mediaItemID,
-			UploadStatus: string(enums.UploadStatusProcessing),
-		}); err != nil {
-			return fmt.Errorf("status 업데이트 실패: %w", err)
-		}
 		ext := extractStorageKeyExt(originalKey)
 		return s.videoDispatcher.Dispatch(ctx, services.VideoJobParams{
 			MediaItemID:        mediaItemID,
@@ -71,14 +77,6 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 			FileName:           mediaItemID + "." + ext,
 			MimeType:           videoMimeType(ext),
 		})
-	}
-
-	// 2. 처리 중으로 상태 변경
-	if _, err = s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
-		ID:           mediaItemID,
-		UploadStatus: string(enums.UploadStatusProcessing),
-	}); err != nil {
-		return fmt.Errorf("status 업데이트 실패: %w", err)
 	}
 
 	// 3. 파일 크기 사전 검증 — 다운로드 전 HeadObject로 확인하여 OOM 방지
@@ -110,6 +108,7 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 	}
 
 	// 6. taken_at을 EXIF 값으로 업데이트
+	// S2-06: EXIF 없는 파일(정상)과 DB 오류(이상)를 로그 레벨로 분리
 	var nullLat, nullLon sql.NullFloat64
 	if meta.Lat != nil {
 		nullLat = sql.NullFloat64{Float64: *meta.Lat, Valid: true}
@@ -123,21 +122,25 @@ func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) e
 		TakenLocationLatitude:  nullLat,
 		TakenLocationLongitude: nullLon,
 	}); err != nil {
-		log.Printf("taken_at 업데이트 실패 (무시): %v", err)
+		if meta.TakenAt.IsZero() {
+			log.Printf("EXIF taken_at 없는 파일, 기본값 유지: media_item_id=%s", mediaItemID)
+		} else {
+			log.Printf("[ERROR] taken_at DB 업데이트 실패 (media_item_id=%s): %v", mediaItemID, err)
+		}
 	}
 
-	// 7. 리사이즈 → 업로드 → media_files 저장 → completed → face job 디스패치
+	// 7. 리사이즈 → DB 저장 → 업로드 → completed → face job 디스패치
 	if err = s.ProcessResizeFromData(ctx, originalData, mediaItemID, familyID); err != nil {
 		s.setFailedTransient(ctx, mediaItemID, err)
 		return err
 	}
 
-	log.Printf("리사이즈 처리 완료: media_item_id=%d", mediaItemID)
+	log.Printf("리사이즈 처리 완료: media_item_id=%s", mediaItemID)
 	return nil
 }
 
 // ProcessResizeFromData 이미 메모리에 있는 원본 데이터를 받아
-// 리사이즈 → 업로드 → media_files 저장 → upload_status=completed → face job 디스패치를 처리합니다.
+// 리사이즈 → DB media_files 레코드 생성 → S3 업로드 → upload_status=completed → face job 디스패치를 처리합니다.
 // multipart 업로드(MediaItemService)와 MinIO webhook(ProcessResize) 양쪽에서 공유합니다.
 func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData []byte, mediaItemID, familyID string) error {
 	// 1. 리사이즈
@@ -151,29 +154,11 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 	}
 	originalData = nil
 
-	// 2. view 업로드 ({familyId}/view/{mediaItemId}.ext)
-	viewKey, err := s.storage.SaveFile(
-		ctx,
-		utils.BuildMediaKey(familyID, consts.VIEW_STORAGE_PREFIX, mediaItemID, viewImg.Ext),
-		viewImg.Data,
-	)
-	viewImg.Data = nil
-	if err != nil {
-		return fmt.Errorf("view 업로드 실패: %w", err)
-	}
+	// 2. storage key 사전 계산 (SaveFile은 입력 key를 그대로 반환)
+	viewKey := utils.BuildMediaKey(familyID, consts.VIEW_STORAGE_PREFIX, mediaItemID, viewImg.Ext)
+	thumbKey := utils.BuildMediaKey(familyID, consts.THUMBNAIL_STORAGE_PREFIX, mediaItemID, thumbImg.Ext)
 
-	// 3. thumbnail 업로드 ({familyId}/thumbnail/{mediaItemId}.ext)
-	thumbKey, err := s.storage.SaveFile(
-		ctx,
-		utils.BuildMediaKey(familyID, consts.THUMBNAIL_STORAGE_PREFIX, mediaItemID, thumbImg.Ext),
-		thumbImg.Data,
-	)
-	thumbImg.Data = nil
-	if err != nil {
-		return fmt.Errorf("thumbnail 업로드 실패: %w", err)
-	}
-
-	// 4. media_files 레코드 생성
+	// 3. DB media_files 레코드 생성
 	if _, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
 		MediaItemID: mediaItemID,
 		Role:        string(enums.MediaItemRoleView),
@@ -181,7 +166,7 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 		Width:       sql.NullInt32{Int32: int32(viewImg.Width), Valid: true},
 		Height:      sql.NullInt32{Int32: int32(viewImg.Height), Valid: true},
 	}); err != nil {
-		return fmt.Errorf("view media_file 생성 실패: %w", err)
+		return fmt.Errorf("view media_file DB 생성 실패: %w", err)
 	}
 	if _, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
 		MediaItemID: mediaItemID,
@@ -190,10 +175,33 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 		Width:       sql.NullInt32{Int32: int32(thumbImg.Width), Valid: true},
 		Height:      sql.NullInt32{Int32: int32(thumbImg.Height), Valid: true},
 	}); err != nil {
-		return fmt.Errorf("thumbnail media_file 생성 실패: %w", err)
+		// view DB 레코드 롤백
+		if delErr := s.mediaItemStore.DeleteMediaFileByItemAndRole(ctx, mediaItemID, string(enums.MediaItemRoleView)); delErr != nil {
+			log.Printf("[ERROR] view media_file DB 롤백 실패 (media_item_id=%s): %v", mediaItemID, delErr)
+		}
+		return fmt.Errorf("thumbnail media_file DB 생성 실패: %w", err)
 	}
 
-	// 5. upload_status = completed
+	// 4. view S3 업로드
+	//    실패 시 DB 레코드 롤백 (S2-05)
+	if _, err = s.storage.SaveFile(ctx, viewKey, viewImg.Data); err != nil {
+		s.rollbackMediaFiles(ctx, mediaItemID)
+		return fmt.Errorf("view S3 업로드 실패: %w", err)
+	}
+	viewImg.Data = nil
+
+	// 5. thumbnail S3 업로드
+	//    실패 시 view S3 롤백 + DB 레코드 롤백 (S2-04 + S2-05)
+	if _, err = s.storage.SaveFile(ctx, thumbKey, thumbImg.Data); err != nil {
+		if delErr := s.storage.DeleteFile(ctx, viewKey); delErr != nil {
+			log.Printf("[ERROR] view S3 롤백 실패 — 고아 파일 발생 (key=%s): %v", viewKey, delErr)
+		}
+		s.rollbackMediaFiles(ctx, mediaItemID)
+		return fmt.Errorf("thumbnail S3 업로드 실패: %w", err)
+	}
+	thumbImg.Data = nil
+
+	// 6. upload_status = completed
 	if _, err = s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(enums.UploadStatusCompleted),
@@ -201,16 +209,31 @@ func (s *ResizeService) ProcessResizeFromData(ctx context.Context, originalData 
 		log.Printf("upload_status completed 업데이트 실패 (무시): %v", err)
 	}
 
-	// 6. face_recognition_job 디스패치
+	// 7. face_recognition_job 디스패치 (S2-07)
+	//    실패 시 face_recognition_status = pending 유지 (배치 재발행 대상으로 추적됨)
 	if err = s.faceDispatcher.Dispatch(ctx, services.FaceRecognitionJobParams{
 		MediaItemID:    mediaItemID,
 		FamilyID:       familyID,
 		ViewStorageKey: viewKey,
 	}); err != nil {
-		log.Printf("face_recognition_job 디스패치 실패 (무시): %v", err)
+		log.Printf("[ERROR] face_recognition_job 발행 실패 (media_item_id=%s): %v", mediaItemID, err)
+	} else {
+		if statusErr := s.mediaItemStore.UpdateFaceRecognitionStatus(ctx, mediaItemID, string(enums.FaceRecognitionStatusDispatched)); statusErr != nil {
+			log.Printf("face_recognition_status dispatched 업데이트 실패: %v", statusErr)
+		}
 	}
 
 	return nil
+}
+
+// rollbackMediaFiles view/thumbnail DB media_files 레코드를 삭제한다.
+// S3 업로드 실패 후 DB 상태를 원상복구하기 위해 사용한다.
+func (s *ResizeService) rollbackMediaFiles(ctx context.Context, mediaItemID string) {
+	for _, role := range []string{string(enums.MediaItemRoleView), string(enums.MediaItemRoleThumbnail)} {
+		if err := s.mediaItemStore.DeleteMediaFileByItemAndRole(ctx, mediaItemID, role); err != nil {
+			log.Printf("[ERROR] media_file DB 롤백 실패 (media_item_id=%s role=%s): %v", mediaItemID, role, err)
+		}
+	}
 }
 
 // setFailed 영구 실패 처리 — failure_reason 기록 + S3 원본 파일 즉시 삭제

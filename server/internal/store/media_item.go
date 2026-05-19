@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
@@ -26,6 +27,12 @@ type MediaItemStore interface {
 	GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]db.GetUploadBatchWithThumbnailsRow, error)
 	DeleteMediaItem(ctx context.Context, id string) error
 	UpdateMediaItemAlbum(ctx context.Context, arg db.UpdateMediaItemAlbumParams) error
+	// S2-08: pending 상태일 때만 processing으로 원자적 전환. false 반환 시 이미 처리 중/완료
+	UpdateMediaItemToProcessingIfPending(ctx context.Context, id string) (bool, error)
+	// S2-07: face recognition SQS 발행 결과 상태 기록
+	UpdateFaceRecognitionStatus(ctx context.Context, id string, status string) error
+	// S2-05: S3 업로드 실패 시 DB media_files 레코드 롤백
+	DeleteMediaFileByItemAndRole(ctx context.Context, mediaItemID string, role string) error
 }
 
 type mediaItemStore struct {
@@ -109,4 +116,29 @@ func (s *mediaItemStore) DeleteMediaItem(ctx context.Context, id string) error {
 
 func (s *mediaItemStore) UpdateMediaItemAlbum(ctx context.Context, arg db.UpdateMediaItemAlbumParams) error {
 	return mapDBError(s.queries.UpdateMediaItemAlbum(ctx, arg))
+}
+
+func (s *mediaItemStore) UpdateMediaItemToProcessingIfPending(ctx context.Context, id string) (bool, error) {
+	_, err := s.queries.UpdateMediaItemToProcessingIfPending(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, mapDBError(err)
+	}
+	return true, nil
+}
+
+func (s *mediaItemStore) UpdateFaceRecognitionStatus(ctx context.Context, id string, status string) error {
+	return mapDBError(s.queries.UpdateFaceRecognitionStatus(ctx, db.UpdateFaceRecognitionStatusParams{
+		ID:                    id,
+		FaceRecognitionStatus: status,
+	}))
+}
+
+func (s *mediaItemStore) DeleteMediaFileByItemAndRole(ctx context.Context, mediaItemID string, role string) error {
+	return mapDBError(s.queries.DeleteMediaFileByItemAndRole(ctx, db.DeleteMediaFileByItemAndRoleParams{
+		MediaItemID: mediaItemID,
+		Role:        role,
+	}))
 }

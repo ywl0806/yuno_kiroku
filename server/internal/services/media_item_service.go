@@ -21,20 +21,17 @@ type MediaItemService struct {
 	mediaItemStore            store.MediaItemStore
 	albumGroupPermissionStore store.AlbumGroupPermissionStore
 	storage                   storage.StorageService
-	transactor                store.Transactor
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
 	albumGroupPermissionStore store.AlbumGroupPermissionStore,
 	storageService storage.StorageService,
-	transactor store.Transactor,
 ) *MediaItemService {
 	return &MediaItemService{
 		mediaItemStore:            mediaItemStore,
 		albumGroupPermissionStore: albumGroupPermissionStore,
 		storage:                   storageService,
-		transactor:                transactor,
 	}
 }
 
@@ -174,7 +171,7 @@ var allowedContentTypes = map[string]bool{
 }
 
 // CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급
-// DB INSERT와 URL 발급을 단일 트랜잭션으로 묶어, URL 발급 실패 시 DB 레코드가 자동 롤백됨
+// Presigned URL 발급 실패 시 생성된 DB 레코드를 수동으로 롤백함
 func (s *MediaItemService) CreatePresignedUpload(
 	ctx context.Context,
 	fileName, contentType string,
@@ -183,47 +180,48 @@ func (s *MediaItemService) CreatePresignedUpload(
 	if !allowedContentTypes[contentType] {
 		return nil, apperr.NewValidationError("message.validation.unsupported_format", nil)
 	}
-	var result *PresignedUploadResult
 
-	err := s.transactor.Transact(ctx, func(tx *store.Store) error {
-		// 1. media_item 먼저 생성 (storageKey에 mediaItemID 필요)
-		mediaItem, err := tx.MediaItem.CreateMediaItem(ctx, db.CreateMediaItemParams{
-			FamilyID:      familyId,
-			AlbumID:       albumId,
-			UploadBatchID: uploadBatchID,
-			TakenAt:       time.Now(), // Resize Worker가 EXIF 파싱 후 실제 값으로 업데이트
-			FileName:      sql.NullString{String: fileName, Valid: true},
-		})
-		if err != nil {
-			return err
-		}
-
-		// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
-		storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
-
-		_, err = tx.MediaItem.CreateMediaFile(ctx, db.CreateMediaFileParams{
-			MediaItemID: mediaItem.ID,
-			Role:        string(enums.MediaItemRoleOriginal),
-			StorageKey:  storageKey,
-		})
-		if err != nil {
-			return err
-		}
-
-		presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
-		if err != nil {
-			return err // 에러 반환 시 트랜잭션 자동 롤백
-		}
-
-		result = &PresignedUploadResult{
-			MediaItemID:  mediaItem.ID,
-			PresignedURL: presignedURL,
-			StorageKey:   storageKey,
-		}
-		return nil
+	// 1. media_item 생성 (storageKey에 mediaItemID 필요)
+	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, db.CreateMediaItemParams{
+		FamilyID:      familyId,
+		AlbumID:       albumId,
+		UploadBatchID: uploadBatchID,
+		TakenAt:       time.Now(), // Resize Worker가 EXIF 파싱 후 실제 값으로 업데이트
+		FileName:      sql.NullString{String: fileName, Valid: true},
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return result, err
+	// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
+	storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
+
+	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
+		MediaItemID: mediaItem.ID,
+		Role:        string(enums.MediaItemRoleOriginal),
+		StorageKey:  storageKey,
+	})
+	if err != nil {
+		if rollbackErr := s.mediaItemStore.DeleteMediaItem(ctx, mediaItem.ID); rollbackErr != nil {
+			log.Printf("media_item 롤백 실패 (id=%s): %v", mediaItem.ID, rollbackErr)
+		}
+		return nil, err
+	}
+
+	// 3. Presigned URL 발급 — 실패 시 DB 레코드 삭제 (media_files는 CASCADE)
+	presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
+	if err != nil {
+		if rollbackErr := s.mediaItemStore.DeleteMediaItem(ctx, mediaItem.ID); rollbackErr != nil {
+			log.Printf("media_item 롤백 실패 (id=%s): %v", mediaItem.ID, rollbackErr)
+		}
+		return nil, err
+	}
+
+	return &PresignedUploadResult{
+		MediaItemID:  mediaItem.ID,
+		PresignedURL: presignedURL,
+		StorageKey:   storageKey,
+	}, nil
 }
 
 // BatchPresignedUploadItem는 배치 Presigned URL 발급 요청 항목

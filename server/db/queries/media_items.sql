@@ -18,6 +18,7 @@ RETURNING
     upload_batch_id,
     upload_status,
     failure_reason,
+    face_recognition_status,
     taken_location_latitude,
     taken_location_longitude,
     taken_at,
@@ -261,3 +262,16 @@ DELETE FROM media_items WHERE id = $1;
 
 -- name: UpdateMediaItemAlbum :exec
 UPDATE media_items SET album_id = $2 WHERE id = $1;
+
+-- name: UpdateMediaItemToProcessingIfPending :one
+-- S2-08: pending(01) 상태일 때만 processing(02)으로 원자적 전환 — 중복 이벤트 early exit용
+UPDATE media_items
+SET upload_status = '02', updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND upload_status = '01'
+RETURNING id, upload_status;
+
+-- name: UpdateFaceRecognitionStatus :exec
+-- S2-07: face recognition 발행 결과 상태 추적
+UPDATE media_items
+SET face_recognition_status = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;

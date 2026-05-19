@@ -18,3 +18,7 @@ RETURNING
     height,
     created_at,
     updated_at;
+
+-- name: DeleteMediaFileByItemAndRole :exec
+-- S2-05: S3 업로드 실패 시 DB 레코드 롤백용
+DELETE FROM media_files WHERE media_item_id = $1 AND role = $2;

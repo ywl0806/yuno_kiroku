@@ -61,3 +61,18 @@ func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams
 	)
 	return i, err
 }
+
+const deleteMediaFileByItemAndRole = `-- name: DeleteMediaFileByItemAndRole :exec
+DELETE FROM media_files WHERE media_item_id = $1 AND role = $2
+`
+
+type DeleteMediaFileByItemAndRoleParams struct {
+	MediaItemID string
+	Role        string
+}
+
+// S2-05: S3 업로드 실패 시 DB 레코드 롤백용
+func (q *Queries) DeleteMediaFileByItemAndRole(ctx context.Context, arg DeleteMediaFileByItemAndRoleParams) error {
+	_, err := q.db.ExecContext(ctx, deleteMediaFileByItemAndRole, arg.MediaItemID, arg.Role)
+	return err
+}

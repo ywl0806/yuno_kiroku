@@ -113,6 +113,7 @@ type MediaItem struct {
 	UploadBatchID          int32
 	UploadStatus           string
 	FailureReason          sql.NullString
+	FaceRecognitionStatus  string
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time

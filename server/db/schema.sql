@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS media_items (
     upload_batch_id INTEGER NOT NULL REFERENCES upload_batches (id), -- 업로드 배치 ID
     upload_status VARCHAR(2) NOT NULL DEFAULT '01', -- 업로드 상태 (01: pending | 02: processing | 03: completed | 04: failed | 05: duplicate)
     failure_reason VARCHAR(50), -- 실패 사유 (unsupported_format | corrupted_file), upload_status='04' 일 때만 설정
+    face_recognition_status VARCHAR(10) NOT NULL DEFAULT 'pending', -- 얼굴인식 상태 (pending | dispatched | completed)
     taken_location_latitude DOUBLE PRECISION, -- 촬영 위치 위도
     taken_location_longitude DOUBLE PRECISION, -- 촬영 위치 경도
     taken_at TIMESTAMP NOT NULL, -- 촬영 일시
@@ -268,6 +269,8 @@ CREATE INDEX IF NOT EXISTS idx_face_detections_identity_id_media_item_id ON face
 
 -- Resize Worker에서 storage_key로 media_item_id를 빠르게 조회하기 위한 인덱스
 CREATE INDEX IF NOT EXISTS idx_media_files_storage_key ON media_files (storage_key);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_media_files_item_role ON media_files (media_item_id, role);
 
 -- 좋아요 테이블
 CREATE TABLE IF NOT EXISTS media_item_likes (
