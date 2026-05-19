@@ -177,7 +177,8 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
         Action   = [
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility"
         ]
         Resource = [
           var.face_recognition_queue_arn,

@@ -33,6 +33,8 @@ type MediaItemStore interface {
 	UpdateFaceRecognitionStatus(ctx context.Context, id string, status string) error
 	// S2-05: S3 업로드 실패 시 DB media_files 레코드 롤백
 	DeleteMediaFileByItemAndRole(ctx context.Context, mediaItemID string, role string) error
+	// S3-04: SQS 재시도 시 중복 INSERT 방지 (upsert)
+	UpsertMediaFile(ctx context.Context, arg db.UpsertMediaFileParams) (db.MediaFile, error)
 }
 
 type mediaItemStore struct {
@@ -141,4 +143,8 @@ func (s *mediaItemStore) DeleteMediaFileByItemAndRole(ctx context.Context, media
 		MediaItemID: mediaItemID,
 		Role:        role,
 	}))
+}
+
+func (s *mediaItemStore) UpsertMediaFile(ctx context.Context, arg db.UpsertMediaFileParams) (db.MediaFile, error) {
+	return wrapErr(s.queries.UpsertMediaFile(ctx, arg))
 }

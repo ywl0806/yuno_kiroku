@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -79,19 +80,42 @@ func main() {
 
 		for _, msg := range out.Messages {
 			var params services.VideoJobParams
+			// S3-01: 파싱 실패 시 deleteMessage 호출 제거 → visibility timeout 후 재발행 → maxReceiveCount 소진 시 DLQ 이동
 			if err := json.Unmarshal([]byte(aws.ToString(msg.Body)), &params); err != nil {
-				log.Printf("메시지 파싱 실패 (삭제 후 skip): %v", err)
-				deleteMessage(ctx, sqsClient, queueURL, msg.ReceiptHandle)
+				log.Printf("[video-worker] [ERROR] 메시지 파싱 실패 (DLQ 경유 예정): %v", err)
 				continue
 			}
 
+			// S3-05: 처리 시간이 15분을 초과할 수 있으므로 5분마다 visibility timeout을 10분으로 갱신
+			extendCtx, extendCancel := context.WithCancel(ctx)
+			go func(receiptHandle *string) {
+				ticker := time.NewTicker(5 * time.Minute)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-extendCtx.Done():
+						return
+					case <-ticker.C:
+						if _, err := sqsClient.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
+							QueueUrl:          aws.String(queueURL),
+							ReceiptHandle:     receiptHandle,
+							VisibilityTimeout: 600, // 10분으로 갱신
+						}); err != nil {
+							log.Printf("[video-worker] [WARN] visibility timeout 갱신 실패: %v", err)
+						}
+					}
+				}
+			}(msg.ReceiptHandle)
+
 			log.Printf("비디오 처리 시작: media_item_id=%s", params.MediaItemID)
 			if err := svc.ProcessVideo(ctx, params); err != nil {
-				log.Printf("비디오 처리 실패 (재시도 예정): media_item_id=%s err=%v", params.MediaItemID, err)
+				extendCancel()
+				log.Printf("[video-worker] [WARN] 비디오 처리 실패 (재시도 예정): media_item_id=%s err=%v", params.MediaItemID, err)
 				// DeleteMessage 하지 않으면 visibility timeout 후 재시도
 				continue
 			}
 
+			extendCancel()
 			deleteMessage(ctx, sqsClient, queueURL, msg.ReceiptHandle)
 		}
 	}

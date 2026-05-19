@@ -381,12 +381,12 @@
 | S2-06 | Resize        | EXIF 업데이트 실패              |   🟢   | 불가      | Silent failure, 날짜 오류 | 🟢           |
 | S2-07 | Resize        | Face SQS 발행 실패              |   🟡   | 불가      | 얼굴인식 영구 누락        | 🟡 (배치x)   |
 | S2-08 | Resize        | 중복 Webhook                    |   🟡   | 불가      | 중복 레코드               | 🟢           |
-| S3-01 | Video         | 메시지 파싱 실패                |   🔴   | 불가      | DLQ 미경유 데이터 손실    |              |
-| S3-02 | Video         | S3 다운로드 실패                |   🟡   | 가능      | 2회 후 DLQ                |              |
-| S3-03 | Video         | ffmpeg 타임아웃                 |   🟡   | 가능      | 좀비 프로세스             |              |
-| S3-04 | Video         | 부분 업로드 실패                |   🟡   | 가능      | 재시도 시 중복            |              |
-| S3-05 | Video         | visibility timeout 초과         |   🟡   | 부분      | 중복 처리                 |              |
-| S3-06 | Video         | 디스크 소진                     |   🔴   | 불가      | Task 전체 중단            |              |
+| S3-01 | Video         | 메시지 파싱 실패                |   🔴   | 불가      | DLQ 미경유 데이터 손실    | 🟢           |
+| S3-02 | Video         | S3 다운로드 실패                |   🟡   | 가능      | 2회 후 DLQ                | 🟢           |
+| S3-03 | Video         | ffmpeg 타임아웃                 |   🟡   | 가능      | 좀비 프로세스             | 🟢           |
+| S3-04 | Video         | 부분 업로드 실패                |   🟡   | 가능      | 재시도 시 중복            | 🟢           |
+| S3-05 | Video         | visibility timeout 초과         |   🟡   | 부분      | 중복 처리                 | 🟡 (IAM적용필요) |
+| S3-06 | Video         | 디스크 소진                     |   🔴   | 불가      | Task 전체 중단            | 🟢           |
 | S4-01 | AI Batch      | S3 다운로드 실패                |   🟢   | 가능      | 3회 후 DLQ                |              |
 | S4-02 | AI Batch      | OOM / 모델 추론 실패            |   🔴   | 부분      | 반복 OOM → DLQ            |              |
 | S4-03 | AI Batch      | 임시 파일 미삭제                |   🟢   | 재기동 시 | 디스크 누적               |              |
