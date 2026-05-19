@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
@@ -108,13 +109,15 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 
 	for _, face := range faces {
 		var identityID int32
-		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|utils.StringToHash(params.FamilyID), func(tx *store.Store) error {
-			id, err := matchOrCreateIdentity(ctx, tx, params.FamilyID, face.Embedding)
+		// advisory lock 획득 타임아웃 240초
+		lockCtx, cancel := context.WithTimeout(ctx, 240*time.Second)
+		err := s.transactor.TransactWithAdvisoryLock(lockCtx, advisoryLockNamespace<<32|utils.StringToHash(params.FamilyID), func(tx *store.Store) error {
+			id, err := matchOrCreateIdentity(lockCtx, tx, params.FamilyID, face.Embedding)
 			if err != nil {
 				return err
 			}
 			identityID = id
-			_, err = tx.Face.CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
+			_, err = tx.Face.CreateFaceDetection(lockCtx, db.CreateFaceDetectionParams{
 				MediaItemID:    params.MediaItemID,
 				IdentityID:     identityID,
 				LocationTop:    int32(face.FaceLocation.Top),
@@ -125,9 +128,11 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 			})
 			return err
 		})
+		cancel()
 		if err != nil {
-			log.Printf("face 처리 실패 (무시): %v", err)
-			continue
+
+			log.Printf("[ERROR] face 처리 실패 (SQS 재시도 유도): %v", err)
+			return fmt.Errorf("face 처리 실패: %w", err)
 		}
 
 		if viewData == nil {
@@ -155,13 +160,13 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 		}
 		croppedBytes, err := cropFace(viewData, cropInput)
 		if err != nil {
-			log.Printf("얼굴 크롭 실패 (무시): %v", err)
-			continue
+			log.Printf("[ERROR] 얼굴 크롭 실패 (SQS 재시도 유도): %v", err)
+			return fmt.Errorf("얼굴 크롭 실패: %w", err)
 		}
 		storageKey, err := s.uploadFaceImage(ctx, croppedBytes, params.FamilyID, identityID, params.MediaItemID)
 		if err != nil {
-			log.Printf("얼굴 이미지 업로드 실패 (무시): %v", err)
-			continue
+			log.Printf("[ERROR] 얼굴 크롭 이미지 업로드 실패 (SQS 재시도 유도): %v", err)
+			return fmt.Errorf("얼굴 크롭 이미지 업로드 실패: %w", err)
 		}
 
 		if _, err = s.identityFaceImg.CreateIdentityFaceImg(ctx, db.CreateIdentityFaceImgParams{
@@ -169,7 +174,10 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 			MediaItemID: params.MediaItemID,
 			StorageKey:  storageKey,
 		}); err != nil {
-			log.Printf("identity_face_img 생성 실패 (무시): %v", err)
+			log.Printf("[ERROR] identity_face_img DB 저장 실패, S3 파일 롤백: %v", err)
+			if delErr := s.storage.DeleteFile(ctx, storageKey); delErr != nil {
+				log.Printf("[ERROR] S3 롤백 실패 (고아 파일 발생 가능): key=%s, err=%v", storageKey, delErr)
+			}
 		}
 	}
 
