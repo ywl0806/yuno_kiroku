@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -45,8 +45,8 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 			config.WithCredentialsProvider(creds),
 		)
 		if err != nil {
-			log.Fatalf("failed to load config: %v", err)
-			panic(err)
+			slog.Error("MinIO config 로드 실패", "error", err)
+			os.Exit(1)
 		}
 
 		client = s3.NewFromConfig(cfg, func(o *s3.Options) {
@@ -68,8 +68,8 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 		// AWS S3를 위한 기본 설정
 		cfg, err := config.LoadDefaultConfig(context.Background())
 		if err != nil {
-			log.Fatalf("failed to load config: %v", err)
-			panic(err)
+			slog.Error("AWS S3 config 로드 실패", "error", err)
+			os.Exit(1)
 		}
 		if region := viper.GetString("AWS_REGION"); region != "" {
 			cfg.Region = region

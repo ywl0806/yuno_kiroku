@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
@@ -16,6 +17,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/i18n"
+	"github.com/ywl0806/yuno_kiroku/internal/logger"
 	"github.com/ywl0806/yuno_kiroku/internal/oauth"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
@@ -25,13 +27,16 @@ import (
 
 // Initialize the root router on the app
 func Init(e *echo.Echo) {
+	logger.Init(viper.GetString("APP_ENV"), "yuno-api")
+
 	// i18n 초기화
 	i18n.Init()
 
 	// DB 초기화
 	sqlDB, dbTx, err := db.Init(viper.GetString("APP_ENV") == "dev" || viper.GetString("APP_ENV") == "local")
 	if err != nil {
-		log.Fatalf("Failed to initialize DB: %v", err)
+		slog.Error("failed to initialize DB", "error", err)
+		os.Exit(1)
 	}
 
 	// queries 초기화
@@ -119,10 +124,8 @@ func Init(e *echo.Echo) {
 	}))
 	// Recover - 패닉 복구
 	e.Use(middleware.Recover())
-	// Logger - 로깅
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${time_rfc3339} ${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n request_id=${id} \n\n",
-	}))
+	// Logger - slog 기반 구조화 로깅
+	e.Use(middlewares.RequestLogger())
 	// Locale - Accept-Language 기반 로케일 설정 (i18n)
 	e.Use(middlewares.LocaleMiddleware())
 	// ErrorHandler - 에러 처리

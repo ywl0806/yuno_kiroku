@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 )
 
 type MediaItemService struct {
+	log                       *slog.Logger
 	mediaItemStore            store.MediaItemStore
 	albumGroupPermissionStore store.AlbumGroupPermissionStore
 	storage                   storage.StorageService
@@ -29,6 +30,7 @@ func NewMediaItemService(
 	storageService storage.StorageService,
 ) *MediaItemService {
 	return &MediaItemService{
+		log:                       slog.Default().With("layer", "service", "component", "media_item"),
 		mediaItemStore:            mediaItemStore,
 		albumGroupPermissionStore: albumGroupPermissionStore,
 		storage:                   storageService,
@@ -60,7 +62,7 @@ func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID i
 	}
 	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, params)
 	if err != nil {
-		log.Println("get media items by taken at error:", err)
+		s.log.ErrorContext(ctx, "get media items by taken at failed", "error", err)
 		return nil, err
 	}
 	return mediaItems, nil
@@ -226,7 +228,7 @@ func (s *MediaItemService) CreatePresignedUpload(
 	})
 	if err != nil {
 		if rollbackErr := s.mediaItemStore.DeleteMediaItem(ctx, mediaItem.ID); rollbackErr != nil {
-			log.Printf("media_item 롤백 실패 (id=%s): %v", mediaItem.ID, rollbackErr)
+			s.log.ErrorContext(ctx, "media_item rollback failed", "media_item_id", mediaItem.ID, "error", rollbackErr)
 		}
 		return nil, err
 	}
@@ -235,7 +237,7 @@ func (s *MediaItemService) CreatePresignedUpload(
 	presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
 	if err != nil {
 		if rollbackErr := s.mediaItemStore.DeleteMediaItem(ctx, mediaItem.ID); rollbackErr != nil {
-			log.Printf("media_item 롤백 실패 (id=%s): %v", mediaItem.ID, rollbackErr)
+			s.log.ErrorContext(ctx, "media_item rollback failed", "media_item_id", mediaItem.ID, "error", rollbackErr)
 		}
 		return nil, err
 	}
@@ -281,7 +283,7 @@ func (s *MediaItemService) CreateBatchPresignedUpload(
 	for i, item := range items {
 		r, err := s.CreatePresignedUpload(ctx, item.FileName, item.ContentType, familyId, albumId, uploadBatchID)
 		if err != nil {
-			log.Printf("batch presigned upload 실패 (index=%d, file=%s): %v", i, item.FileName, err)
+			s.log.WarnContext(ctx, "batch presigned upload item failed", "index", i, "file", item.FileName, "error", err)
 			reason := ""
 			if !allowedContentTypes[item.ContentType] {
 				reason = string(enums.FailureReasonUnsupportedFormat)

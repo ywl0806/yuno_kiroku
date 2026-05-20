@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -16,6 +16,7 @@ import (
 )
 
 type AuthHandler struct {
+	log         *slog.Logger
 	authService *services.AuthService
 	frontURL    string
 }
@@ -26,6 +27,7 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 		frontURL = "http://localhost:5173"
 	}
 	return &AuthHandler{
+		log:         slog.Default().With("layer", "handler", "component", "auth"),
 		authService: authService,
 		frontURL:    frontURL,
 	}
@@ -147,7 +149,7 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 	}
 	user, err := h.authService.ProcessLineCallback(c.Request().Context(), code, state)
 	if err != nil {
-		log.Println("LineCallback error:", err)
+		h.log.ErrorContext(c.Request().Context(), "LINE callback failed", "error", err)
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=line_token")
 	}
 
@@ -271,6 +273,7 @@ func (h *AuthHandler) KakaoCallback(c echo.Context) error {
 	}
 	user, err := h.authService.ProcessKakaoCallback(c.Request().Context(), code, state)
 	if err != nil {
+		h.log.ErrorContext(c.Request().Context(), "Kakao callback failed", "error", err)
 		return c.Redirect(http.StatusFound, h.frontURL+"/login?error=kakao_token")
 	}
 

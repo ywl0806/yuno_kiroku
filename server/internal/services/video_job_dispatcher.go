@@ -3,7 +3,8 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -24,6 +25,7 @@ type VideoJobParams struct {
 }
 
 type SQSVideoJobDispatcher struct {
+	log       *slog.Logger
 	sqsClient *sqs.Client
 	queueUrl  string
 }
@@ -32,7 +34,8 @@ func NewSQSVideoJobDispatcher(sqsClient *sqs.Client, queueUrl string) *SQSVideoJ
 	if sqsClient == nil {
 		cfg, err := config.LoadDefaultConfig(context.Background())
 		if err != nil {
-			log.Fatalf("AWS 설정 로드 실패: %v", err)
+			slog.Error("AWS 설정 로드 실패", "error", err)
+			os.Exit(1)
 		}
 		if ep := viper.GetString("SQS_ENDPOINT_URL"); ep != "" {
 			cfg.BaseEndpoint = aws.String(ep)
@@ -45,6 +48,7 @@ func NewSQSVideoJobDispatcher(sqsClient *sqs.Client, queueUrl string) *SQSVideoJ
 	}
 
 	return &SQSVideoJobDispatcher{
+		log:       slog.Default().With("layer", "service", "component", "video_dispatcher"),
 		sqsClient: sqsClient,
 		queueUrl:  queueUrl,
 	}
@@ -53,7 +57,7 @@ func NewSQSVideoJobDispatcher(sqsClient *sqs.Client, queueUrl string) *SQSVideoJ
 func (d *SQSVideoJobDispatcher) Dispatch(ctx context.Context, params VideoJobParams) error {
 	body, err := json.Marshal(params)
 	if err != nil {
-		log.Printf("VideoJob JSON Marshal 실패: %v", err)
+		d.log.ErrorContext(ctx, "video job marshal failed", "error", err)
 		return err
 	}
 	_, err = d.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
@@ -61,8 +65,9 @@ func (d *SQSVideoJobDispatcher) Dispatch(ctx context.Context, params VideoJobPar
 		MessageBody: aws.String(string(body)),
 	})
 	if err != nil {
-		log.Printf("VideoJob SQS SendMessage 실패: %v", err)
+		d.log.ErrorContext(ctx, "video job SQS send failed", "media_item_id", params.MediaItemID, "error", err)
 		return err
 	}
+	d.log.InfoContext(ctx, "video job dispatched", "media_item_id", params.MediaItemID)
 	return nil
 }

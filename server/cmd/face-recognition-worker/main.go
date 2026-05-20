@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/logger"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
@@ -23,15 +24,18 @@ type cliInput struct {
 
 func main() {
 	setting.SettingEnv()
+	logger.Init(viper.GetString("APP_ENV"), "yuno-face-worker")
 
 	var input cliInput
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
-		log.Fatalf("입력 파싱 실패: %v", err)
+		slog.Error("입력 파싱 실패", "error", err)
+		os.Exit(1)
 	}
 
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("DB 연결 실패: %v", err)
+		slog.Error("DB 연결 실패", "error", err)
+		os.Exit(1)
 	}
 	defer conn.Close()
 
@@ -48,6 +52,7 @@ func main() {
 
 	ctx := context.Background()
 	if err := svc.ProcessFaces(ctx, input.ProcessFacesParams, input.Faces); err != nil {
-		log.Fatalf("얼굴 인식 처리 실패: %v", err)
+		slog.Error("얼굴 인식 처리 실패", "error", err)
+		os.Exit(1)
 	}
 }

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -15,6 +15,7 @@ import (
 )
 
 type MediaItemHandler struct {
+	log              *slog.Logger
 	mediaItemService *services.MediaItemService
 }
 
@@ -22,6 +23,7 @@ func NewMediaItemHandler(
 	mediaItemService *services.MediaItemService,
 ) *MediaItemHandler {
 	return &MediaItemHandler{
+		log:              slog.Default().With("layer", "handler", "component", "media_item"),
 		mediaItemService: mediaItemService,
 	}
 }
@@ -46,7 +48,7 @@ func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
 
 	result, err := con.mediaItemService.CreatePresignedUpload(ctx, req.FileName, req.ContentType, authUser.FamilyId, req.AlbumID, req.UploadBatchID)
 	if err != nil {
-		log.Println("create presigned upload error:", err)
+		con.log.ErrorContext(ctx, "create presigned upload failed", "error", err)
 		return err
 	}
 
@@ -86,7 +88,7 @@ func (con *MediaItemHandler) CreateBatchPresignedUpload(c echo.Context) error {
 
 	results, err := con.mediaItemService.CreateBatchPresignedUpload(ctx, items, authUser.FamilyId, req.AlbumID, req.UploadBatchID)
 	if err != nil {
-		log.Println("create batch presigned upload error:", err)
+		con.log.ErrorContext(ctx, "create batch presigned upload failed", "error", err)
 		return err
 	}
 
@@ -127,9 +129,11 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 
 	uploadBatch, err := con.mediaItemService.CreateUploadBatch(ctx, familyId, albumId)
 	if err != nil {
+		con.log.ErrorContext(ctx, "create upload batch failed", "album_id", albumId, "error", err)
 		return err
 	}
 
+	con.log.InfoContext(ctx, "upload batch created", "upload_batch_id", uploadBatch.ID, "album_id", albumId)
 	return c.JSON(200, models.CreateUploadBatchResponse{
 		ID:        uploadBatch.ID,
 		AlbumID:   uploadBatch.AlbumID,
@@ -164,7 +168,6 @@ func (con *MediaItemHandler) GetMediaItemRange(c echo.Context) error {
 func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	reqParams := new(models.GetMediaItemsRequest)
 	if err := c.Bind(reqParams); err != nil {
-		log.Println("bind get media items request error: ", err)
 		return err
 	}
 	if err := c.Validate(reqParams); err != nil {
@@ -176,7 +179,7 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 
 	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, authUser.GroupId, authUser.ID, *reqParams.From, *reqParams.To)
 	if err != nil {
-		log.Println("get media items by taken at error: ", err)
+		con.log.ErrorContext(ctx, "get media items by taken at failed", "error", err)
 		return err
 	}
 	return c.JSON(200, models.NewMediaItemsResponse(mediaItems))
@@ -203,7 +206,7 @@ func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
 
 	result, err := con.mediaItemService.SearchMediaItems(ctx, authUser.GroupId, authUser.ID, reqParams.From, reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs, reqParams.Liked, reqParams.TagIDs, reqParams.Page)
 	if err != nil {
-		log.Println("search media items error:", err)
+		con.log.ErrorContext(ctx, "search media items failed", "error", err)
 		return err
 	}
 
@@ -272,7 +275,7 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 
 	result, err := con.mediaItemService.GetMediaItemsByUploadBatch(ctx, uploadBatchID, authUser.ID, page)
 	if err != nil {
-		log.Println("get upload batch items error:", err)
+		con.log.ErrorContext(ctx, "get upload batch items failed", "error", err)
 		return err
 	}
 
@@ -302,6 +305,7 @@ func (con *MediaItemHandler) DeleteMediaItem(c echo.Context) error {
 	if err := con.mediaItemService.DeleteMediaItem(ctx, id, authUser.FamilyId, authUser.ID); err != nil {
 		return err
 	}
+	con.log.InfoContext(ctx, "media item deleted", "media_item_id", id)
 	return c.NoContent(204)
 }
 
@@ -328,6 +332,7 @@ func (con *MediaItemHandler) UpdateMediaItemAlbum(c echo.Context) error {
 	if err := con.mediaItemService.UpdateMediaItemAlbum(ctx, id, authUser.FamilyId, authUser.ID, req.AlbumID); err != nil {
 		return err
 	}
+	con.log.InfoContext(ctx, "media item album updated", "media_item_id", id, "album_id", req.AlbumID)
 	return c.NoContent(204)
 }
 

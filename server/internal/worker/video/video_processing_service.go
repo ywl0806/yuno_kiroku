@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +24,7 @@ import (
 const maxVideoFileSize = 4 * 1024 * 1024 * 1024 // 4GB
 
 type VideoProcessingService struct {
+	log            *slog.Logger
 	mediaItemStore store.MediaItemStore
 	storage        storage.StorageService
 }
@@ -33,6 +34,7 @@ func NewVideoProcessingService(
 	storageService storage.StorageService,
 ) *VideoProcessingService {
 	return &VideoProcessingService{
+		log:            slog.Default().With("layer", "worker", "component", "video"),
 		mediaItemStore: mediaItemStore,
 		storage:        storageService,
 	}
@@ -42,11 +44,12 @@ func NewVideoProcessingService(
 func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params services.VideoJobParams) error {
 	tmpDir, err := os.MkdirTemp("", "yuno-video-"+params.MediaItemID[:8]+"-*")
 	if err != nil {
-		return fmt.Errorf("temp dir 생성 실패: %w", err)
+		s.log.ErrorContext(ctx, "temp dir 생성 실패", "media_item_id", params.MediaItemID, "error", err)
+		return err
 	}
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Printf("[video-worker] temp dir cleanup 실패 (무시): %v", err)
+			s.log.WarnContext(ctx, "temp dir cleanup 실패 (무시)", "error", err)
 		}
 	}()
 
@@ -59,46 +62,49 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		ID:           params.MediaItemID,
 		UploadStatus: string(enums.UploadStatusProcessing),
 	}); err != nil {
-		return fmt.Errorf("status processing 업데이트 실패: %w", err)
+		s.log.ErrorContext(ctx, "status processing 업데이트 실패", "media_item_id", params.MediaItemID, "error", err)
+		return err
 	}
 
 	// S3-06: 다운로드 전 파일 크기 검증 (디스크 소진 방지)
 	fileSize, err := s.storage.GetFileSize(ctx, params.OriginalStorageKey)
 	if err != nil {
-		log.Printf("[video-worker] 파일 크기 조회 실패 (무시하고 계속): %v", err)
+		s.log.WarnContext(ctx, "파일 크기 조회 실패 (무시하고 계속)", "error", err)
 	} else if fileSize > maxVideoFileSize {
-		s.setFailed(ctx, params.MediaItemID, fmt.Errorf("파일 크기 초과: %d bytes", fileSize))
-		return fmt.Errorf("파일 크기 초과: %d > %d", fileSize, maxVideoFileSize)
+		cause := fmt.Errorf("파일 크기 초과: %d bytes", fileSize)
+		s.log.ErrorContext(ctx, "파일 크기 초과", "media_item_id", params.MediaItemID, "size", fileSize, "max", maxVideoFileSize)
+		s.setFailed(ctx, params.MediaItemID, cause)
+		return cause
 	}
 
 	// 2. S3 스트리밍 다운로드 — S3-02: 에러 타입 분류 로깅
-	log.Printf("[video-worker] 다운로드 시작: %s", params.OriginalStorageKey)
+	s.log.InfoContext(ctx, "다운로드 시작", "media_item_id", params.MediaItemID, "storage_key", params.OriginalStorageKey)
 	if err = s.storage.DownloadToFile(ctx, params.OriginalStorageKey, inputPath); err != nil {
 		if strings.Contains(err.Error(), "NoSuchKey") || strings.Contains(err.Error(), "AccessDenied") {
-			log.Printf("[video-worker] [ERROR] 영구 실패 (IAM/파일미존재): %v", err)
+			s.log.ErrorContext(ctx, "영구 실패 (IAM/파일미존재)", "media_item_id", params.MediaItemID, "error", err)
 		} else {
-			log.Printf("[video-worker] [WARN] 일시적 실패 (네트워크): %v", err)
+			s.log.WarnContext(ctx, "일시적 실패 (네트워크)", "media_item_id", params.MediaItemID, "error", err)
 		}
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("원본 비디오 다운로드 실패: %w", err)
+		return err
 	}
 
 	// 3. 비디오 리사이즈 (최대 1280px, H.264, faststart)
-	log.Printf("[video-worker] 비디오 리사이즈 중: %s", params.MediaItemID)
+	s.log.InfoContext(ctx, "비디오 리사이즈 중", "media_item_id", params.MediaItemID)
 	if err = resizeVideo(ctx, inputPath, outputPath); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("비디오 리사이즈 실패: %w", err)
+		return err
 	}
 	videoW, videoH, err := probeSize(outputPath)
 	if err != nil {
-		log.Printf("[video-worker] 비디오 치수 조회 실패 (무시): %v", err)
+		s.log.WarnContext(ctx, "비디오 치수 조회 실패 (무시)", "media_item_id", params.MediaItemID, "error", err)
 	}
 
 	// 4. 썸네일 추출 (리사이즈된 영상의 1초 지점, WebP)
-	log.Printf("[video-worker] 썸네일 추출 중: %s", params.MediaItemID)
+	s.log.InfoContext(ctx, "썸네일 추출 중", "media_item_id", params.MediaItemID)
 	if err = extractThumbnail(ctx, outputPath, thumbPath); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("썸네일 추출 실패: %w", err)
+		return err
 	}
 	thumbW, thumbH := videoW, videoH
 
@@ -115,7 +121,7 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		Height:      sql.NullInt32{Int32: thumbH, Valid: thumbH > 0},
 	}); err != nil {
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("thumbnail media_file upsert 실패: %w", err)
+		return err
 	}
 	if _, err = s.mediaItemStore.UpsertMediaFile(ctx, db.UpsertMediaFileParams{
 		MediaItemID: params.MediaItemID,
@@ -126,10 +132,10 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 	}); err != nil {
 		// thumbnail DB 레코드 롤백
 		if rbErr := s.mediaItemStore.DeleteMediaFileByItemAndRole(ctx, params.MediaItemID, string(enums.MediaItemRoleThumbnail)); rbErr != nil {
-			log.Printf("[video-worker] thumbnail DB 롤백 실패: %v", rbErr)
+			s.log.ErrorContext(ctx, "thumbnail DB 롤백 실패", "media_item_id", params.MediaItemID, "error", rbErr)
 		}
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("video media_file upsert 실패: %w", err)
+		return err
 	}
 
 	// 6. 썸네일 S3 업로드
@@ -137,7 +143,7 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		// DB 레코드 롤백
 		s.rollbackMediaFiles(ctx, params.MediaItemID)
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("썸네일 업로드 실패: %w", err)
+		return err
 	}
 
 	// 7. 처리된 비디오 S3 업로드
@@ -145,10 +151,10 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		// DB 레코드 롤백 + thumbnail S3 삭제
 		s.rollbackMediaFiles(ctx, params.MediaItemID)
 		if delErr := s.storage.DeleteFile(ctx, thumbKey); delErr != nil {
-			log.Printf("[video-worker] thumbnail S3 롤백 실패: %v", delErr)
+			s.log.ErrorContext(ctx, "thumbnail S3 롤백 실패", "media_item_id", params.MediaItemID, "error", delErr)
 		}
 		s.setFailed(ctx, params.MediaItemID, err)
-		return fmt.Errorf("비디오 업로드 실패: %w", err)
+		return err
 	}
 
 	// 8. upload_status = completed
@@ -156,10 +162,10 @@ func (s *VideoProcessingService) ProcessVideo(ctx context.Context, params servic
 		ID:           params.MediaItemID,
 		UploadStatus: string(enums.UploadStatusCompleted),
 	}); err != nil {
-		log.Printf("[video-worker] status completed 업데이트 실패 (무시): %v", err)
+		s.log.WarnContext(ctx, "status completed 업데이트 실패 (무시)", "media_item_id", params.MediaItemID, "error", err)
 	}
 
-	log.Printf("[video-worker] 처리 완료: media_item_id=%s", params.MediaItemID)
+	s.log.InfoContext(ctx, "비디오 처리 완료", "media_item_id", params.MediaItemID)
 	return nil
 }
 
@@ -168,15 +174,15 @@ func (s *VideoProcessingService) setFailed(ctx context.Context, mediaItemID stri
 		ID:           mediaItemID,
 		UploadStatus: string(enums.UploadStatusFailed),
 	}); err != nil {
-		log.Printf("[video-worker] status failed 업데이트 실패: %v", err)
+		s.log.ErrorContext(ctx, "status failed 업데이트 실패", "media_item_id", mediaItemID, "error", err)
 	}
-	log.Printf("[video-worker] 처리 실패: media_item_id=%s cause=%v", mediaItemID, cause)
+	s.log.ErrorContext(ctx, "비디오 처리 실패", "media_item_id", mediaItemID, "cause", cause)
 }
 
 func (s *VideoProcessingService) rollbackMediaFiles(ctx context.Context, mediaItemID string) {
 	for _, role := range []string{string(enums.MediaItemRoleThumbnail), string(enums.MediaItemRoleVideo)} {
 		if err := s.mediaItemStore.DeleteMediaFileByItemAndRole(ctx, mediaItemID, role); err != nil {
-			log.Printf("[video-worker] media_file DB 롤백 실패 (role=%s): %v", role, err)
+			s.log.ErrorContext(ctx, "media_file DB 롤백 실패", "media_item_id", mediaItemID, "role", role, "error", err)
 		}
 	}
 }

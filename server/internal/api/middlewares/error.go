@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -12,10 +12,14 @@ import (
 	"github.com/ywl0806/yuno_kiroku/pkg/errs"
 )
 
-type ErrorHandler struct{}
+type ErrorHandler struct {
+	log *slog.Logger
+}
 
 func NewErrorHandler() *ErrorHandler {
-	return &ErrorHandler{}
+	return &ErrorHandler{
+		log: slog.Default().With("layer", "middleware", "component", "error"),
+	}
 }
 
 func (e *ErrorHandler) Handler(next echo.HandlerFunc) echo.HandlerFunc {
@@ -68,7 +72,12 @@ func (e *ErrorHandler) HandleServiceError(c echo.Context, err error) error {
 		if requestId == "" {
 			requestId = "unknown"
 		}
-		log.Printf("request_id=%s | %s:%d: %s\n", requestId, internalError.File, internalError.Line, internalError.Message)
+		e.log.ErrorContext(c.Request().Context(), "internal error",
+			"request_id", requestId,
+			"file", internalError.File,
+			"line", internalError.Line,
+			"message", internalError.Message,
+		)
 		return echo.NewHTTPError(http.StatusInternalServerError, internalError.Message)
 	}
 

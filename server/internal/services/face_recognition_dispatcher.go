@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"encoding/json"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -25,6 +26,7 @@ type FaceRecognitionJobParams struct {
 
 // ECSFaceRecognitionDispatcher 프로덕션용: job 삽입 후 ECS task 트리거
 type SQSFaceRecognitionDispatcher struct {
+	log       *slog.Logger
 	sqsClient *sqs.Client
 	queueUrl  string
 }
@@ -40,7 +42,8 @@ func NewSQSFaceRecognitionDispatcher(
 			cfg.BaseEndpoint = aws.String(sqsEndpointURL)
 		}
 		if err != nil {
-			log.Fatalf("AWS 설정 로드 실패: %v", err)
+			slog.Error("AWS 설정 로드 실패", "error", err)
+			os.Exit(1)
 		}
 		sqsClient = sqs.NewFromConfig(cfg)
 	}
@@ -50,6 +53,7 @@ func NewSQSFaceRecognitionDispatcher(
 	}
 
 	return &SQSFaceRecognitionDispatcher{
+		log:       slog.Default().With("layer", "service", "component", "face_dispatcher"),
 		sqsClient: sqsClient,
 		queueUrl:  queueUrl,
 	}
@@ -57,10 +61,8 @@ func NewSQSFaceRecognitionDispatcher(
 
 func (d *SQSFaceRecognitionDispatcher) Dispatch(ctx context.Context, params FaceRecognitionJobParams) error {
 	body, err := json.Marshal(params)
-
-	log.Printf("body: %s", string(body))
 	if err != nil {
-		log.Printf("JSON Marshal 실패: %v", err)
+		d.log.ErrorContext(ctx, "face recognition job marshal failed", "error", err)
 		return err
 	}
 	_, err = d.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
@@ -68,9 +70,10 @@ func (d *SQSFaceRecognitionDispatcher) Dispatch(ctx context.Context, params Face
 		MessageBody: aws.String(string(body)),
 	})
 	if err != nil {
-		log.Printf("SQS SendMessage 실패: %v", err)
+		d.log.ErrorContext(ctx, "face recognition SQS send failed", "media_item_id", params.MediaItemID, "error", err)
 		return err
 	}
 
+	d.log.InfoContext(ctx, "face recognition job dispatched", "media_item_id", params.MediaItemID)
 	return nil
 }

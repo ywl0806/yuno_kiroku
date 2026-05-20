@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/url"
 
 	"github.com/labstack/echo/v4"
@@ -23,18 +23,23 @@ type minioEvent struct {
 }
 
 type ResizeHandler struct {
+	log           *slog.Logger
 	resizeService *workerServices.ResizeService
 }
 
 func NewResizeHandler(resizeService *workerServices.ResizeService) *ResizeHandler {
-	return &ResizeHandler{resizeService: resizeService}
+	return &ResizeHandler{
+		log:           slog.Default().With("layer", "worker", "component", "resize_handler"),
+		resizeService: resizeService,
+	}
 }
 
 // HandleMinioEvent POST /resize — MinIO bucket notification webhook 수신
 func (h *ResizeHandler) HandleMinioEvent(c echo.Context) error {
+	ctx := c.Request().Context()
 	var event minioEvent
 	if err := json.NewDecoder(c.Request().Body).Decode(&event); err != nil {
-		log.Printf("이벤트 파싱 실패: %v", err)
+		h.log.ErrorContext(ctx, "minio event parse failed", "error", err)
 		return c.JSON(400, map[string]string{"error": "invalid event"})
 	}
 	if len(event.Records) == 0 {
@@ -47,10 +52,10 @@ func (h *ResizeHandler) HandleMinioEvent(c echo.Context) error {
 		originalKey = rawKey
 	}
 
-	log.Printf("리사이즈 처리 시작: %s", originalKey)
+	h.log.InfoContext(ctx, "resize processing started", "key", originalKey)
 	go func() {
 		if err := h.resizeService.ProcessResize(context.Background(), originalKey); err != nil {
-			log.Printf("리사이즈 처리 실패 [%s]: %v", originalKey, err)
+			h.log.Error("resize processing failed", "key", originalKey, "error", err)
 		}
 	}()
 

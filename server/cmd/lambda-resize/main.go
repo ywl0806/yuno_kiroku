@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/url"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/spf13/viper"
+	"github.com/ywl0806/yuno_kiroku/internal/logger"
 	"github.com/ywl0806/yuno_kiroku/internal/worker"
 	workerServices "github.com/ywl0806/yuno_kiroku/internal/worker/services"
 	"github.com/ywl0806/yuno_kiroku/pkg/setting"
@@ -17,6 +19,7 @@ var resizeSvc *workerServices.ResizeService
 
 func init() {
 	setting.SettingEnv()
+	logger.Init(viper.GetString("APP_ENV"), "yuno-resize-worker")
 	resizeSvc = worker.InitResize()
 }
 
@@ -25,7 +28,7 @@ func handler(ctx context.Context, sqsEvent events.SQSEvent) error {
 	for _, sqsRecord := range sqsEvent.Records {
 		var s3Event events.S3Event
 		if err := json.Unmarshal([]byte(sqsRecord.Body), &s3Event); err != nil {
-			log.Printf("SQS 메시지 파싱 실패: %v", err)
+			slog.ErrorContext(ctx, "SQS 메시지 파싱 실패", "error", err)
 			return err
 		}
 		for _, record := range s3Event.Records {
@@ -33,9 +36,9 @@ func handler(ctx context.Context, sqsEvent events.SQSEvent) error {
 			if err != nil {
 				key = record.S3.Object.Key
 			}
-			log.Printf("S3 리사이즈 처리: %s", key)
+			slog.InfoContext(ctx, "S3 리사이즈 처리 시작", "key", key)
 			if err := resizeSvc.ProcessResize(ctx, key); err != nil {
-				log.Printf("리사이즈 실패 [%s]: %v", key, err)
+				slog.ErrorContext(ctx, "리사이즈 실패", "key", key, "error", err)
 				// 에러 반환 시 SQS 메시지가 visibility timeout 후 자동 재시도됨
 				return err
 			}

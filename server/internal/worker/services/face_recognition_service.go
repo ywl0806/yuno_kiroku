@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -47,6 +47,7 @@ type FaceResult struct {
 
 // FaceRecognitionService Go CLI에서 호출되어 identity 매칭, face_detections 저장, 얼굴 크롭을 처리합니다.
 type FaceRecognitionService struct {
+	log             *slog.Logger
 	transactor      store.Transactor
 	faceStore       store.FaceStore
 	identityStore   store.IdentityStore
@@ -62,6 +63,7 @@ func NewFaceRecognitionService(
 	storageService storage.StorageService,
 ) *FaceRecognitionService {
 	return &FaceRecognitionService{
+		log:             slog.Default().With("layer", "worker", "component", "face_recognition"),
 		transactor:      transactor,
 		faceStore:       faceStore,
 		identityStore:   identityStore,
@@ -78,8 +80,6 @@ func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID string
 		Embedding:           utils.Float64SliceToVectorString(embedding),
 		SimilarityThreshold: consts.FACE_SEARCH_THRESHOLD,
 	})
-	log.Printf("similar: %+v", similar)
-	log.Printf("err: %+v", err)
 	if err != nil {
 		if apperr.IsAppError(err, apperr.NotFound) {
 			newIdentity, err := tx.Identity.CreateIdentity(ctx, familyID)
@@ -130,20 +130,19 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 		})
 		cancel()
 		if err != nil {
-
-			log.Printf("[ERROR] face 처리 실패 (SQS 재시도 유도): %v", err)
-			return fmt.Errorf("face 처리 실패: %w", err)
+			s.log.ErrorContext(ctx, "face 처리 실패", "media_item_id", params.MediaItemID, "error", err)
+			return err
 		}
 
 		if viewData == nil {
 			viewData, err = os.ReadFile(params.ViewImagePath)
 			if err != nil {
-				log.Printf("view 이미지 파일 읽기 실패 (크롭 생략): %v", err)
+				s.log.WarnContext(ctx, "view 이미지 파일 읽기 실패 (크롭 생략)", "error", err)
 				continue
 			}
 			viewWidth, viewHeight, err = imageDimensions(viewData)
 			if err != nil {
-				log.Printf("이미지 크기 파싱 실패 (크롭 생략): %v", err)
+				s.log.WarnContext(ctx, "이미지 크기 파싱 실패 (크롭 생략)", "error", err)
 				viewData = nil
 				continue
 			}
@@ -160,13 +159,13 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 		}
 		croppedBytes, err := cropFace(viewData, cropInput)
 		if err != nil {
-			log.Printf("[ERROR] 얼굴 크롭 실패 (SQS 재시도 유도): %v", err)
-			return fmt.Errorf("얼굴 크롭 실패: %w", err)
+			s.log.ErrorContext(ctx, "얼굴 크롭 실패", "media_item_id", params.MediaItemID, "error", err)
+			return err
 		}
 		storageKey, err := s.uploadFaceImage(ctx, croppedBytes, params.FamilyID, identityID, params.MediaItemID)
 		if err != nil {
-			log.Printf("[ERROR] 얼굴 크롭 이미지 업로드 실패 (SQS 재시도 유도): %v", err)
-			return fmt.Errorf("얼굴 크롭 이미지 업로드 실패: %w", err)
+			s.log.ErrorContext(ctx, "얼굴 크롭 이미지 업로드 실패", "media_item_id", params.MediaItemID, "error", err)
+			return err
 		}
 
 		if _, err = s.identityFaceImg.CreateIdentityFaceImg(ctx, db.CreateIdentityFaceImgParams{
@@ -174,9 +173,9 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 			MediaItemID: params.MediaItemID,
 			StorageKey:  storageKey,
 		}); err != nil {
-			log.Printf("[ERROR] identity_face_img DB 저장 실패, S3 파일 롤백: %v", err)
+			s.log.ErrorContext(ctx, "identity_face_img DB 저장 실패, S3 파일 롤백", "media_item_id", params.MediaItemID, "error", err)
 			if delErr := s.storage.DeleteFile(ctx, storageKey); delErr != nil {
-				log.Printf("[ERROR] S3 롤백 실패 (고아 파일 발생 가능): key=%s, err=%v", storageKey, delErr)
+				s.log.ErrorContext(ctx, "S3 롤백 실패 (고아 파일 발생 가능)", "storage_key", storageKey, "error", delErr)
 			}
 		}
 	}

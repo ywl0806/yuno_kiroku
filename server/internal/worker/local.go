@@ -2,7 +2,8 @@ package worker
 
 import (
 	"database/sql"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -21,7 +22,8 @@ import (
 func InitLocal(e *echo.Echo) {
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("DB 연결 실패: %v", err)
+		slog.Error("DB 연결 실패", "error", err)
+		os.Exit(1)
 	}
 	st := store.New(conn, db.New(conn))
 

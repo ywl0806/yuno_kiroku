@@ -2,7 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"log"
+	"log/slog"
+	"os"
 
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -16,31 +17,32 @@ func main() {
 
 	env := viper.GetString("APP_ENV")
 	if !(env == "local" || env == "dev") {
-		log.Fatal("This command is only available in development and local environment")
+		slog.Error("This command is only available in development and local environment", "env", env)
+		os.Exit(1)
 	}
 
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("DB 연결 실패", "error", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
-	log.Println("스키마 삭제중...")
-	_, err = db.Exec("DROP SCHEMA IF EXISTS public CASCADE;")
-	if err != nil {
-		log.Fatal(err)
+	slog.Info("스키마 삭제 중")
+	if _, err = db.Exec("DROP SCHEMA IF EXISTS public CASCADE;"); err != nil {
+		slog.Error("스키마 삭제 실패", "error", err)
+		os.Exit(1)
 	}
-	_, err = db.Exec("DROP TABLE IF EXISTS schema_migrations;")
-	if err != nil {
-		log.Fatal(err)
+	if _, err = db.Exec("DROP TABLE IF EXISTS schema_migrations;"); err != nil {
+		slog.Error("schema_migrations 삭제 실패", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("스키마 재생성중...")
-	_, err = db.Exec("CREATE SCHEMA public;")
-
-	if err != nil {
-		log.Fatal(err)
+	slog.Info("스키마 재생성 중")
+	if _, err = db.Exec("CREATE SCHEMA public;"); err != nil {
+		slog.Error("스키마 재생성 실패", "error", err)
+		os.Exit(1)
 	}
-	log.Println("스키마 삭제 및 재생성 완료")
 
+	slog.Info("스키마 삭제 및 재생성 완료")
 }

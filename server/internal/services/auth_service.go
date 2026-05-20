@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"log"
+	"log/slog"
 
 	"github.com/spf13/cast"
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
@@ -23,6 +23,7 @@ var (
 )
 
 type AuthService struct {
+	log           *slog.Logger
 	userService   *UserService
 	inviteService *InviteService
 	authSecretKey string
@@ -38,6 +39,7 @@ func NewAuthService(
 	kakaoConfig *oauth.KakaoConfig,
 ) *AuthService {
 	return &AuthService{
+		log:           slog.Default().With("layer", "service", "component", "auth"),
 		userService:   userService,
 		inviteService: inviteService,
 		authSecretKey: authSecretKey,
@@ -117,23 +119,23 @@ func (s *AuthService) GetLineAuthURL(state string) (url string, configured bool)
 func (s *AuthService) ProcessLineCallback(ctx context.Context, code, state string) (*db.User, error) {
 	accessToken, err := s.lineConfig.ExchangeCode(code)
 	if err != nil {
-		log.Println("LINE token exchange error:", err)
+		s.log.ErrorContext(ctx, "LINE token exchange failed", "error", err)
 		return nil, err
 	}
 	userID, displayName, err := s.lineConfig.UserProfile(accessToken)
 	if err != nil {
-		log.Println("LINE profile error:", err)
+		s.log.ErrorContext(ctx, "LINE profile fetch failed", "error", err)
 		return nil, err
 	}
 	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
-		log.Println("ResolveInviteState LINE error:", err)
+		s.log.ErrorContext(ctx, "resolve invite state failed (LINE)", "error", err)
 		return nil, err
 	}
 
 	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, inviteState.FamilyID, inviteState.GroupID, inviteState.FamilyTitle, inviteState.CustomFamilyTitle)
 	if err != nil {
-		log.Println("FindOrCreateUserOAuth LINE error:", err)
+		s.log.ErrorContext(ctx, "find or create user failed (LINE)", "error", err)
 		return nil, err
 	}
 	if state != "" {
@@ -157,22 +159,22 @@ func (s *AuthService) GetKakaoAuthURL(state string) (url string, configured bool
 func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state string) (*db.User, error) {
 	accessToken, err := s.kakaoConfig.ExchangeCode(code)
 	if err != nil {
-		log.Println("Kakao token exchange error:", err)
+		s.log.ErrorContext(ctx, "Kakao token exchange failed", "error", err)
 		return nil, err
 	}
 	userID, displayName, err := s.kakaoConfig.UserProfile(accessToken)
 	if err != nil {
-		log.Println("Kakao profile error:", err)
+		s.log.ErrorContext(ctx, "Kakao profile fetch failed", "error", err)
 		return nil, err
 	}
 	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
-		log.Println("ResolveInviteState Kakao error:", err)
+		s.log.ErrorContext(ctx, "resolve invite state failed (Kakao)", "error", err)
 		return nil, err
 	}
 	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, inviteState.FamilyID, inviteState.GroupID, inviteState.FamilyTitle, inviteState.CustomFamilyTitle)
 	if err != nil {
-		log.Println("FindOrCreateUserOAuth Kakao error:", err)
+		s.log.ErrorContext(ctx, "find or create user failed (Kakao)", "error", err)
 		return nil, err
 	}
 	if state != "" {

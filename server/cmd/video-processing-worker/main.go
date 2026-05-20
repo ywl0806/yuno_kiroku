@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,6 +16,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/viper"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
+	"github.com/ywl0806/yuno_kiroku/internal/logger"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
@@ -25,10 +26,12 @@ import (
 
 func main() {
 	setting.SettingEnv()
+	logger.Init(viper.GetString("APP_ENV"), "yuno-video-worker")
 
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("DB 연결 실패: %v", err)
+		slog.Error("DB 연결 실패", "error", err)
+		os.Exit(1)
 	}
 	defer conn.Close()
 
@@ -40,7 +43,8 @@ func main() {
 	// SQS 클라이언트 초기화
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
-		log.Fatalf("AWS 설정 로드 실패: %v", err)
+		slog.Error("AWS 설정 로드 실패", "error", err)
+		os.Exit(1)
 	}
 	if ep := viper.GetString("SQS_ENDPOINT_URL"); ep != "" {
 		cfg.BaseEndpoint = aws.String(ep)
@@ -48,18 +52,19 @@ func main() {
 	sqsClient := sqs.NewFromConfig(cfg)
 	queueURL := viper.GetString("VIDEO_SQS_QUEUE_URL")
 	if queueURL == "" {
-		log.Fatal("VIDEO_SQS_QUEUE_URL 환경변수가 설정되지 않았습니다")
+		slog.Error("VIDEO_SQS_QUEUE_URL 환경변수가 설정되지 않았습니다")
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	log.Println("Video Processing Worker 시작")
+	slog.Info("Video Processing Worker 시작")
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Video Processing Worker 종료")
+			slog.Info("Video Processing Worker 종료")
 			return
 		default:
 		}
@@ -74,7 +79,7 @@ func main() {
 			if ctx.Err() != nil {
 				return
 			}
-			log.Printf("SQS ReceiveMessage 실패: %v", err)
+			slog.ErrorContext(ctx, "SQS ReceiveMessage 실패", "error", err)
 			continue
 		}
 
@@ -82,7 +87,7 @@ func main() {
 			var params services.VideoJobParams
 			// S3-01: 파싱 실패 시 deleteMessage 호출 제거 → visibility timeout 후 재발행 → maxReceiveCount 소진 시 DLQ 이동
 			if err := json.Unmarshal([]byte(aws.ToString(msg.Body)), &params); err != nil {
-				log.Printf("[video-worker] [ERROR] 메시지 파싱 실패 (DLQ 경유 예정): %v", err)
+				slog.ErrorContext(ctx, "메시지 파싱 실패 (DLQ 경유 예정)", "error", err)
 				continue
 			}
 
@@ -101,16 +106,16 @@ func main() {
 							ReceiptHandle:     receiptHandle,
 							VisibilityTimeout: 600, // 10분으로 갱신
 						}); err != nil {
-							log.Printf("[video-worker] [WARN] visibility timeout 갱신 실패: %v", err)
+							slog.WarnContext(ctx, "visibility timeout 갱신 실패", "error", err)
 						}
 					}
 				}
 			}(msg.ReceiptHandle)
 
-			log.Printf("비디오 처리 시작: media_item_id=%s", params.MediaItemID)
+			slog.InfoContext(ctx, "비디오 처리 시작", "media_item_id", params.MediaItemID)
 			if err := svc.ProcessVideo(ctx, params); err != nil {
 				extendCancel()
-				log.Printf("[video-worker] [WARN] 비디오 처리 실패 (재시도 예정): media_item_id=%s err=%v", params.MediaItemID, err)
+				slog.WarnContext(ctx, "비디오 처리 실패 (재시도 예정)", "media_item_id", params.MediaItemID, "error", err)
 				// DeleteMessage 하지 않으면 visibility timeout 후 재시도
 				continue
 			}
@@ -126,6 +131,6 @@ func deleteMessage(ctx context.Context, client *sqs.Client, queueURL string, rec
 		QueueUrl:      aws.String(queueURL),
 		ReceiptHandle: receiptHandle,
 	}); err != nil {
-		log.Printf("SQS DeleteMessage 실패: %v", err)
+		slog.ErrorContext(ctx, "SQS DeleteMessage 실패", "error", err)
 	}
 }

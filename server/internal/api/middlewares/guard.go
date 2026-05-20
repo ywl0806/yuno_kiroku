@@ -1,8 +1,6 @@
 package middlewares
 
 import (
-	"log"
-
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
@@ -27,13 +25,11 @@ func (g *Guard) Handler(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie(consts.AccessTokenCookieName)
 		if err != nil || cookie.Value == "" {
-			log.Println("access token cookie is required")
 			return echo.NewHTTPError(401, "Unauthorized")
 		}
 
 		claims := jwt.AccessTokenClaims{}
 		if err := jwt.ParseJWT(cookie.Value, viper.GetString("AUTH_SECRET_KEY"), &claims); err != nil {
-			log.Println("token is invalid: ", err)
 			return echo.NewHTTPError(401, "Unauthorized")
 		}
 
