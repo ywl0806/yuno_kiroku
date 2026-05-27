@@ -41,3 +41,15 @@ output "video_queue_url" {
 output "video_queue_name" {
     value = aws_sqs_queue.video_processing.name
 }
+
+output "resize_dlq_name" {
+    value = aws_sqs_queue.resize_dlq.name
+}
+
+output "face_recognition_dlq_name" {
+    value = aws_sqs_queue.face_recognition_dlq.name
+}
+
+output "video_dlq_name" {
+    value = aws_sqs_queue.video_processing_dlq.name
+}
