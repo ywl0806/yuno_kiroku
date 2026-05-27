@@ -59,7 +59,7 @@ export const PhotoGridContainer: FC<Props> = ({ year, month, isActive, onScroll 
   }, [photos])
 
   return (
-    <div className="scroll-container h-full w-full overflow-y-auto" onScroll={(e) => onScroll(e.currentTarget.scrollTop)}>
+    <div className="scroll-container h-full w-full overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))]" onScroll={(e) => onScroll(e.currentTarget.scrollTop)}>
       {photos && photos.length > 0 && (
         <MonthHeroSection year={year} month={month} allPhotos={photos} />
       )}

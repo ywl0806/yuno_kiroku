@@ -354,29 +354,29 @@
 
 ## 요약 테이블
 
-| ID    | 단계          | 시나리오                        | 심각도 | 자동복구  | 핵심 문제                 | 대응완료여부     |
-| ----- | ------------- | ------------------------------- | :----: | --------- | ------------------------- | :--------------- |
-| S1-01 | Presigned URL | S3 URL 발급 실패 후 고아 레코드 |   🟡   | 불가      | 고아 레코드 누적          | 🟡 (배치x)       |
-| S1-02 | Presigned URL | 배치 발급 중 부분 실패          |   🟡   | 불가      | 부분 발급 상태            | 🟢               |
-| S1-03 | Presigned URL | 비디오 업로드 용량 제한 없음    |   🔴   | 불가      | 연쇄 장애 + DoS 벡터      | 🟢               |
-| S2-01 | Resize        | S3 다운로드 실패                |   🟡   | 불가      | Webhook                   | 🟢               |
-| S2-02 | Resize        | 이미지 파싱 실패                |   🟡   | 불가      | 포맷/손상 파일            | 🟢               |
-| S2-03 | Resize        | 대용량 이미지 OOM               |   🔴   | 불가      | SIGKILL, stuck 상태       | 🟢               |
-| S2-04 | Resize        | 부분 S3 업로드 실패             |   🟡   | 불가      | S3-DB 불일치              | 🟢               |
-| S2-05 | Resize        | DB 저장 실패 (S3 성공 후)       |   🟡   | 불가      | 고아 S3 파일              | 🟢               |
-| S2-06 | Resize        | EXIF 업데이트 실패              |   🟢   | 불가      | Silent failure, 날짜 오류 | 🟢               |
-| S2-07 | Resize        | Face SQS 발행 실패              |   🟡   | 불가      | 얼굴인식 영구 누락        | 🟡 (배치x)       |
-| S2-08 | Resize        | 중복 Webhook                    |   🟡   | 불가      | 중복 레코드               | 🟢               |
-| S3-01 | Video         | 메시지 파싱 실패                |   🔴   | 불가      | DLQ 미경유 데이터 손실    | 🟢               |
-| S3-02 | Video         | S3 다운로드 실패                |   🟡   | 가능      | 2회 후 DLQ                | 🟢               |
-| S3-03 | Video         | ffmpeg 타임아웃                 |   🟡   | 가능      | 좀비 프로세스             | 🟢               |
-| S3-04 | Video         | 부분 업로드 실패                |   🟡   | 가능      | 재시도 시 중복            | 🟢               |
-| S3-05 | Video         | visibility timeout 초과         |   🟡   | 부분      | 중복 처리                 | 🟡 (IAM적용필요) |
-| S3-06 | Video         | 디스크 소진                     |   🔴   | 불가      | Task 전체 중단            | 🟢               |
-| S4-01 | AI Batch      | S3 다운로드 실패                |   🟢   | 가능      | 3회 후 DLQ                | 🟢               |
-| S4-02 | AI Batch      | OOM / 모델 추론 실패            |   🔴   | 부분      | 반복 OOM → DLQ            | 🟢               |
-| S4-03 | AI Batch      | 임시 파일 미삭제                |   🟢   | 재기동 시 | 디스크 누적               | 🟢               |
-| S4-04 | AI Batch      | SIGTERM 중 subprocess 실행      |   🟢   | 가능      | 30초 초과 시 재시도       | 🟢               |
-| S5-01 | Face CLI      | Advisory Lock 무한 대기         |   🔴   | 불가      | 연쇄 SQS 적체             | 🟢               |
-| S5-02 | Face CLI      | pgvector 검색 실패              |   🟡   | 불가      | Silent failure            | 🟢               |
-| S5-03 | Face CLI      | identity_face_imgs 저장 실패    |   🟢   | 불가      | S3-DB 불일치              | 🟢               |
+| ID    | 단계          | 시나리오                        | 심각도 | 자동복구  | 핵심 문제                 | 대응완료여부 |
+| ----- | ------------- | ------------------------------- | :----: | --------- | ------------------------- | :----------- |
+| S1-01 | Presigned URL | S3 URL 발급 실패 후 고아 레코드 |   🟡   | 불가      | 고아 레코드 누적          | 🟡 (배치x)   |
+| S1-02 | Presigned URL | 배치 발급 중 부분 실패          |   🟡   | 불가      | 부분 발급 상태            | 🟢           |
+| S1-03 | Presigned URL | 비디오 업로드 용량 제한 없음    |   🔴   | 불가      | 연쇄 장애 + DoS 벡터      | 🟢           |
+| S2-01 | Resize        | S3 다운로드 실패                |   🟡   | 불가      | Webhook                   | 🟢           |
+| S2-02 | Resize        | 이미지 파싱 실패                |   🟡   | 불가      | 포맷/손상 파일            | 🟢           |
+| S2-03 | Resize        | 대용량 이미지 OOM               |   🔴   | 불가      | SIGKILL, stuck 상태       | 🟢           |
+| S2-04 | Resize        | 부분 S3 업로드 실패             |   🟡   | 불가      | S3-DB 불일치              | 🟢           |
+| S2-05 | Resize        | DB 저장 실패 (S3 성공 후)       |   🟡   | 불가      | 고아 S3 파일              | 🟢           |
+| S2-06 | Resize        | EXIF 업데이트 실패              |   🟢   | 불가      | Silent failure, 날짜 오류 | 🟢           |
+| S2-07 | Resize        | Face SQS 발행 실패              |   🟡   | 불가      | 얼굴인식 영구 누락        | 🟡 (배치x)   |
+| S2-08 | Resize        | 중복 Webhook                    |   🟡   | 불가      | 중복 레코드               | 🟢           |
+| S3-01 | Video         | 메시지 파싱 실패                |   🔴   | 불가      | DLQ 미경유 데이터 손실    | 🟢           |
+| S3-02 | Video         | S3 다운로드 실패                |   🟡   | 가능      | 2회 후 DLQ                | 🟢           |
+| S3-03 | Video         | ffmpeg 타임아웃                 |   🟡   | 가능      | 좀비 프로세스             | 🟢           |
+| S3-04 | Video         | 부분 업로드 실패                |   🟡   | 가능      | 재시도 시 중복            | 🟢           |
+| S3-05 | Video         | visibility timeout 초과         |   🟡   | 부분      | 중복 처리                 | 🟢           |
+| S3-06 | Video         | 디스크 소진                     |   🔴   | 불가      | Task 전체 중단            | 🟢           |
+| S4-01 | AI Batch      | S3 다운로드 실패                |   🟢   | 가능      | 3회 후 DLQ                | 🟢           |
+| S4-02 | AI Batch      | OOM / 모델 추론 실패            |   🔴   | 부분      | 반복 OOM → DLQ            | 🟢           |
+| S4-03 | AI Batch      | 임시 파일 미삭제                |   🟢   | 재기동 시 | 디스크 누적               | 🟢           |
+| S4-04 | AI Batch      | SIGTERM 중 subprocess 실행      |   🟢   | 가능      | 30초 초과 시 재시도       | 🟢           |
+| S5-01 | Face CLI      | Advisory Lock 무한 대기         |   🔴   | 불가      | 연쇄 SQS 적체             | 🟢           |
+| S5-02 | Face CLI      | pgvector 검색 실패              |   🟡   | 불가      | Silent failure            | 🟢           |
+| S5-03 | Face CLI      | identity_face_imgs 저장 실패    |   🟢   | 불가      | S3-DB 불일치              | 🟢           |

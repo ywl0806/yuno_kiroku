@@ -5,26 +5,32 @@
 ### 로그 수집 구조
 
 ```
-Lambda (API Server)     → CloudWatch Logs: /aws/lambda/yuno-api-{env}
-ECS AI Batch            → CloudWatch Logs: /ecs/yuno-ai-{env}
-ECS Video Worker        → CloudWatch Logs: /ecs/yuno-video-{env}
+Lambda (API Server)         → CloudWatch Logs: /aws/lambda/yuno-api-{env}
+Lambda (Resize Worker)      → CloudWatch Logs: /aws/lambda/yuno-resize-{env}
+Lambda (Face Recognition)   → CloudWatch Logs: /aws/lambda/yuno-face-recognition-{env}
+ECS AI Batch                → CloudWatch Logs: /ecs/yuno-ai-{env}
+ECS Video Worker            → CloudWatch Logs: /ecs/yuno-video-{env}
 ```
 
-모든 컴포넌트는 `awslogs` 드라이버를 통해 CloudWatch Logs로 자동 수집된다.
+모든 컴포넌트는 `awslogs` 드라이버(ECS) 또는 Lambda 자동 수집을 통해 CloudWatch Logs로 수집된다.
 
 ### 로그 보존 기간
 
 | 로그 그룹 | 보존 기간 |
 |-----------|-----------|
+| `/aws/lambda/yuno-api-{env}` | 30일 |
+| `/aws/lambda/yuno-resize-{env}` | 30일 |
+| `/aws/lambda/yuno-face-recognition-{env}` | 30일 |
 | `/ecs/yuno-ai-{env}` | 30일 |
 | `/ecs/yuno-video-{env}` | 30일 |
-| `/aws/lambda/yuno-api-{env}` | AWS Lambda 기본값 |
+
+모든 로그 그룹은 Terraform `aws_cloudwatch_log_group`으로 명시적 관리되며, 보존 기간은 30일로 통일되어 있다.
 
 ### 로그 레벨 정책
 
 | 레벨 | 사용 기준 |
 |------|-----------|
-| DEBUG | DB 쿼리, 외부 API 요청·응답 상세 (개발 환경만) |
+| DEBUG | DB 쿼리, 외부 API 요청·응답 상세 (local/dev 환경만) |
 | INFO | 정상 처리 완료, 상태 전이 |
 | WARN | 재시도 발생, 부분 실패, 임계값 근접 |
 | ERROR | 처리 실패, DLQ 이동, 복구 불가 오류 |
@@ -33,23 +39,14 @@ ECS Video Worker        → CloudWatch Logs: /ecs/yuno-video-{env}
 
 ## 1-1. 구조화 로깅 (slog)
 
-> 기존 `log.Printf` / `log.Println`을 Go 1.21 표준 `log/slog`로 전면 교체한다.  
-> CloudWatch Logs Insights에서 JSON 필드로 직접 필터·집계할 수 있게 된다.
-
-### 왜 slog인가?
-
-| 기존 `log` | `log/slog` |
-|-----------|-----------|
-| 포맷이 문자열 (파싱 어려움) | JSON / Text 구조화 출력 |
-| 레벨 없음 | DEBUG / INFO / WARN / ERROR |
-| context 연동 없음 | `ctx`로 공통 필드 전파 가능 |
-| 외부 라이브러리 필요 | Go 표준 라이브러리 |
+Go 1.21 표준 `log/slog`를 전면 사용한다. 기존 `log.Printf` / `log.Println`은 모두 교체 완료.  
+CloudWatch Logs Insights에서 JSON 필드로 직접 필터·집계할 수 있다.
 
 ---
 
 ### 1-2. Logger 초기화
 
-`internal/logger` 패키지를 두고 앱 시작 시 한 번 초기화한다.  
+`internal/logger` 패키지로 앱 시작 시 한 번 초기화한다.  
 이 시점에 **앱 전역 정적 필드** (`env`, `service`)를 기본 logger에 바인딩한다.  
 이후 모든 `slog.Default()` 호출은 이 필드를 자동으로 포함한다.
 
@@ -62,29 +59,23 @@ import (
     "os"
 )
 
-// Init은 앱 시작 시 딱 한 번 호출한다.
-// env, service 같은 앱 전역 정적 필드를 기본 logger에 바인딩한다.
 func Init(env, service string) {
     var handler slog.Handler
+    opts := &slog.HandlerOptions{Level: slog.LevelInfo}
     if env == "local" || env == "dev" {
-        handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-            Level: slog.LevelDebug,
-        })
+        opts.Level = slog.LevelDebug
+        handler = slog.NewTextHandler(os.Stdout, opts)
     } else {
-        handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-            Level: slog.LevelInfo,
-        })
+        handler = slog.NewJSONHandler(os.Stdout, opts)
     }
-    // env, service는 모든 로그에 자동 포함된다
-    base := slog.New(handler).With(
-        slog.String("env", env),
-        slog.String("service", service),
-    )
-    slog.SetDefault(base)
+    slog.SetDefault(slog.New(handler).With(
+        "env", env,
+        "service", service,
+    ))
 }
 ```
 
-각 진입점에서 호출 시 `service` 이름을 지정한다.
+각 진입점에서 `service` 이름을 지정해 호출한다.
 
 ```go
 // internal/api/app.go  → "yuno-api"
@@ -99,60 +90,48 @@ logger.Init(viper.GetString("APP_ENV"), "yuno-face-worker")
 
 **출력 예시 (프로덕션 JSON):**
 ```json
-{"time":"2026-05-19T10:00:00Z","level":"INFO","msg":"resize job completed",
+{"time":"2026-05-19T10:00:00Z","level":"INFO","msg":"resize completed",
  "env":"prod","service":"yuno-resize-worker","layer":"worker",
- "media_item_id":"abc-123","duration_ms":340}
+ "component":"resize","media_item_id":"abc-123"}
 ```
 
 ---
 
 ### 1-3. Context를 통한 공통 필드 전파
 
-요청마다 `request_id`, 인증 후에는 `user_id` · `family_id`를 context에 심어  
+요청마다 `request_id` (RequestIDWithConfig 미들웨어), 인증 후에는 `user_id` · `family_id`를 context에 심어  
 하위 Service / Store 레이어가 별도 파라미터 없이 꺼내 쓴다.
 
 ```go
 // internal/utils/log_context.go
-package utils
 
-import (
-    "context"
-    "log/slog"
-)
-
-type contextKey string
-
-const (
-    keyRequestID contextKey = "request_id"
-    keyUserID    contextKey = "user_id"
-    keyFamilyID  contextKey = "family_id"
-)
-
-func WithRequestID(ctx context.Context, id string) context.Context {
-    return context.WithValue(ctx, keyRequestID, id)
-}
-func WithUserID(ctx context.Context, id string) context.Context {
-    return context.WithValue(ctx, keyUserID, id)
-}
-func WithFamilyID(ctx context.Context, id string) context.Context {
-    return context.WithValue(ctx, keyFamilyID, id)
+// InjectAuthToContext는 인증된 사용자 정보를 로깅용으로 context에 심는다.
+// Guard 미들웨어 이후 핸들러에서 호출한다.
+func InjectAuthToContext(ctx context.Context, userID, familyID string) context.Context {
+    ctx = context.WithValue(ctx, consts.RequestIDKey, GetRequestID(ctx))
+    ctx = WithLogUserID(ctx, userID)
+    ctx = WithLogFamilyID(ctx, familyID)
+    return ctx
 }
 
-// LogAttrs returns slog.Attr slice populated from context values.
-func LogAttrs(ctx context.Context) []slog.Attr {
-    var attrs []slog.Attr
-    if v, ok := ctx.Value(keyRequestID).(string); ok && v != "" {
+// LogAttrs는 context에서 공통 로그 필드(request_id, user_id, family_id)를 꺼내 반환한다.
+func LogAttrs(ctx context.Context) []any {
+    var attrs []any
+    if v := GetRequestID(ctx); v != "" {
         attrs = append(attrs, slog.String("request_id", v))
     }
-    if v, ok := ctx.Value(keyUserID).(string); ok && v != "" {
+    if v, ok := ctx.Value(logUserIDKey).(string); ok && v != "" {
         attrs = append(attrs, slog.String("user_id", v))
     }
-    if v, ok := ctx.Value(keyFamilyID).(string); ok && v != "" {
+    if v, ok := ctx.Value(logFamilyIDKey).(string); ok && v != "" {
         attrs = append(attrs, slog.String("family_id", v))
     }
     return attrs
 }
 ```
+
+`request_id`는 `consts.RequestIDKey`로 context에 저장되며, `GetRequestID(ctx)`로 꺼낸다.  
+`user_id` / `family_id`는 내부 타입(`logUserIDKey`, `logFamilyIDKey`)으로 저장해 외부 충돌을 방지한다.
 
 ---
 
@@ -162,12 +141,13 @@ func LogAttrs(ctx context.Context) []slog.Attr {
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `request_id` | string | Echo request ID (미들웨어 삽입) |
+| `request_id` | string | Echo RequestIDWithConfig 미들웨어가 삽입 |
 | `user_id` | string | 인증된 사용자 UUID |
 | `family_id` | string | 현재 요청의 가족 UUID |
 | `media_item_id` | string | 미디어 처리 파이프라인 추적 키 |
-| `layer` | string | `handler` / `service` / `worker` / `db` |
-| `op` | string | 수행 중인 작업명 (예: `"upload_presign"`) |
+| `layer` | string | `handler` / `service` / `worker` / `middleware` / `db` |
+| `component` | string | 세부 컴포넌트명 (예: `"resize"`, `"resize_handler"`, `"media_item"`) |
+| `op` | string | 수행 중인 작업명 (예: `"batch_presign_upload"`) |
 | `duration_ms` | int64 | 처리 소요 시간 (ms) |
 | `error` | string | 오류 메시지 (ERROR 레벨에서만) |
 
@@ -175,7 +155,7 @@ func LogAttrs(ctx context.Context) []slog.Attr {
 
 ### 1-5. 레이어별 로깅 패턴
 
-`layer` 필드는 **생성자에서 한 번만 바인딩**한다.  
+`layer` / `component` 필드는 **생성자에서 한 번만 바인딩**한다.  
 `logger.Init()` 이후에 `slog.Default()`를 호출해야 `env` · `service`가 이미 포함된 logger를 받는다.
 
 ```
@@ -191,45 +171,39 @@ func LogAttrs(ctx context.Context) []slog.Attr {
 
 ```go
 type MediaItemHandler struct {
-    log             *slog.Logger  // layer="handler" 고정
-    mediaItemService services.MediaItemService
+    log              *slog.Logger  // layer="handler", component="media_item" 고정
+    mediaItemService *services.MediaItemService
 }
 
-func NewMediaItemHandler(svc services.MediaItemService) *MediaItemHandler {
+func NewMediaItemHandler(svc *services.MediaItemService) *MediaItemHandler {
     return &MediaItemHandler{
-        log: slog.Default().With("layer", "handler"),
+        log:              slog.Default().With("layer", "handler", "component", "media_item"),
         mediaItemService: svc,
     }
 }
 
-func (h *MediaItemHandler) BatchPresignUpload(c echo.Context) error {
+func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
     ctx := c.Request().Context()
-
-    result, err := h.mediaItemService.BatchPresignUpload(ctx, req)
+    result, err := con.mediaItemService.CreatePresignedUpload(ctx, ...)
     if err != nil {
-        h.log.ErrorContext(ctx, "batch presign upload failed", "error", err)
+        con.log.ErrorContext(ctx, "create presigned upload failed", "error", err)
         return err
     }
-
-    h.log.InfoContext(ctx, "batch presign upload ok",
-        "op", "batch_presign_upload",
-        "count", len(result),
-    )
-    return c.JSON(http.StatusOK, result)
+    return c.JSON(200, result)
 }
 ```
 
-#### Service
+#### Service (Resize)
 
 ```go
 type ResizeService struct {
-    log *slog.Logger  // layer="service", component="resize" 고정
+    log *slog.Logger  // layer="worker", component="resize" 고정
     // ...
 }
 
 func NewResizeService(...) *ResizeService {
     return &ResizeService{
-        log: slog.Default().With("layer", "service", "component", "resize"),
+        log: slog.Default().With("layer", "worker", "component", "resize"),
         // ...
     }
 }
@@ -237,68 +211,124 @@ func NewResizeService(...) *ResizeService {
 func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) error {
     ok, err := s.mediaItemStore.UpdateMediaItemToProcessingIfPending(ctx, mediaItemID)
     if err != nil {
-        s.log.ErrorContext(ctx, "status transition failed",
-            "op", "status_to_processing",
-            "media_item_id", mediaItemID,
-            "error", err,
-        )
+        s.log.ErrorContext(ctx, "status 업데이트 실패", "media_item_id", mediaItemID, "error", err)
         return err
     }
     if !ok {
-        s.log.WarnContext(ctx, "duplicate event skipped", "media_item_id", mediaItemID)
+        s.log.InfoContext(ctx, "duplicate event skipped", "media_item_id", mediaItemID)
         return nil
     }
-
-    s.log.InfoContext(ctx, "resize processing started",
-        "op", "process_resize",
-        "media_item_id", mediaItemID,
-    )
     // ...
-}
-```
-
-#### Worker (SQS Consumer)
-
-```go
-type ResizeHandler struct {
-    log           *slog.Logger  // layer="worker", component="resize" 고정
-    resizeService *ResizeService
-}
-
-func NewResizeHandler(svc *ResizeService) *ResizeHandler {
-    return &ResizeHandler{
-        log: slog.Default().With("layer", "worker", "component", "resize"),
-        resizeService: svc,
-    }
-}
-
-func (h *ResizeHandler) Handle(ctx context.Context, msg *sqs.Message) error {
-    h.log.InfoContext(ctx, "resize job received",
-        "media_item_id", params.MediaItemID,
-        "family_id", params.FamilyID,
-    )
-
-    start := time.Now()
-    if err := h.resizeService.ProcessResize(ctx, params.OriginalKey); err != nil {
-        h.log.ErrorContext(ctx, "resize job failed",
-            "media_item_id", params.MediaItemID,
-            "duration_ms", time.Since(start).Milliseconds(),
-            "error", err,
-        )
-        return err
-    }
-
-    h.log.InfoContext(ctx, "resize job completed",
-        "media_item_id", params.MediaItemID,
-        "duration_ms", time.Since(start).Milliseconds(),
-    )
+    s.log.InfoContext(ctx, "resize completed", "media_item_id", mediaItemID)
     return nil
 }
 ```
 
+#### Lambda Worker (Resize)
+
+Lambda 핸들러는 생성자 패턴 없이 `slog.InfoContext` / `slog.ErrorContext`를 직접 사용한다.  
+`logger.Init()`이 `init()`에서 호출되므로 `slog.Default()`에 `env` · `service`가 바인딩된 상태다.
+
+```go
+// cmd/lambda-resize/main.go
+func init() {
+    setting.SettingEnv()
+    logger.Init(viper.GetString("APP_ENV"), "yuno-resize-worker")
+    resizeSvc = worker.InitResize()
+}
+
+func handler(ctx context.Context, sqsEvent events.SQSEvent) error {
+    for _, sqsRecord := range sqsEvent.Records {
+        // ...
+        slog.InfoContext(ctx, "S3 리사이즈 처리 시작", "key", key)
+        if err := resizeSvc.ProcessResize(ctx, key); err != nil {
+            slog.ErrorContext(ctx, "리사이즈 실패", "key", key, "error", err)
+            return err
+        }
+    }
+    return nil
+}
+```
+
+#### MinIO Webhook Handler (로컬 개발용)
+
+로컬 환경에서는 Lambda 대신 Echo 서버가 MinIO webhook을 수신한다.  
+처리는 goroutine으로 비동기 실행된다.
+
+```go
+type ResizeHandler struct {
+    log           *slog.Logger  // layer="worker", component="resize_handler" 고정
+    resizeService *workerServices.ResizeService
+}
+
+func NewResizeHandler(svc *workerServices.ResizeService) *ResizeHandler {
+    return &ResizeHandler{
+        log:           slog.Default().With("layer", "worker", "component", "resize_handler"),
+        resizeService: svc,
+    }
+}
+
+func (h *ResizeHandler) HandleMinioEvent(c echo.Context) error {
+    // ...
+    h.log.InfoContext(ctx, "resize processing started", "key", originalKey)
+    go func() {
+        if err := h.resizeService.ProcessResize(context.Background(), originalKey); err != nil {
+            h.log.Error("resize processing failed", "key", originalKey, "error", err)
+        }
+    }()
+    return c.JSON(200, map[string]string{"status": "processing"})
+}
+```
+
+#### Face Recognition Worker (CLI)
+
+ECS에서 Python AI 서비스가 `cmd/face-recognition-worker` 바이너리를 stdin으로 실행한다.  
+SQS consumer가 아닌 **CLI 프로세스** 방식이다.
+
+```go
+// cmd/face-recognition-worker/main.go
+func main() {
+    setting.SettingEnv()
+    logger.Init(viper.GetString("APP_ENV"), "yuno-face-worker")
+
+    var input cliInput
+    if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
+        slog.Error("입력 파싱 실패", "error", err)
+        os.Exit(1)
+    }
+    // ...
+    if err := svc.ProcessFaces(ctx, input.ProcessFacesParams, input.Faces); err != nil {
+        slog.Error("얼굴 인식 처리 실패", "error", err)
+        os.Exit(1)
+    }
+}
+```
+
+#### Middleware (Error Handler)
+
+```go
+type ErrorHandler struct {
+    log *slog.Logger  // layer="middleware", component="error" 고정
+}
+
+func NewErrorHandler() *ErrorHandler {
+    return &ErrorHandler{
+        log: slog.Default().With("layer", "middleware", "component", "error"),
+    }
+}
+
+// 내부 에러 발생 시 request_id, file, line 정보를 포함해 로깅
+e.log.ErrorContext(ctx, "internal error",
+    "request_id", requestId,
+    "file", internalError.File,
+    "line", internalError.Line,
+    "message", internalError.Message,
+)
+```
+
 #### DB (query_logger)
 
-`log.Printf` → `slog.DebugContext`로 교체. 프로덕션에서는 출력되지 않는다.
+`slog.DebugContext`를 사용해 프로덕션(INFO 레벨)에서는 출력되지 않는다.
 
 ```go
 type queryLogger struct {
@@ -320,6 +350,7 @@ func NewQueryLogger(inner DBTX, enabled bool) DBTX {
 
 func (q *queryLogger) logQuery(ctx context.Context, query string, args ...interface{}) {
     q.log.DebugContext(ctx, "db query",
+        "request_id", utils.GetRequestID(ctx),
         "query", strings.TrimSpace(query),
         "args", args,
     )
@@ -330,7 +361,8 @@ func (q *queryLogger) logQuery(ctx context.Context, query string, args ...interf
 
 ### 1-6. HTTP 요청 로깅 미들웨어
 
-Echo의 기본 logger 미들웨어 대신 slog 기반 커스텀 미들웨어를 사용한다.
+Echo 기본 logger 미들웨어 대신 slog 기반 커스텀 미들웨어를 사용한다.  
+`request_id`는 상위에 등록된 `RequestIDWithConfig` 미들웨어가 context에 이미 심어둔다.
 
 ```go
 // internal/api/middlewares/request_logger.go
@@ -341,20 +373,15 @@ func RequestLogger() echo.MiddlewareFunc {
             req := c.Request()
             ctx := req.Context()
 
-            // request_id를 context에 심기
-            requestID := c.Response().Header().Get(echo.HeaderXRequestID)
-            ctx = utils.WithRequestID(ctx, requestID)
-            c.SetRequest(req.WithContext(ctx))
-
             err := next(c)
 
-            slog.LogAttrs(ctx, slog.LevelInfo, "http request",
-                slog.String("method", req.Method),
-                slog.String("path", req.URL.Path),
-                slog.Int("status", c.Response().Status),
-                slog.Int64("duration_ms", time.Since(start).Milliseconds()),
-                slog.String("request_id", requestID),
-                slog.String("ip", c.RealIP()),
+            slog.InfoContext(ctx, "http",
+                "method", req.Method,
+                "path", req.URL.Path,
+                "status", c.Response().Status,
+                "duration_ms", time.Since(start).Milliseconds(),
+                "request_id", utils.GetRequestID(ctx),
+                "ip", c.RealIP(),
             )
             return err
         }
@@ -362,42 +389,36 @@ func RequestLogger() echo.MiddlewareFunc {
 }
 ```
 
----
-
-### 1-7. 기존 코드 마이그레이션 체크리스트
-
-| 파일 | 현재 | 변경 후 |
-|------|------|---------|
-| `internal/api/app.go` | `log.Fatalf(...)` | `slog.Error(...); os.Exit(1)` |
-| `internal/api/middlewares/error.go` | `log.Printf("request_id=%s ...")` | `slog.ErrorContext(ctx, ..., slog.String("request_id", ...))` |
-| `internal/api/middlewares/guard.go` | `log.Println("access token cookie ...")` | `slog.WarnContext(ctx, "missing access token")` |
-| `internal/services/media_item_service.go` | `log.Printf("media_item 롤백 실패 ...")` | `slog.ErrorContext(ctx, "rollback failed", slog.String("media_item_id", ...))` |
-| `internal/db/query_logger.go` | `log.Printf("[DB] ...")` | `slog.DebugContext(ctx, "db query", ...)` |
-| `internal/services/face_recognition_dispatcher.go` | `log.Fatalf(...)` | `slog.Error(...); os.Exit(1)` |
-| `internal/worker/**` | `log.Printf(...)` | `slog.InfoContext / ErrorContext` |
+미들웨어 등록 순서 (`internal/api/app.go`):
+1. `RequestIDWithConfig` — request_id를 `consts.RequestIDKey`로 context에 저장 (`/api/health` 제외)
+2. `Recover` — 패닉 복구
+3. `RequestLogger` — slog 기반 HTTP 요청 로깅
+4. `LocaleMiddleware` — Accept-Language 기반 로케일
+5. `ErrorHandler.Handler` — 에러 처리 및 HTTP 응답 변환
 
 ---
 
-### 1-8. CloudWatch Logs Insights 쿼리 예시
+### 1-7. CloudWatch Logs Insights 쿼리 예시
 
 slog JSON 출력 후 아래 쿼리로 필드 직접 필터·집계가 가능하다.
 
 ```
 # 특정 media_item_id 전체 처리 흐름 추적
-fields @timestamp, layer, op, duration_ms
+fields @timestamp, layer, component, duration_ms
 | filter media_item_id = "<target-uuid>"
 | sort @timestamp asc
 
 # 최근 1시간 ERROR 로그 목록
-fields @timestamp, layer, op, error, request_id
+fields @timestamp, layer, component, error, request_id
 | filter level = "ERROR"
 | sort @timestamp desc
 | limit 50
 
-# Worker 처리 시간 분포
-fields duration_ms
-| filter layer = "worker" and op = "process_resize"
-| stats avg(duration_ms), max(duration_ms), count() by bin(5m)
+# Resize Worker 처리 흐름 추적
+fields @timestamp, msg, media_item_id, error
+| filter service = "yuno-resize-worker"
+| sort @timestamp desc
+| limit 100
 ```
 
 ---
@@ -424,11 +445,11 @@ fields duration_ms
 
 | 메트릭 | 용도 |
 |--------|------|
-| `Duration` | API 응답 시간 |
+| `Duration` | API / Resize Worker 응답 시간 |
 | `Errors` | 5xx 오류율 |
 | `Throttles` | 동시 실행 한계 도달 |
 
-### 업로드 파이프라인 커스텀 지표 (권장)
+### 업로드 파이프라인 커스텀 지표 (미구현)
 
 현재 구현되어 있지 않으나, 추후 추가를 권장하는 지표:
 
@@ -452,16 +473,31 @@ GROUP BY upload_status;
 
 ## 3. Alert Policy
 
-### 현재 구성된 CloudWatch 알람
+### 현재 구성된 CloudWatch 알람 (`infra/modules/cloudwatch/main.tf`)
 
 | 알람 이름 | 조건 | 액션 |
 |-----------|------|------|
-| `yuno-ai-task-scale-out` | SQS face-recognition 메시지 ≥ 1 (1분) | AI Task 스케일아웃 |
-| `yuno-ai-task-scale-in` | SQS face-recognition 메시지 < 1 (3분 연속) | AI Task 스케일인 |
-| `yuno-video-task-scale-out` | SQS video-processing 메시지 ≥ 1 (1분) | Video Task 스케일아웃 |
-| `yuno-video-task-scale-in` | SQS video-processing 메시지 < 1 (3분 연속) | Video Task 스케일인 |
+| `yuno-ai-task-scale-out-{env}` | face-recognition SQS 메시지 ≥ 1 (1분) | AI Task 스케일아웃 (StepScaling ExactCapacity) |
+| `yuno-ai-task-scale-in-{env}` | face-recognition SQS 메시지 < 1 (3분 연속) | AI Task 스케일인 (desired_count=0) |
+| `yuno-video-task-scale-out-{env}` | video-processing SQS 메시지 ≥ 1 (1분) | Video Task 스케일아웃 |
+| `yuno-video-task-scale-in-{env}` | video-processing SQS 메시지 < 1 (3분 연속) | Video Task 스케일인 (desired_count=0) |
 
-### 추가 권장 알람
+AI Task 스케일아웃 단계 (StepScaling):
+
+| SQS 메시지 수 | 태스크 수 |
+|--------------|-----------|
+| 1 ~ 20 | 1 |
+| 21 ~ 40 | 2 |
+| 41+ | 3 |
+
+Video Task 스케일아웃 단계:
+
+| SQS 메시지 수 | 태스크 수 |
+|--------------|-----------|
+| 1 ~ 10 | 1 |
+| 11+ | 3 |
+
+### 추가 권장 알람 (미구현)
 
 | 알람 | 조건 | 알림 대상 |
 |------|------|-----------|
@@ -482,12 +518,12 @@ flowchart TD
     A -->|02 processing| C{updated_at 기준}
     C -->|30분 이상| D[Worker 로그 확인\nCloudWatch Logs]
     C -->|정상 범위| E[대기]
-    A -->|04 failed| F[CloudWatch Logs에서\n오류 내용 파악]
+    A -->|04 failed| F[CloudWatch Logs에서\n오류 내용 파악\nfailure_reason 필드 확인]
     A -->|03 completed| G[CloudFront/S3 URL 직접 확인\n→ 권한 문제 가능성]
 
     D --> H{DLQ 메시지 있음?}
     H -->|Yes| I[원인 분석 후 재전송]
-    H -->|No| J[Webhook 누락 가능성\n수동 /resize 호출]
+    H -->|No| J[S3 이벤트 누락 가능성\nLambda 이벤트 소스 매핑 확인]
     F --> H
 ```
 
@@ -495,21 +531,24 @@ flowchart TD
 
 ## 5. Tracing 전략
 
-### 현재 상태
+### 현재 상태 (미구현)
 
-분산 트레이싱(AWS X-Ray, OpenTelemetry)은 미도입. 각 처리 단계는 `media_item_id`를 공통 식별자로 로그에 포함하여 수동 추적이 가능하다.
+분산 트레이싱(AWS X-Ray, OpenTelemetry)은 미도입.  
+각 처리 단계는 `media_item_id`를 공통 식별자로 로그에 포함하여 수동 추적이 가능하다.
 
 ### 로그 기반 추적 방법
 
 ```bash
 # 특정 media_item_id의 처리 로그 조회 (CloudWatch Logs Insights)
-fields @timestamp, @message
-| filter @message like /media_item_id/
+fields @timestamp, @logStream, layer, component, msg, error
 | filter @message like "<target-uuid>"
 | sort @timestamp asc
 ```
 
-### 추후 도입 권장 (Phase 2+)
+여러 로그 그룹(Lambda + ECS)을 합쳐서 조회하려면 CloudWatch Logs Insights에서  
+`/aws/lambda/yuno-*` + `/ecs/yuno-*`를 멀티-로그-그룹 쿼리로 선택한다.
+
+### 추후 도입 권장 (Phase 2+) (미구현)
 
 X-Ray 또는 OpenTelemetry를 도입하면 다음이 가능해진다:
 
@@ -526,10 +565,13 @@ X-Ray 또는 OpenTelemetry를 도입하면 다음이 가능해진다:
 현재 Phase 1에서는 **비활성** 상태 (비용 절감).
 
 ```terraform
+# infra/modules/ecs/main.tf
 setting {
   name  = "containerInsights"
-  value = "disabled"  # Phase 1 비용 절감
+  value = "disabled" # 비용 절감 (Phase 1)
 }
 ```
 
-활성화 시 ECS Task별 CPU/메모리/네트워크 메트릭이 CloudWatch에 수집된다. 트래픽이 증가하여 Worker 성능 분석이 필요한 시점에 활성화를 권장한다. 추가 비용: ~$2/월 (현재 트래픽 기준).
+활성화 시 ECS Task별 CPU/메모리/네트워크 메트릭이 CloudWatch에 수집된다.  
+트래픽이 증가하여 Worker 성능 분석이 필요한 시점에 활성화를 권장한다.  
+추가 비용: ~$2/월 (현재 트래픽 기준).

@@ -31,7 +31,7 @@ stateDiagram-v2
 
     [*] --> pending : Presigned URL 발급\n+ DB 레코드 생성
 
-    pending --> processing : MinIO/S3 Webhook 수신\n(resize-worker)
+    pending --> processing : SQS resize 메시지 수신\n(resize-worker)
 
     processing --> completed : 리사이즈 완료 (이미지)\n재인코딩 완료 (동영상)
     processing --> failed : 처리 실패
@@ -48,10 +48,10 @@ stateDiagram-v2
 | 전이                 | 조건                                           | 담당 컴포넌트                |
 | -------------------- | ---------------------------------------------- | ---------------------------- |
 | 생성 → `01`          | Presigned URL 발급 요청                        | API Server                   |
-| `01` → `02`          | MinIO/S3 Webhook 수신                          | resize-worker                |
+| `01` → `02`          | SQS resize 메시지 수신                         | resize-worker                |
 | `02` → `03` (이미지) | 리사이즈 완료 — **이 시점부터 사진 조회 가능** | resize-worker                |
 | `02` → `03` (동영상) | 재인코딩 완료                                  | video-processing-worker      |
-| `* ` → `04`          | 처리 실패                                      | resize-worker / video-worker |
+| `*` → `04`           | 처리 실패                                      | resize-worker / video-worker |
 
 ---
 
@@ -61,9 +61,10 @@ stateDiagram-v2
 sequenceDiagram
     participant C as 클라이언트
     participant API as API Server
-    participant S3 as S3/MinIO
+    participant S3 as S3
+    participant SQS_R as SQS (resize)
     participant RW as resize-worker
-    participant SQS as SQS
+    participant SQS as SQS (face-recognition)
     participant AI as ai-batch (Python)
     participant FRW as face-recognition-worker (Go)
     participant DB as PostgreSQL
@@ -75,13 +76,15 @@ sequenceDiagram
 
     C->>S3: PUT (직접 업로드)
     S3-->>C: 200 OK
+    S3->>SQS_R: PutObject 이벤트 알림 (prefix=original/)
 
-    S3->>RW: Webhook POST /resize
+    SQS_R-->>RW: ReceiveMessage (Long Polling)
     RW->>DB: status=02
     RW->>S3: 원본 다운로드
     RW->>RW: EXIF 파싱
     RW->>S3: view / thumbnail 업로드
     RW->>DB: media_files INSERT, status=03 (조회 가능)
+    RW->>SQS_R: DeleteMessage
     RW->>SQS: SendMessage {media_item_id, family_id, view_storage_key}
 
     SQS-->>AI: ReceiveMessage
@@ -106,18 +109,21 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant C as 클라이언트
-    participant S3 as S3/MinIO
+    participant S3 as S3
+    participant SQS_R as SQS (resize)
     participant RW as resize-worker
-    participant SQS as SQS
+    participant SQS as SQS (video-processing)
     participant VW as video-processing-worker
     participant DB as PostgreSQL
 
     C->>S3: PUT (직접 업로드)
     S3-->>C: 200 OK
+    S3->>SQS_R: PutObject 이벤트 알림 (prefix=original/)
 
-    S3->>RW: Webhook POST /resize
+    SQS_R-->>RW: ReceiveMessage (Long Polling)
     RW->>RW: 동영상 확장자 감지 (mp4/mov/avi/mkv/webm/m4v)
     RW->>DB: status=02
+    RW->>SQS_R: DeleteMessage
     RW->>SQS: SendMessage {media_item_id, family_id, original_key, file_name, mime_type}
 
     SQS-->>VW: ReceiveMessage
@@ -152,6 +158,7 @@ S3 업로드 전에 DB 레코드를 먼저 생성하여 고아 파일(orphan fil
 
 | 큐 이름            | 발행자        | 소비자                       | 메시지 형식                                                              |
 | ------------------ | ------------- | ---------------------------- | ------------------------------------------------------------------------ |
+| `resize`           | S3 이벤트     | resize-worker (Go)           | S3 PutObject 이벤트 (key, bucket)                                        |
 | `face-recognition` | resize-worker | ai-batch (Python)            | `{media_item_id, family_id, view_storage_key}`                           |
 | `video-processing` | resize-worker | video-processing-worker (Go) | `{media_item_id, family_id, original_storage_key, file_name, mime_type}` |
 
@@ -221,11 +228,11 @@ proc = subprocess.run([FACE_RECOGNITION_WORKER], input=payload.encode(), capture
 ### resize-worker 실패
 
 ```
-MinIO Webhook → resize-worker
+SQS resize → resize-worker
     ↓ 실패
 media_items.status = '04' (failed)
-    ↓
-수동 재처리 또는 Webhook 재전송
+DeleteMessage 하지 않음 → visibility timeout 후 자동 재시도
+일정 횟수 실패 시 DLQ로 이동
 ```
 
 ### ai-batch 실패 (개별 job)
@@ -268,9 +275,8 @@ signal.signal(signal.SIGINT, _handle_signal)
 ### resize-worker (Go + govips)
 
 ```
-런타임:  Go 1.24 + Echo + govips (libvips)
-포트:    1325 (HTTP 서버)
-트리거:  MinIO Webhook POST /resize (PutObject 이벤트, prefix=original/)
+런타임:  Go 1.24 + govips (libvips)
+실행:    SQS long-polling (WaitTimeSeconds=20, prefix=original/)
 처리:    이미지 → view(2048px) + thumbnail(512px) → SQS face-recognition
          동영상 → SQS video-processing
 DI:      SQSFaceRecognitionDispatcher, SQSVideoJobDispatcher
@@ -354,7 +360,7 @@ Response:
 | 단계                                    | 예상 시간       | 비고                                      |
 | --------------------------------------- | --------------- | ----------------------------------------- |
 | S3 업로드                               | 클라이언트 결정 | 파일 크기 / 네트워크                      |
-| MinIO Webhook → resize-worker           | < 1초           |                                           |
+| SQS resize → resize-worker 수신         | 수 초           | Long Polling (WaitTimeSeconds=20)         |
 | 이미지 리사이즈 처리                    | 1-10초          | 원본 파일 크기                            |
 | SQS → ai-batch 수신                     | 수 초           | Long Polling (WaitTimeSeconds=20)         |
 | ↳ _CloudWatch SQS 적체 감지_            | _1-3분_         | _평가 기간 1분 × 연속 1-3회_              |
@@ -369,7 +375,7 @@ Response:
 | 단계                                              | 예상 시간       | 비고                                     |
 | ------------------------------------------------- | --------------- | ---------------------------------------- |
 | S3 업로드                                         | 클라이언트 결정 | 파일 크기 / 네트워크                     |
-| MinIO Webhook → resize-worker                     | < 1초           |                                          |
+| SQS resize → resize-worker 수신                   | 수 초           | Long Polling (WaitTimeSeconds=20)        |
 | SQS video-processing → Worker 수신                | 수 초           | Long Polling (WaitTimeSeconds=20)        |
 | ↳ _CloudWatch SQS 적체 감지_                      | _1-3분_         | _평가 기간 1분 × 연속 1-3회_             |
 | ↳ _ECS video-processing-worker 스케일아웃 트리거_ | _수 초_         | _Application Auto Scaling 반응_          |

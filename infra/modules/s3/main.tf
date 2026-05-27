@@ -38,7 +38,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
         id = "archive-originals"
         status = "Enabled"
         filter {
-            prefix = "*/original/"
+            prefix = "original/"
         }
         transition {
             days = 90

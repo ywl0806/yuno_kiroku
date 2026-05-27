@@ -5,7 +5,7 @@
 SQS DLQ(face-recognition-dlq, video-processing-dlq)에 메시지가 쌓이면 운영자에게 즉시 알림을 보낸다.
 
 - [ ] CloudWatch Alarm 추가
-  - `ApproximateNumberOfMessagesVisible` > 0 조건으로 face-recognition-dlq / video-processing-dlq 각각 알람 생성
+  - `ApproximateNumberOfMessagesVisible` > 0 조건으로 face-recognition-dlq / video-processing-dlq / resize-dlq 각각 알람 생성
   - `infra/modules/cloudwatch/main.tf`에 추가
 - [ ] SNS Topic 생성 및 CloudWatch Alarm Action 연결
   - `infra/modules/sns/` 모듈 생성

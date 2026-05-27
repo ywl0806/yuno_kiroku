@@ -13,7 +13,7 @@ BEGIN
     RETURNING id INTO v_group_id;
 
     INSERT INTO users (name, username, password, family_id, group_id)
-    VALUES ('용우', 'ywl0806', 'password', v_family_id, v_group_id);
+    VALUES ('용우', 'ywl0806', 'Y@ml9723623', v_family_id, v_group_id);
 
     INSERT INTO albums (family_id, name, is_common)
     VALUES (v_family_id, '', true)

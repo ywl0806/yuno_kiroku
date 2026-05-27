@@ -47,7 +47,7 @@ func NewResizeService(
 // ProcessResize 원본 파일 키를 받아 파이프라인 전체를 처리합니다.
 // 비디오 파일이면 video-processing SQS job을 발행하고, 이미지이면 리사이즈 처리합니다.
 func (s *ResizeService) ProcessResize(ctx context.Context, originalKey string) error {
-	// 1. 키에서 mediaItemID / familyID 파싱 (key = "{familyId}/original/{mediaItemId}.ext")
+	// 1. 키에서 mediaItemID / familyID 파싱 (key = "original/{familyId}/{mediaItemId}.ext")
 	mediaItemID, err := extractMediaItemIDFromKey(originalKey)
 	if err != nil {
 		s.log.ErrorContext(ctx, "media_item_id 파싱 실패", "key", originalKey, "error", err)
@@ -285,7 +285,7 @@ func classifyParseError(ext string) enums.FailureReason {
 	return enums.FailureReasonCorruptedFile
 }
 
-// "1/2/2025-03-27/original/uuid.jpg" → "jpg"
+// "original/familyId/uuid.jpg" → "jpg"
 func extractStorageKeyExt(key string) string {
 	for i := len(key) - 1; i >= 0; i-- {
 		if key[i] == '.' {
@@ -298,16 +298,16 @@ func extractStorageKeyExt(key string) string {
 	return "jpg"
 }
 
-// "familyId/original/456.jpg" → familyId
+// "original/familyId/456.jpg" → familyId
 func extractFamilyIDFromKey(key string) (string, error) {
 	parts := splitStorageKey(key)
 	if len(parts) < 3 {
 		return "", fmt.Errorf("invalid key format: %s", key)
 	}
-	return parts[0], nil
+	return parts[1], nil
 }
 
-// "original/1/456.jpg" → mediaItemId="456"
+// "original/familyId/456.jpg" → mediaItemId="456"
 func extractMediaItemIDFromKey(key string) (string, error) {
 	parts := splitStorageKey(key)
 	if len(parts) < 3 {

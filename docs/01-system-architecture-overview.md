@@ -90,62 +90,7 @@ graph TD
 
 ## 3. Request Flow
 
-### 이미지 업로드 흐름
-
-```
-① POST /media-item/presigned-url
-   └─ API: media_items(status=01) + media_files(role=original) DB 생성
-   └─ API: Presigned PUT URL 발급
-② 클라이언트: PUT {presigned_url} → S3 직접 업로드
-   └─ S3: original/{familyId}/{mediaItemId}.{ext}
-③ S3 PutObject Event → resize lambda function (로컬: MinIO Webhook)
-   └─ media_items.status = '02' (processing)
-   └─ 원본 다운로드 → EXIF 파싱 (촬영일시·GPS)
-   └─ view(2048px) + thumbnail(512px) 리사이즈 → S3 업로드
-   └─ media_files 생성 (view, thumbnail)
-   └─ media_items.status = '03' (completed) ← 이 시점부터 사진 조회 가능
-   └─ SQS face-recognition 큐에 발행 {media_item_id, family_id, view_storage_key}
-④ ai-batch (Python) — SQS 폴링
-   └─ view 이미지 S3 다운로드 (임시 파일)
-   └─ InsightFace(buffalo_s) 얼굴 감지 → 512차원 ArcFace 임베딩
-   └─ subprocess: face-recognition-worker (Go CLI)
-      stdin: {media_item_id, family_id, view_image_path, faces}
-⑤ face-recognition-worker (Go CLI)
-   └─ for each face:
-      └─ advisory lock (family 단위)
-      └─ pgvector 코사인 유사도 → identity 매칭/신규 생성 (임계값 0.5)
-      └─ face_detections INSERT (위치 + 임베딩)
-      └─ view 이미지에서 얼굴 크롭(512×512) → S3 identities/ 저장
-      └─ identity_face_imgs INSERT
-```
-
-### 동영상 업로드 흐름
-
-```
-① ~ ② 이미지와 동일 (Presigned URL → S3 업로드)
-③ S3 PutObject Event → resize lambda function (로컬: MinIO Webhook)
-   └─ 동영상 확장자 감지 (mp4, mov, avi, mkv, webm, m4v)
-   └─ media_items.status = '02' (processing)
-   └─ SQS video-processing 큐에 발행 {media_item_id, family_id, original_storage_key, ...}
-④ video-processing-worker (Go) — SQS 폴링
-   └─ 원본 동영상 S3 다운로드
-   └─ ffmpeg 리사이즈 (최대 1280px, H.264 CRF23, faststart)
-   └─ ffmpeg 썸네일 추출 (1초 지점, WebP)
-   └─ thumbnail + video S3 업로드
-   └─ media_files 생성 (thumbnail + video)
-   └─ media_items.status = '03' (completed)
-```
-
-### 업로드 상태 천이
-
-```
-01 (pending)
-    ↓  [resize-worker: 처리 시작]
-02 (processing)
-    ↓  [resize-worker: 이미지 완료 / video-worker: 동영상 완료]
-03 (completed)   ← 정상 완료, 미디어 조회 가능
-04 (failed)      ← 처리 실패
-```
+> 업로드 시퀀스 및 상태 전이 상세: [02-upload-pipeline.md](02-upload-pipeline.md)
 
 ### 조회 흐름
 
@@ -159,34 +104,11 @@ GET /media-item/search?identity_ids=[1,2]
     └─ 페이지네이션: cursor 기반
 ```
 
----
-
-## 4. AI 처리 아키텍처 — Python + Go 하이브리드
-
-Python과 Go의 역할을 명확히 분리한다.
-
-```
-[ ai-batch (Python) ]          [ face-recognition-worker (Go CLI) ]
-  ML 추론만 담당                  DB/스토리지 처리 담당
-  ─────────────────              ────────────────────────────────
-  InsightFace 모델 로딩           pgvector 코사인 유사도 검색
-  얼굴 감지 (bbox)                identity 매칭 / 신규 생성
-  512차원 임베딩 계산             face_detections INSERT
-  임시 파일로 저장                얼굴 크롭 (512×512)
-         │                       S3 업로드 (identities/)
-         │ subprocess stdin JSON  identity_face_imgs INSERT
-         └─────────────────────▶
-```
-
-이 분리의 장점:
-
-- Python은 무거운 ML 라이브러리(InsightFace, OpenCV)에 집중
-- Go는 타입 안전한 DB 처리, pgvector, 스토리지 작업 담당
-- 각 컴포넌트를 독립적으로 배포·교체 가능
+> AI 처리 상세 (Python+Go 하이브리드, subprocess 인터페이스): [02-upload-pipeline.md §7](02-upload-pipeline.md)
 
 ---
 
-## 5. Multi-Tenancy Strategy
+## 4. Multi-Tenancy Strategy
 
 ### family_id 기반 설계
 

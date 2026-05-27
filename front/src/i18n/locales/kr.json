@@ -106,7 +106,9 @@
     "noResults": "검색 결과가 없습니다",
     "selectFilter": "필터를 선택하면 사진이 표시됩니다",
     "loadMore": "더 보기",
-    "loading": "불러오는 중..."
+    "loading": "불러오는 중...",
+    "collapseFilter": "필터 접기",
+    "expandFilter": "필터 펼치기"
   },
   "recent": {
     "title": "최근 업로드",

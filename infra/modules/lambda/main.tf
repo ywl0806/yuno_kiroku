@@ -76,7 +76,7 @@ resource "aws_s3_bucket_notification" "media_put" {
   queue {
     queue_arn     = var.resize_queue_arn
     events        = ["s3:ObjectCreated:Put"]
-    filter_prefix = "*/original/"
+    filter_prefix = "original/"
   }
 }
 
