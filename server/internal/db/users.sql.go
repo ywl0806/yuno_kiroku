@@ -23,7 +23,7 @@ type CreateUserParams struct {
 	Name     sql.NullString
 	Username string
 	Password string
-	FamilyID int32
+	FamilyID string
 	GroupID  int32
 }
 
@@ -67,7 +67,7 @@ type CreateUserOAuthParams struct {
 	Name              sql.NullString
 	Username          string
 	Password          string
-	FamilyID          int32
+	FamilyID          string
 	GroupID           int32
 	Provider          sql.NullString
 	ProviderUserID    sql.NullString
@@ -117,7 +117,7 @@ ORDER BY
     id
 `
 
-func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]User, error) {
+func (q *Queries) FindMembersByFamilyID(ctx context.Context, familyID string) ([]User, error) {
 	rows, err := q.db.QueryContext(ctx, findMembersByFamilyID, familyID)
 	if err != nil {
 		return nil, err
@@ -161,16 +161,46 @@ FROM
     users
 WHERE
     id = $1
+`
+
+func (q *Queries) FindUserByID(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Username,
+		&i.FamilyTitle,
+		&i.CustomFamilyTitle,
+		&i.Password,
+		&i.FamilyID,
+		&i.GroupID,
+		&i.IdentityID,
+		&i.Provider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const findUserByIDAndFamilyID = `-- name: FindUserByIDAndFamilyID :one
+SELECT
+    id, name, username, family_title, custom_family_title, password, family_id, group_id, identity_id, provider, provider_user_id, created_at, updated_at
+FROM
+    users
+WHERE
+    id = $1
     AND family_id = $2
 `
 
-type FindUserByIDParams struct {
-	ID       int32
-	FamilyID int32
+type FindUserByIDAndFamilyIDParams struct {
+	ID       string
+	FamilyID string
 }
 
-func (q *Queries) FindUserByID(ctx context.Context, arg FindUserByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, findUserByID, arg.ID, arg.FamilyID)
+func (q *Queries) FindUserByIDAndFamilyID(ctx context.Context, arg FindUserByIDAndFamilyIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserByIDAndFamilyID, arg.ID, arg.FamilyID)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -268,10 +298,10 @@ FROM
 `
 
 type FindUsersRow struct {
-	ID       int32
+	ID       string
 	Name     sql.NullString
 	Username string
-	FamilyID int32
+	FamilyID string
 	GroupID  int32
 }
 
@@ -322,8 +352,8 @@ type UpdateMemberParams struct {
 	GroupID           int32
 	FamilyTitle       sql.NullString
 	CustomFamilyTitle sql.NullString
-	ID                int32
-	FamilyID          int32
+	ID                string
+	FamilyID          string
 }
 
 func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (User, error) {
@@ -366,7 +396,7 @@ RETURNING
 
 type UpdateUserNameParams struct {
 	Name sql.NullString
-	ID   int32
+	ID   string
 }
 
 func (q *Queries) UpdateUserName(ctx context.Context, arg UpdateUserNameParams) (User, error) {

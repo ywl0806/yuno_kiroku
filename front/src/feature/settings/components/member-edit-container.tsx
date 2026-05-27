@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 interface Props {
-    memberId: number
+    memberId: string
     member: Member
     groups: Group[]
 }
@@ -105,7 +105,7 @@ export const MemberEditContainer = ({ memberId, member, groups }: Props) => {
                         <div className="px-4 py-4 space-y-1.5">
                             <Label>{t('settings.member.groupLabel')}</Label>
                             <RadioList
-                                options={groups?.map((group) => ({ value: group.id, label: group.name })) ?? []}
+                                options={groups?.map((group) => ({ value: group.id, label: group.is_admin ? t('settings.group.adminName') : group.name })) ?? []}
                                 value={selectedGroupId}
                                 onChange={(val) => setSelectedGroupId(val as number)}
                                 disabled={isUpdating}

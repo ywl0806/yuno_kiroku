@@ -64,7 +64,7 @@ const DefaultLayoutInner = () => {
 
   return (
     <div className="flex h-dvh flex-col">
-      <div className="flex-1 overflow-y-hidden pb-[calc(4rem+env(safe-area-inset-bottom))]">
+      <div className="flex-1 overflow-y-hidden">
         <Outlet />
       </div>
 

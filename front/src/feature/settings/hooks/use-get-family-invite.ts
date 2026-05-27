@@ -6,7 +6,7 @@ type FamilyInviteResponse = {
   inviteUrl: string
 }
 
-export const useGetFamilyInvite = (familyId: number) => {
+export const useGetFamilyInvite = (familyId: string) => {
   return useQuery({
     queryKey: ['family', familyId, 'invite'],
     queryFn: async () => {
@@ -15,5 +15,6 @@ export const useGetFamilyInvite = (familyId: number) => {
       )
       return response.data
     },
+    enabled: !!familyId,
   })
 }

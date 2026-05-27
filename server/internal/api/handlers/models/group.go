@@ -8,7 +8,7 @@ import (
 
 type GroupResponse struct {
 	ID        int32     `json:"id"`
-	FamilyID  int32     `json:"family_id"`
+	FamilyID  string    `json:"family_id"`
 	IsAdmin   bool      `json:"is_admin"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`

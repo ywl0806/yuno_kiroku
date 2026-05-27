@@ -11,25 +11,27 @@ import (
 
 const createAlbum = `-- name: CreateAlbum :one
 INSERT INTO
-    albums (family_id, name)
+    albums (family_id, name, is_common)
 VALUES
-    ($1, $2)
+    ($1, $2, $3)
 RETURNING
-    id, family_id, name, created_at, updated_at
+    id, family_id, name, is_common, created_at, updated_at
 `
 
 type CreateAlbumParams struct {
-	FamilyID int32
+	FamilyID string
 	Name     string
+	IsCommon bool
 }
 
 func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) (Album, error) {
-	row := q.db.QueryRowContext(ctx, createAlbum, arg.FamilyID, arg.Name)
+	row := q.db.QueryRowContext(ctx, createAlbum, arg.FamilyID, arg.Name, arg.IsCommon)
 	var i Album
 	err := row.Scan(
 		&i.ID,
 		&i.FamilyID,
 		&i.Name,
+		&i.IsCommon,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -42,27 +44,34 @@ WHERE
     id = $1
 `
 
-func (q *Queries) DeleteAlbum(ctx context.Context, id int32) error {
+func (q *Queries) DeleteAlbum(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deleteAlbum, id)
 	return err
 }
 
-const findAlbumByID = `-- name: FindAlbumByID :one
+const findAlbumByIDAndFamilyID = `-- name: FindAlbumByIDAndFamilyID :one
 SELECT
-    id, family_id, name, created_at, updated_at
+    id, family_id, name, is_common, created_at, updated_at
 FROM
     albums
 WHERE
     id = $1
+    AND family_id = $2
 `
 
-func (q *Queries) FindAlbumByID(ctx context.Context, id int32) (Album, error) {
-	row := q.db.QueryRowContext(ctx, findAlbumByID, id)
+type FindAlbumByIDAndFamilyIDParams struct {
+	ID       string
+	FamilyID string
+}
+
+func (q *Queries) FindAlbumByIDAndFamilyID(ctx context.Context, arg FindAlbumByIDAndFamilyIDParams) (Album, error) {
+	row := q.db.QueryRowContext(ctx, findAlbumByIDAndFamilyID, arg.ID, arg.FamilyID)
 	var i Album
 	err := row.Scan(
 		&i.ID,
 		&i.FamilyID,
 		&i.Name,
+		&i.IsCommon,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -71,7 +80,7 @@ func (q *Queries) FindAlbumByID(ctx context.Context, id int32) (Album, error) {
 
 const findAlbumsByFamilyID = `-- name: FindAlbumsByFamilyID :many
 SELECT
-    id, family_id, name, created_at, updated_at
+    id, family_id, name, is_common, created_at, updated_at
 FROM
     albums
 WHERE
@@ -80,7 +89,7 @@ ORDER BY
     id
 `
 
-func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID int32) ([]Album, error) {
+func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID string) ([]Album, error) {
 	rows, err := q.db.QueryContext(ctx, findAlbumsByFamilyID, familyID)
 	if err != nil {
 		return nil, err
@@ -93,6 +102,7 @@ func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID int32) ([]A
 			&i.ID,
 			&i.FamilyID,
 			&i.Name,
+			&i.IsCommon,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -111,19 +121,29 @@ func (q *Queries) FindAlbumsByFamilyID(ctx context.Context, familyID int32) ([]A
 
 const findAlbumsForWrite = `-- name: FindAlbumsForWrite :many
 SELECT
-    a.id, a.family_id, a.name, a.created_at, a.updated_at
+    a.id, a.family_id, a.name, a.is_common, a.created_at, a.updated_at
 FROM
     albums as a
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
     INNER JOIN groups as g on agp.group_id = g.id
 WHERE
-    a.family_id = $1::int
+    a.family_id = $1::uuid
     AND g.id = $2::int
     AND agp.permission = 'W'
+UNION
+SELECT
+    a.id, a.family_id, a.name, a.is_common, a.created_at, a.updated_at
+FROM
+    albums as a
+WHERE
+    a.family_id = $1::uuid
+    AND a.is_common = TRUE
+ORDER BY
+    id
 `
 
 type FindAlbumsForWriteParams struct {
-	FamilyID int32
+	FamilyID string
 	GroupID  int32
 }
 
@@ -140,6 +160,7 @@ func (q *Queries) FindAlbumsForWrite(ctx context.Context, arg FindAlbumsForWrite
 			&i.ID,
 			&i.FamilyID,
 			&i.Name,
+			&i.IsCommon,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -159,25 +180,39 @@ func (q *Queries) FindAlbumsForWrite(ctx context.Context, arg FindAlbumsForWrite
 const getAlbumsOptions = `-- name: GetAlbumsOptions :many
 SELECT
     a.id,
-    a.name
+    a.name,
+    a.is_common
 FROM
     albums as a
     INNER JOIN album_groups_permissions as agp on a.id = agp.album_id
     INNER JOIN groups as g on agp.group_id = g.id
 WHERE
-    a.family_id = $1::int
+    a.family_id = $1::uuid
     AND g.id = $2::int
     AND agp.permission = 'R'
+UNION
+SELECT
+    a.id,
+    a.name,
+    a.is_common
+FROM
+    albums as a
+WHERE
+    a.family_id = $1::uuid
+    AND a.is_common = TRUE
+ORDER BY
+    id
 `
 
 type GetAlbumsOptionsParams struct {
-	FamilyID int32
+	FamilyID string
 	GroupID  int32
 }
 
 type GetAlbumsOptionsRow struct {
-	ID   int32
-	Name string
+	ID       string
+	Name     string
+	IsCommon bool
 }
 
 func (q *Queries) GetAlbumsOptions(ctx context.Context, arg GetAlbumsOptionsParams) ([]GetAlbumsOptionsRow, error) {
@@ -189,7 +224,7 @@ func (q *Queries) GetAlbumsOptions(ctx context.Context, arg GetAlbumsOptionsPara
 	var items []GetAlbumsOptionsRow
 	for rows.Next() {
 		var i GetAlbumsOptionsRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.IsCommon); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -211,12 +246,12 @@ SET
 WHERE
     id = $2
 RETURNING
-    id, family_id, name, created_at, updated_at
+    id, family_id, name, is_common, created_at, updated_at
 `
 
 type UpdateAlbumParams struct {
 	Name string
-	ID   int32
+	ID   string
 }
 
 func (q *Queries) UpdateAlbum(ctx context.Context, arg UpdateAlbumParams) (Album, error) {
@@ -226,6 +261,7 @@ func (q *Queries) UpdateAlbum(ctx context.Context, arg UpdateAlbumParams) (Album
 		&i.ID,
 		&i.FamilyID,
 		&i.Name,
+		&i.IsCommon,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

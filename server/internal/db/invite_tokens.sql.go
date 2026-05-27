@@ -22,9 +22,9 @@ RETURNING
 
 type CreateInviteTokenParams struct {
 	Token             string
-	FamilyID          int32
+	FamilyID          string
 	GroupID           int32
-	CreatedByUserID   int32
+	CreatedByUserID   string
 	ExpiresAt         time.Time
 	FamilyTitle       sql.NullString
 	CustomFamilyTitle sql.NullString

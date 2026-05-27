@@ -20,6 +20,7 @@ export const SettingsFamilyEditPage = () => {
   const { mutate: deleteGroup, isPending: isDeleting } = useDeleteGroup()
 
   const group = settingsData?.groups.find((g) => g.id === groupId)
+  const isAdmin = group?.is_admin ?? false
   const [name, setName] = useState('')
 
   useEffect(() => {
@@ -39,39 +40,50 @@ export const SettingsFamilyEditPage = () => {
   return (
     <SettingsSubPageLayout title={t('settings.group.editTitle')}>
       <div className="px-4 pt-3 space-y-3">
+        {isAdmin && (
+          <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {t('settings.group.adminNotEditable')}
+          </p>
+        )}
+
         <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.04]">
           <div className="px-4 py-4 space-y-1.5">
             <Label htmlFor="group-name">{t('settings.group.nameLabel')}</Label>
             <Input
               id="group-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={isAdmin ? t('settings.group.adminName') : name}
+              onChange={(e) => !isAdmin && setName(e.target.value)}
               placeholder={t('settings.group.namePlaceholder')}
               className="border-stone-200 focus-visible:ring-stone-400"
+              disabled={isAdmin}
             />
           </div>
         </div>
 
-        <Button
-          className="w-full h-11 rounded-xl bg-stone-900 hover:bg-stone-800 font-medium mt-2"
-          disabled={isUpdating || !name.trim()}
-          onClick={handleSave}
-        >
-          {t('common.save')}
-        </Button>
+        {!isAdmin && (
+          <Button
+            className="w-full h-11 rounded-xl bg-stone-900 hover:bg-stone-800 font-medium mt-2"
+            disabled={isUpdating || !name.trim()}
+            onClick={handleSave}
+          >
+            {t('common.save')}
+          </Button>
+        )}
       </div>
 
-      <div className="px-4 pt-10">
-        <div className="border-t border-stone-200 pt-4">
-          <button
-            className="w-full py-2.5 text-sm text-red-500 transition-colors hover:text-red-600 disabled:opacity-40"
-            disabled={isDeleting}
-            onClick={handleDelete}
-          >
-            {t('common.delete')}
-          </button>
+      {!isAdmin && (
+        <div className="px-4 pt-10">
+          <div className="border-t border-stone-200 pt-4">
+            <button
+              className="w-full py-2.5 text-sm text-red-500 transition-colors hover:text-red-600 disabled:opacity-40"
+              disabled={isDeleting}
+              onClick={handleDelete}
+            >
+              {t('common.delete')}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </SettingsSubPageLayout>
   )
 }

@@ -11,10 +11,11 @@ type JWTClaims interface {
 }
 
 type AccessTokenClaims struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	FamilyId  string `json:"family_id"`
-	GroupId   string `json:"group_id"`
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	FamilyId string `json:"family_id"`
+	GroupId  string `json:"group_id"`
+	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 

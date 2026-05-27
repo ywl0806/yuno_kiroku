@@ -4,7 +4,7 @@ import { Member } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 type UpdateFamilyTitleParams = {
-  id: number
+  id: string
   groupId: number
   familyTitle: string
   customFamilyTitle: string

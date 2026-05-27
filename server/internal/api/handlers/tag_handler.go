@@ -85,15 +85,12 @@ func (h *TagHandler) DeleteTag(c echo.Context) error {
 
 // @Tags Tag
 // @Description 미디어 아이템에 태그 추가
-// @Param id path int true "MediaItem ID"
+// @Param id path string true "MediaItem ID"
 // @Param body body AddTagToMediaItemRequest true "태그 ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/{id}/tag [post]
 func (h *TagHandler) AddTagToMediaItem(c echo.Context) error {
-	mediaItemID, err := utils.ConvertToInt32(c.Param("id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
-	}
+	mediaItemID := c.Param("id")
 	req := new(AddTagToMediaItemRequest)
 	if err := c.Bind(req); err != nil {
 		return err
@@ -113,15 +110,12 @@ func (h *TagHandler) AddTagToMediaItem(c echo.Context) error {
 
 // @Tags Tag
 // @Description 미디어 아이템에서 태그 제거
-// @Param id path int true "MediaItem ID"
+// @Param id path string true "MediaItem ID"
 // @Param tagId path int true "Tag ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/{id}/tag/{tagId} [delete]
 func (h *TagHandler) RemoveTagFromMediaItem(c echo.Context) error {
-	mediaItemID, err := utils.ConvertToInt32(c.Param("id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
-	}
+	mediaItemID := c.Param("id")
 	tagID, err := utils.ConvertToInt32(c.Param("tagId"))
 	if err != nil {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "tagId"})
@@ -136,14 +130,11 @@ func (h *TagHandler) RemoveTagFromMediaItem(c echo.Context) error {
 
 // @Tags Tag
 // @Description 미디어 아이템의 태그 목록 조회
-// @Param id path int true "MediaItem ID"
+// @Param id path string true "MediaItem ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/{id}/tag [get]
 func (h *TagHandler) GetTagsForMediaItem(c echo.Context) error {
-	mediaItemID, err := utils.ConvertToInt32(c.Param("id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
-	}
+	mediaItemID := c.Param("id")
 	ctx := c.Request().Context()
 
 	tags, err := h.tagService.GetTagsForMediaItem(ctx, mediaItemID)

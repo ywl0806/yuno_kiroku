@@ -43,7 +43,7 @@ export const PhotoSwiper: FC<Props> = ({ date, range, onScroll }) => {
       {range.map((ran) => {
         return (
           <SwiperSlide key={`${ran.year}-${ran.month}`}>
-            <PhotoGridContainer year={ran.year} month={ran.month} date={date} onScroll={onScroll} />
+            <PhotoGridContainer year={ran.year} month={ran.month} isActive={date === `${ran.year}-${ran.month}`} onScroll={onScroll} />
           </SwiperSlide>
         )
       })}

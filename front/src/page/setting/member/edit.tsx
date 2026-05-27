@@ -8,13 +8,13 @@ export const SettingsMemberEditPage = () => {
 
   const { memberId } = useParams<{ memberId: string }>()
 
-  const { data: member } = useGetMember(Number(memberId))
+  const { data: member } = useGetMember(memberId ?? '')
   const { data: groups } = useGetGroups()
 
   return (
     <>
       {member && groups && (
-        <MemberEditContainer memberId={Number(memberId)} member={member} groups={groups} />
+        <MemberEditContainer memberId={memberId ?? ''} member={member} groups={groups} />
       )}
     </>
   )

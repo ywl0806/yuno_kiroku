@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
@@ -16,6 +17,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/i18n"
+	"github.com/ywl0806/yuno_kiroku/internal/logger"
 	"github.com/ywl0806/yuno_kiroku/internal/oauth"
 	"github.com/ywl0806/yuno_kiroku/internal/providers"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
@@ -25,13 +27,16 @@ import (
 
 // Initialize the root router on the app
 func Init(e *echo.Echo) {
+	logger.Init(viper.GetString("APP_ENV"), "yuno-api")
+
 	// i18n 초기화
 	i18n.Init()
 
 	// DB 초기화
 	sqlDB, dbTx, err := db.Init(viper.GetString("APP_ENV") == "dev" || viper.GetString("APP_ENV") == "local")
 	if err != nil {
-		log.Fatalf("Failed to initialize DB: %v", err)
+		slog.Error("failed to initialize DB", "error", err)
+		os.Exit(1)
 	}
 
 	// queries 초기화
@@ -45,7 +50,7 @@ func Init(e *echo.Echo) {
 	storageService := storageProvider.StorageService()
 
 	// service (store 계층을 통해 데이터 접근)
-	userService := services.NewUserService(st.User, st.Family, st.Group)
+	userService := services.NewUserService(st.User, st.Family, st.Group, st.AlbumGroupPermission)
 	inviteService := services.NewInviteService(st.InviteToken, st.Family, st.Group)
 	authService := services.NewAuthService(
 		userService,
@@ -62,8 +67,7 @@ func Init(e *echo.Echo) {
 			RedirectURI:  viper.GetString("API_URL") + "/api/auth/kakao/callback",
 		},
 	)
-	imageUploader := services.NewImageUploader(storageService)
-	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader)
+	mediaItemService := services.NewMediaItemService(st.MediaItem, st.AlbumGroupPermission, storageService)
 	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
 	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission, st)
 	groupService := services.NewGroupService(st.Family, st.Group)
@@ -107,7 +111,7 @@ func Init(e *echo.Echo) {
 	e.Validator = validator.NewCustomValidator()
 
 	// 미들웨어 등록 (등록 순서대로 요청 시 실행됨 - RequestID가 먼저 와야 Logger에서 request_id 사용 가능)
-	// 1. RequestID - 요청 ID 설정 (Logger보다 먼저 등록해야 Format에서 ${request_id} 출력됨)
+	// RequestID - 요청 ID 설정 (Logger보다 먼저 등록해야 Format에서 ${request_id} 출력됨)
 	e.Use(middleware.RequestIDWithConfig(middleware.RequestIDConfig{
 		Skipper: func(c echo.Context) bool {
 			return c.Path() == "/api/health"
@@ -118,15 +122,13 @@ func Init(e *echo.Echo) {
 			c.SetRequest(req.WithContext(ctx))
 		},
 	}))
-	// 2. Recover - 패닉 복구
+	// Recover - 패닉 복구
 	e.Use(middleware.Recover())
-	// 3. Logger - 로깅
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${time_rfc3339} ${method} uri=${uri},\n status=${status},\n latency=${latency_human}\n request_id=${id} \n\n",
-	}))
-	// 4. Locale - Accept-Language 기반 로케일 설정 (i18n)
+	// Logger - slog 기반 구조화 로깅
+	e.Use(middlewares.RequestLogger())
+	// Locale - Accept-Language 기반 로케일 설정 (i18n)
 	e.Use(middlewares.LocaleMiddleware())
-	// 5. ErrorHandler - 에러 처리
+	// ErrorHandler - 에러 처리
 	errorHandler := middlewares.NewErrorHandler()
 	e.Use(errorHandler.Handler)
 	// init routers

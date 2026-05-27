@@ -9,7 +9,7 @@ import (
 // GroupStore 그룹(가족 내 쪽) 데이터 접근 인터페이스
 type GroupStore interface {
 	FindGroupByID(ctx context.Context, id int32) (db.FindGroupByIDRow, error)
-	FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]db.Group, error)
+	FindGroupsByFamilyID(ctx context.Context, familyID string) ([]db.Group, error)
 	CreateGroup(ctx context.Context, arg db.CreateGroupParams) (db.Group, error)
 	UpdateGroup(ctx context.Context, arg db.UpdateGroupParams) (db.Group, error)
 	DeleteGroup(ctx context.Context, id int32) error
@@ -29,7 +29,7 @@ func (s *groupStore) FindGroupByID(ctx context.Context, id int32) (db.FindGroupB
 	return wrapErr(row, err, "field.group")
 }
 
-func (s *groupStore) FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]db.Group, error) {
+func (s *groupStore) FindGroupsByFamilyID(ctx context.Context, familyID string) ([]db.Group, error) {
 	return wrapErr(s.queries.FindGroupsByFamilyID(ctx, familyID))
 }
 

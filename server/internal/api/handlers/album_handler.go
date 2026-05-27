@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"strconv"
-
 	"github.com/labstack/echo/v4"
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
@@ -93,11 +91,11 @@ func (con *AlbumHandler) CreateAlbum(c echo.Context) error {
 	for i, p := range req.Permissions {
 		perms[i] = services.GroupPermission{GroupID: p.GroupID, Permission: p.Permission}
 	}
-	album, err := con.albumService.CreateAlbum(c.Request().Context(), authUser.FamilyId, req.Name, perms)
+	album, err := con.albumService.CreateAlbum(c.Request().Context(), authUser.FamilyId, req.Name, req.IsCommon, perms)
 	if err != nil {
 		return err
 	}
-	_, albumPerms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
+	albumPerms, err := con.albumService.GetAlbumPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
 	if err != nil {
 		return err
 	}
@@ -108,15 +106,12 @@ func (con *AlbumHandler) CreateAlbum(c echo.Context) error {
 // @Description Get album with permissions
 // @Router /album/:id [get]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
-// @Param id path int true "Album ID"
+// @Param id path string true "Album ID"
 // @Success 200 {object} models.AlbumWithPermissionsResponse
 func (con *AlbumHandler) GetAlbum(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return echo.NewHTTPError(400, "invalid album id")
-	}
-	album, perms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), int32(id), authUser.FamilyId)
+	id := c.Param("id")
+	album, perms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), id, authUser.FamilyId)
 	if err != nil {
 		return err
 	}
@@ -127,15 +122,12 @@ func (con *AlbumHandler) GetAlbum(c echo.Context) error {
 // @Description Update an album
 // @Router /album/:id [put]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
-// @Param id path int true "Album ID"
+// @Param id path string true "Album ID"
 // @Param body body models.UpdateAlbumRequest true "Update Album Request"
 // @Success 200 {object} models.AlbumWithPermissionsResponse
 func (con *AlbumHandler) UpdateAlbum(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return echo.NewHTTPError(400, "invalid album id")
-	}
+	id := c.Param("id")
 	req := new(models.UpdateAlbumRequest)
 	if err := c.Bind(req); err != nil {
 		return err
@@ -147,11 +139,11 @@ func (con *AlbumHandler) UpdateAlbum(c echo.Context) error {
 	for i, p := range req.Permissions {
 		perms[i] = services.GroupPermission{GroupID: p.GroupID, Permission: p.Permission}
 	}
-	album, err := con.albumService.UpdateAlbum(c.Request().Context(), int32(id), authUser.FamilyId, req.Name, perms)
+	album, err := con.albumService.UpdateAlbum(c.Request().Context(), id, authUser.FamilyId, req.Name, perms)
 	if err != nil {
 		return err
 	}
-	_, albumPerms, err := con.albumService.GetAlbumWithPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
+	albumPerms, err := con.albumService.GetAlbumPermissions(c.Request().Context(), album.ID, authUser.FamilyId)
 	if err != nil {
 		return err
 	}
@@ -162,15 +154,12 @@ func (con *AlbumHandler) UpdateAlbum(c echo.Context) error {
 // @Description Delete an album
 // @Router /album/:id [delete]
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
-// @Param id path int true "Album ID"
+// @Param id path string true "Album ID"
 // @Success 204
 func (con *AlbumHandler) DeleteAlbum(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return echo.NewHTTPError(400, "invalid album id")
-	}
-	if err := con.albumService.DeleteAlbum(c.Request().Context(), int32(id), authUser.FamilyId); err != nil {
+	id := c.Param("id")
+	if err := con.albumService.DeleteAlbum(c.Request().Context(), id, authUser.FamilyId); err != nil {
 		return err
 	}
 	return c.NoContent(204)

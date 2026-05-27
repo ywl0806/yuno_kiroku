@@ -3,10 +3,14 @@ import { LazyLoadImage } from 'react-lazy-load-image-component'
 import 'react-lazy-load-image-component/src/effects/blur.css'
 import PhotoAlbum, { Photo as AlbumPhoto, RenderPhoto } from 'react-photo-album'
 
+type Photo = AlbumPhoto & {
+  isVideo?: boolean
+}
+
 type Props = {
-  photos: AlbumPhoto[]
+  photos: Photo[]
   onClick?: (index: number) => void
-  renderPhoto?: RenderPhoto<AlbumPhoto>
+  renderPhoto?: RenderPhoto<Photo>
   columnCount?: number
 }
 const getColumnCount = (width: number) => {

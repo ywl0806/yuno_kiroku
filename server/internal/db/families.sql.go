@@ -11,64 +11,46 @@ import (
 
 const createFamily = `-- name: CreateFamily :one
 INSERT INTO
-    families (name)
-VALUES
-    ($1)
+    families
+DEFAULT VALUES
 RETURNING
-    id, name, created_at, updated_at
+    id, created_at, updated_at
 `
 
-func (q *Queries) CreateFamily(ctx context.Context, name string) (Family, error) {
-	row := q.db.QueryRowContext(ctx, createFamily, name)
+func (q *Queries) CreateFamily(ctx context.Context) (Family, error) {
+	row := q.db.QueryRowContext(ctx, createFamily)
 	var i Family
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
 	return i, err
 }
 
 const findFamilyByID = `-- name: FindFamilyByID :one
 SELECT
-    id,
-    name
+    id
 FROM
     families
 WHERE
     id = $1
 `
 
-type FindFamilyByIDRow struct {
-	ID   int32
-	Name string
-}
-
-func (q *Queries) FindFamilyByID(ctx context.Context, id int32) (FindFamilyByIDRow, error) {
+func (q *Queries) FindFamilyByID(ctx context.Context, id string) (string, error) {
 	row := q.db.QueryRowContext(ctx, findFamilyByID, id)
-	var i FindFamilyByIDRow
-	err := row.Scan(&i.ID, &i.Name)
-	return i, err
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getFamilyByID = `-- name: GetFamilyByID :one
 SELECT
-    id, name, created_at, updated_at
+    id, created_at, updated_at
 FROM
     families
 WHERE
     id = $1
 `
 
-func (q *Queries) GetFamilyByID(ctx context.Context, id int32) (Family, error) {
+func (q *Queries) GetFamilyByID(ctx context.Context, id string) (Family, error) {
 	row := q.db.QueryRowContext(ctx, getFamilyByID, id)
 	var i Family
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
 	return i, err
 }

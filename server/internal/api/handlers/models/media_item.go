@@ -11,13 +11,57 @@ import (
 
 // PresignedUploadRequest Presigned URL 발급 요청
 type PresignedUploadRequest struct {
+	AlbumID       string `json:"album_id" validate:"required"`
+	UploadBatchID int32  `json:"upload_batch_id" validate:"required"`
+	FileName      string `json:"file_name" validate:"required"`
+	ContentType   string `json:"content_type" validate:"required"`
+}
+
+// BatchPresignedUploadRequestItem 배치 Presigned URL 발급 요청 항목
+type BatchPresignedUploadRequestItem struct {
 	FileName    string `json:"file_name" validate:"required"`
 	ContentType string `json:"content_type" validate:"required"`
 }
 
+// BatchPresignedUploadRequest 배치 Presigned URL 발급 요청
+type BatchPresignedUploadRequest struct {
+	AlbumID       string                            `json:"album_id" validate:"required"`
+	UploadBatchID int32                             `json:"upload_batch_id" validate:"required"`
+	Files         []BatchPresignedUploadRequestItem `json:"files" validate:"required,min=1,dive"`
+}
+
+// BatchPresignedUploadSuccessItem 배치 Presigned URL 발급 성공 항목
+type BatchPresignedUploadSuccessItem struct {
+	MediaItemID   string `json:"media_item_id"`
+	PresignedURL  string `json:"presigned_url"`
+	StorageKey    string `json:"storage_key"`
+	ExpiresIn     int    `json:"expires_in"`
+	OriginalIndex int    `json:"index"`
+}
+
+// BatchPresignedUploadFailedItem 배치 Presigned URL 발급 실패 항목
+type BatchPresignedUploadFailedItem struct {
+	FileName string `json:"file_name"`
+	Index    int    `json:"index"`
+	Reason   string `json:"reason,omitempty"`
+}
+
+// BatchPresignedUploadResponse 배치 Presigned URL 발급 응답 (부분 실패 지원)
+type BatchPresignedUploadResponse struct {
+	Success []BatchPresignedUploadSuccessItem `json:"success"`
+	Failed  []BatchPresignedUploadFailedItem  `json:"failed"`
+}
+
+// VideoUploadCompleteRequest 비디오 업로드 완료 요청
+type VideoUploadCompleteRequest struct {
+	MediaItemID string `json:"media_item_id" validate:"required"`
+	FileName    string `json:"file_name" validate:"required"`
+	MimeType    string `json:"mime_type" validate:"required"`
+}
+
 // PresignedUploadResponse Presigned URL 발급 응답
 type PresignedUploadResponse struct {
-	MediaItemID  int32  `json:"media_item_id"`
+	MediaItemID  string `json:"media_item_id"`
 	PresignedURL string `json:"presigned_url"`
 	StorageKey   string `json:"storage_key"`
 	ExpiresIn    int    `json:"expires_in"`
@@ -26,37 +70,36 @@ type PresignedUploadResponse struct {
 // CreateUploadBatchResponse 업로드 배치 생성 응답
 type CreateUploadBatchResponse struct {
 	ID        int32     `json:"id"`
-	AlbumID   int32     `json:"album_id"`
+	AlbumID   string    `json:"album_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // UploadImageResponse 이미지 업로드 응답
 type UploadImageResponse struct {
-	MediaItemID int32  `json:"media_item_id"`
+	MediaItemID string `json:"media_item_id"`
 	Status      string `json:"status"`
 }
 
 type MediaFileResponse struct {
 	ID          int32  `json:"id"`
-	MediaItemID int32  `json:"media_item_id"`
+	MediaItemID string `json:"media_item_id"`
 	Role        string `json:"role"`
 	Url         string `json:"url"`
-	MimeType    string `json:"mime_type"`
 	Width       int32  `json:"width"`
 	Height      int32  `json:"height"`
 }
 
 type TagResponse struct {
-	ID       int32  `json:"id"`
-	FamilyID *int32 `json:"family_id"`
-	Name     string `json:"name"`
-	IsPreset bool   `json:"is_preset"`
+	ID       int32   `json:"id"`
+	FamilyID *string `json:"family_id"`
+	Name     string  `json:"name"`
+	IsPreset bool    `json:"is_preset"`
 }
 
 func NewTagResponse(tag db.Tag) TagResponse {
-	var familyID *int32
+	var familyID *string
 	if tag.FamilyID.Valid {
-		v := tag.FamilyID.Int32
+		v := tag.FamilyID.UUID.String()
 		familyID = &v
 	}
 	return TagResponse{
@@ -79,9 +122,9 @@ func NewTagResponses(tags []db.Tag) []TagResponse {
 }
 
 type MediaItemResponse struct {
-	ID              int32         `json:"id"`
-	FamilyID        int32         `json:"family_id"`
-	AlbumID         int32         `json:"album_id"`
+	ID              string        `json:"id"`
+	FamilyID        string        `json:"family_id"`
+	AlbumID         string        `json:"album_id"`
 	TakenAt         time.Time     `json:"taken_at"`
 	FileName        string        `json:"file_name"`
 	CreatedAt       time.Time     `json:"created_at"`
@@ -95,6 +138,8 @@ type MediaItemResponse struct {
 	ViewUrl         string        `json:"view_url"`
 	ViewWidth       int32         `json:"view_width"`
 	ViewHeight      int32         `json:"view_height"`
+	LiveUrl         string        `json:"live_url"`
+	VideoUrl        string        `json:"video_url"`
 	IsLiked         bool          `json:"is_liked"`
 	Tags            []TagResponse `json:"tags"`
 }
@@ -117,6 +162,7 @@ func NewMediaItemResponse(mediaItem *db.GetMediaItemsByTakenAtRow) *MediaItemRes
 		ViewUrl:         internalutils.ParseStoragePath(mediaItem.ViewStorageKey.String),
 		ViewWidth:       mediaItem.ViewWidth.Int32,
 		ViewHeight:      mediaItem.ViewHeight.Int32,
+		VideoUrl:        internalutils.ParseStoragePath(mediaItem.VideoStorageKey.String),
 		IsLiked:         mediaItem.IsLiked.Int32 > 0,
 		Tags:            []TagResponse{},
 	}
@@ -131,8 +177,9 @@ func NewMediaItemsResponse(mediaItems []db.GetMediaItemsByTakenAtRow) *[]MediaIt
 }
 
 type UploadBatchStatus struct {
-	ID           int32  `json:"id"`
-	UploadStatus string `json:"upload_status"`
+	ID            string `json:"id"`
+	UploadStatus  string `json:"upload_status"`
+	FailureReason string `json:"failure_reason,omitempty"`
 }
 type UploadBatchStatusResponse struct {
 	Statuses    []UploadBatchStatus `json:"statuses"`
@@ -147,8 +194,9 @@ func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *Upl
 			isCompleted = false
 		}
 		statuses[i] = UploadBatchStatus{
-			ID:           uploadStatus.ID,
-			UploadStatus: uploadStatus.UploadStatus,
+			ID:            uploadStatus.ID,
+			UploadStatus:  uploadStatus.UploadStatus,
+			FailureReason: uploadStatus.FailureReason.String,
 		}
 	}
 	return &UploadBatchStatusResponse{
@@ -158,7 +206,7 @@ func NewUploadBatchStatusResponse(uploadStatuses []db.GetUploadStatusesRow) *Upl
 }
 
 type BatchThumbnailResponse struct {
-	ID              int32  `json:"id"`
+	ID              string `json:"id"`
 	ThumbnailUrl    string `json:"thumbnail_url"`
 	ThumbnailWidth  int32  `json:"thumbnail_width"`
 	ThumbnailHeight int32  `json:"thumbnail_height"`
@@ -166,7 +214,7 @@ type BatchThumbnailResponse struct {
 
 type UploadBatchWithThumbnailsResponse struct {
 	ID         int32                    `json:"id"`
-	AlbumID    int32                    `json:"album_id"`
+	AlbumID    string                   `json:"album_id"`
 	UploadAt   time.Time                `json:"upload_at"`
 	Count      int64                    `json:"count"`
 	Thumbnails []BatchThumbnailResponse `json:"thumbnails"`
@@ -215,9 +263,14 @@ func NewUploadBatchItemResponse(item *db.GetMediaItemsByUploadBatchIdRow) *Media
 		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey.String),
 		ViewWidth:       item.ViewWidth.Int32,
 		ViewHeight:      item.ViewHeight.Int32,
+		VideoUrl:        internalutils.ParseStoragePath(item.VideoStorageKey.String),
 		IsLiked:         item.IsLiked.Int32 > 0,
 		Tags:            []TagResponse{},
 	}
+}
+
+type UpdateMediaItemAlbumRequest struct {
+	AlbumID string `json:"album_id" validate:"required"`
 }
 
 type GetMediaItemsRequest struct {
@@ -229,7 +282,7 @@ type SearchMediaItemsRequest struct {
 	From        *time.Time `query:"from"`
 	To          *time.Time `query:"to"`
 	IdentityIDs []int32    `query:"identity_ids"`
-	AlbumID     *int32     `query:"album_id"`
+	AlbumID     *string    `query:"album_id"`
 	Liked       bool       `query:"liked"`
 	TagIDs      []int32    `query:"tag_ids"`
 	Page        int        `query:"page"`
@@ -259,6 +312,7 @@ func NewSearchMediaItemResponse(item *db.SearchMediaItemsRow) *MediaItemResponse
 		ViewUrl:         internalutils.ParseStoragePath(item.ViewStorageKey.String),
 		ViewWidth:       item.ViewWidth.Int32,
 		ViewHeight:      item.ViewHeight.Int32,
+		VideoUrl:        internalutils.ParseStoragePath(item.VideoStorageKey.String),
 		IsLiked:         item.IsLiked.Int32 > 0,
 		Tags:            []TagResponse{},
 	}

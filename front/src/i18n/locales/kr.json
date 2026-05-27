@@ -28,6 +28,8 @@
     "password": "비밀번호",
     "loginWithLine": "LINE으로 로그인",
     "loginWithKakao": "카카오로 로그인",
+    "loginWithEmail": "이메일로 로그인",
+    "loginWithOther": "다른 방법으로 로그인",
     "loggingIn": "로그인 중...",
     "error": {
       "line_token": "LINE 로그인에 실패했습니다.",
@@ -50,6 +52,14 @@
     "uploadAnyway": "다시 업로드",
     "uploadFailed": "업로드 실패",
     "reUpload": "다시 업로드",
+    "fileTooLargeImage": "{{files}} 파일이 50MB를 초과하여 업로드할 수 없습니다",
+    "fileTooLargeVideo": "{{files}} 파일이 2GB를 초과하여 업로드할 수 없습니다",
+    "failureReason": {
+      "unsupported_format": "지원하지 않는 파일 형식입니다",
+      "corrupted_file": "손상된 파일입니다",
+      "file_too_large": "파일 크기 제한 초과 (이미지 50MB / 영상 2GB)",
+      "unknown": "업로드 실패"
+    },
     "progress": {
       "uploading": "사진 업로드 중...",
       "processing": "서버에서 처리 중...",
@@ -96,7 +106,9 @@
     "noResults": "검색 결과가 없습니다",
     "selectFilter": "필터를 선택하면 사진이 표시됩니다",
     "loadMore": "더 보기",
-    "loading": "불러오는 중..."
+    "loading": "불러오는 중...",
+    "collapseFilter": "필터 접기",
+    "expandFilter": "필터 펼치기"
   },
   "recent": {
     "title": "최근 업로드",
@@ -176,7 +188,10 @@
       "editTitle": "앨범 그룹 편집",
       "nameLabel": "그룹 이름",
       "namePlaceholder": "이름 입력",
-      "deleteConfirm": "정말 삭제하시겠습니까?"
+      "deleteConfirm": "정말 삭제하시겠습니까?",
+      "adminName": "관리자",
+      "adminBadge": "관리자",
+      "adminNotEditable": "관리자 그룹은 수정하거나 삭제할 수 없습니다."
     },
     "album": {
       "title": "앨범 목록",
@@ -188,7 +203,10 @@
       "permissionsLabel": "그룹 권한",
       "permRead": "읽기",
       "permWrite": "쓰기",
-      "deleteConfirm": "정말 삭제하시겠습니까?"
+      "deleteConfirm": "정말 삭제하시겠습니까?",
+      "commonName": "공통 앨범",
+      "commonBadge": "공통",
+      "commonNotEditable": "공통 앨범은 수정하거나 삭제할 수 없습니다."
     },
     "kid": {
       "title": "아이",

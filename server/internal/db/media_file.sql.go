@@ -16,34 +16,28 @@ INSERT INTO
         media_item_id,
         role,
         storage_key,
-        mime_type,
         width,
-        height,
-        file_size
+        height
     )
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5)
 RETURNING
     id,
     media_item_id,
     role,
     storage_key,
-    mime_type,
     width,
     height,
-    file_size,
     created_at,
     updated_at
 `
 
 type CreateMediaFileParams struct {
-	MediaItemID int32
+	MediaItemID string
 	Role        string
 	StorageKey  string
-	MimeType    sql.NullString
 	Width       sql.NullInt32
 	Height      sql.NullInt32
-	FileSize    sql.NullInt64
 }
 
 func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams) (MediaFile, error) {
@@ -51,10 +45,8 @@ func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams
 		arg.MediaItemID,
 		arg.Role,
 		arg.StorageKey,
-		arg.MimeType,
 		arg.Width,
 		arg.Height,
-		arg.FileSize,
 	)
 	var i MediaFile
 	err := row.Scan(
@@ -62,10 +54,81 @@ func (q *Queries) CreateMediaFile(ctx context.Context, arg CreateMediaFileParams
 		&i.MediaItemID,
 		&i.Role,
 		&i.StorageKey,
-		&i.MimeType,
 		&i.Width,
 		&i.Height,
-		&i.FileSize,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteMediaFileByItemAndRole = `-- name: DeleteMediaFileByItemAndRole :exec
+DELETE FROM media_files WHERE media_item_id = $1 AND role = $2
+`
+
+type DeleteMediaFileByItemAndRoleParams struct {
+	MediaItemID string
+	Role        string
+}
+
+// S2-05: S3 업로드 실패 시 DB 레코드 롤백용
+func (q *Queries) DeleteMediaFileByItemAndRole(ctx context.Context, arg DeleteMediaFileByItemAndRoleParams) error {
+	_, err := q.db.ExecContext(ctx, deleteMediaFileByItemAndRole, arg.MediaItemID, arg.Role)
+	return err
+}
+
+const upsertMediaFile = `-- name: UpsertMediaFile :one
+INSERT INTO
+    media_files (
+        media_item_id,
+        role,
+        storage_key,
+        width,
+        height
+    )
+VALUES
+    ($1, $2, $3, $4, $5)
+ON CONFLICT (media_item_id, role) DO UPDATE
+    SET storage_key = EXCLUDED.storage_key,
+        width       = EXCLUDED.width,
+        height      = EXCLUDED.height,
+        updated_at  = CURRENT_TIMESTAMP
+RETURNING
+    id,
+    media_item_id,
+    role,
+    storage_key,
+    width,
+    height,
+    created_at,
+    updated_at
+`
+
+type UpsertMediaFileParams struct {
+	MediaItemID string
+	Role        string
+	StorageKey  string
+	Width       sql.NullInt32
+	Height      sql.NullInt32
+}
+
+// S3-04: SQS 재시도 시 중복 INSERT 방지 (ON CONFLICT upsert)
+func (q *Queries) UpsertMediaFile(ctx context.Context, arg UpsertMediaFileParams) (MediaFile, error) {
+	row := q.db.QueryRowContext(ctx, upsertMediaFile,
+		arg.MediaItemID,
+		arg.Role,
+		arg.StorageKey,
+		arg.Width,
+		arg.Height,
+	)
+	var i MediaFile
+	err := row.Scan(
+		&i.ID,
+		&i.MediaItemID,
+		&i.Role,
+		&i.StorageKey,
+		&i.Width,
+		&i.Height,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

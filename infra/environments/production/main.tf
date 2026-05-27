@@ -63,6 +63,8 @@ module "iam" {
   aws_region = "ap-northeast-1"
   aws_account_id = data.aws_caller_identity.current.account_id
   face_recognition_queue_arn = module.sqs.queue_arn
+  video_queue_arn            = module.sqs.video_queue_arn
+  resize_queue_arn           = module.sqs.resize_queue_arn
 }
 
 # ── S3 ────────────────────────────────────────────────────────
@@ -105,7 +107,8 @@ module "lambda" {
   api_lambda_zip_bucket_arn = module.s3.lambda_zip_bucket_arn
   api_lambda_zip_bucket_name = module.s3.lambda_zip_bucket_name
   api_lambda_zip_bucket_key = aws_s3_object.api_lambda_zip.key
-  app_env_vars = local.shared_app_env
+  app_env_vars     = local.shared_app_env
+  resize_queue_arn = module.sqs.resize_queue_arn
 }
 
 
@@ -129,7 +132,8 @@ module "ecs" {
   ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
   vpc_id      = data.aws_vpc.default.id
   subnet_ids  = data.aws_subnets.public.ids
-  ai_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-ai"]}:${local.env}"
+  ai_image_uri    = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-ai"]}:${local.env}"
+  video_image_uri = "${data.terraform_remote_state.ecr.outputs.repository_urls["yuno-video-processing"]}:${local.env}"
   app_env_vars = local.shared_app_env
 }
 
@@ -144,6 +148,7 @@ module "api_gateway" {
   api_lambda_invoke_arn = module.lambda.api_lambda_function_invoke_arn
   api_domain          = "api.${var.domain_name}"
   acm_certificate_arn = data.terraform_remote_state.acm.outputs.api_gw_certificate_arn
+  app_url = local.shared_app_env["APP_URL"]
 }
 
 # ── Route53 DNS 레코드 ─────────────────────────────────────────
@@ -162,9 +167,10 @@ module "route53" {
 # ── SQS ────────────────────────────────────────────────────────
 
 module "sqs" {
-  source = "../../modules/sqs"
-  env = local.env
-  common_tags = local.common_tags
+  source           = "../../modules/sqs"
+  env              = local.env
+  common_tags      = local.common_tags
+  media_bucket_arn = module.s3.media_bucket_arn
 }
 
 
@@ -174,7 +180,10 @@ module "cloudwatch" {
   source = "../../modules/cloudwatch"
   env = local.env
   common_tags = local.common_tags
-  ai_task_scale_out_policy_arn = module.ecs.ai_task_scale_out_policy_arn
-  ai_task_scale_in_policy_arn = module.ecs.ai_task_scale_in_policy_arn
-  face_recognition_queue_name = module.sqs.queue_name
+  ai_task_scale_out_policy_arn    = module.ecs.ai_task_scale_out_policy_arn
+  ai_task_scale_in_policy_arn     = module.ecs.ai_task_scale_in_policy_arn
+  face_recognition_queue_name     = module.sqs.queue_name
+  video_queue_name                = module.sqs.video_queue_name
+  video_task_scale_out_policy_arn = module.ecs.video_task_scale_out_policy_arn
+  video_task_scale_in_policy_arn  = module.ecs.video_task_scale_in_policy_arn
 }

@@ -5,7 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -44,8 +45,8 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 			config.WithCredentialsProvider(creds),
 		)
 		if err != nil {
-			log.Fatalf("failed to load config: %v", err)
-			panic(err)
+			slog.Error("MinIO config 로드 실패", "error", err)
+			os.Exit(1)
 		}
 
 		client = s3.NewFromConfig(cfg, func(o *s3.Options) {
@@ -67,8 +68,8 @@ func NewS3StorageService(bucketName string) *S3StorageService {
 		// AWS S3를 위한 기본 설정
 		cfg, err := config.LoadDefaultConfig(context.Background())
 		if err != nil {
-			log.Fatalf("failed to load config: %v", err)
-			panic(err)
+			slog.Error("AWS S3 config 로드 실패", "error", err)
+			os.Exit(1)
 		}
 		if region := viper.GetString("AWS_REGION"); region != "" {
 			cfg.Region = region
@@ -110,17 +111,83 @@ func (s *S3StorageService) GeneratePresignedPutURL(ctx context.Context, key stri
 	return req.URL, nil
 }
 
-func (s *S3StorageService) SaveFile(ctx context.Context, file []byte, filePath string, fileName string) (string, error) {
-	fileKey := fmt.Sprintf("%s/%s", filePath, fileName)
+func (s *S3StorageService) DeleteFile(ctx context.Context, key string) error {
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("파일 삭제 실패: %w", err)
+	}
+	return nil
+}
 
+func (s *S3StorageService) SaveFile(ctx context.Context, key string, file []byte) (string, error) {
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fileKey),
+		Key:    aws.String(key),
 		Body:   bytes.NewReader(file),
 	})
-
 	if err != nil {
 		return "", err
 	}
-	return fileKey, nil
+	return key, nil
+}
+
+func (s *S3StorageService) DownloadToFile(ctx context.Context, key string, destPath string) error {
+	result, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("S3 GetObject 실패 (key=%s): %w", key, err)
+	}
+	defer result.Body.Close()
+
+	f, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("로컬 파일 생성 실패: %w", err)
+	}
+	defer f.Close()
+
+	if _, err = io.Copy(f, result.Body); err != nil {
+		return fmt.Errorf("스트리밍 다운로드 실패: %w", err)
+	}
+	return nil
+}
+
+func (s *S3StorageService) GetFileSize(ctx context.Context, key string) (int64, error) {
+	result, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("HeadObject 실패: %w", err)
+	}
+	if result.ContentLength == nil {
+		return 0, nil
+	}
+	return *result.ContentLength, nil
+}
+
+func (s *S3StorageService) UploadFromFile(ctx context.Context, key string, contentType string, srcPath string) error {
+	f, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("로컬 파일 열기 실패: %w", err)
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("파일 정보 읽기 실패: %w", err)
+	}
+
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(s.bucketName),
+		Key:           aws.String(key),
+		Body:          f,
+		ContentType:   aws.String(contentType),
+		ContentLength: aws.Int64(fi.Size()),
+	})
+	return err
 }

@@ -18,7 +18,7 @@ func NewKidService(kidStore store.KidStore) *KidService {
 	return &KidService{kidStore: kidStore}
 }
 
-func (s *KidService) GetKids(ctx context.Context, familyID int32) ([]db.Kid, error) {
+func (s *KidService) GetKids(ctx context.Context, familyID string) ([]db.Kid, error) {
 	return s.kidStore.FindKidsByFamilyID(ctx, familyID)
 }
 
@@ -26,7 +26,7 @@ func (s *KidService) GetKidByID(ctx context.Context, id int32) (db.Kid, error) {
 	return s.kidStore.GetKidByID(ctx, id)
 }
 
-func (s *KidService) CreateKid(ctx context.Context, familyID int32, name *string, birthDate *time.Time, identityID *int32) (db.Kid, error) {
+func (s *KidService) CreateKid(ctx context.Context, familyID string, name *string, birthDate *time.Time, identityID *int32) (db.Kid, error) {
 	params := db.CreateKidParams{FamilyID: familyID}
 	if name != nil {
 		params.Name = sql.NullString{String: *name, Valid: true}
@@ -62,12 +62,12 @@ type KidWithFaceImg struct {
 	KidID       int32
 	Name        string
 	FaceImgURL  string
-	MediaItemID int32
+	MediaItemID string
 	TakenAt     time.Time
 }
 
 // GetKidsWithFaceImg 월별 아이 얼굴 사진 조회
-func (s *KidService) GetKidsWithFaceImg(ctx context.Context, familyID int32, year int, month int) ([]db.GetKidsWithRandomFaceImgRow, error) {
+func (s *KidService) GetKidsWithFaceImg(ctx context.Context, familyID string, year int, month int) ([]db.GetKidsWithRandomFaceImgRow, error) {
 	return s.kidStore.GetKidsWithRandomFaceImg(ctx, db.GetKidsWithRandomFaceImgParams{
 		FamilyID:    familyID,
 		TakenAtTo:   sql.NullTime{Time: utils.GetLastDayOfMonth(year, month), Valid: true},
@@ -75,7 +75,7 @@ func (s *KidService) GetKidsWithFaceImg(ctx context.Context, familyID int32, yea
 	})
 }
 
-func (s *KidService) GetKidsWithFaceImgFast(ctx context.Context, familyID int32, currentYear int, currentMonth int) ([]db.GetKidsWithRandomFaceImgRow, error) {
+func (s *KidService) GetKidsWithFaceImgFast(ctx context.Context, familyID string, currentYear int, currentMonth int) ([]db.GetKidsWithRandomFaceImgRow, error) {
 	return s.kidStore.GetKidsWithRandomFaceImg(ctx, db.GetKidsWithRandomFaceImgParams{
 		FamilyID:  familyID,
 		TakenAtTo: sql.NullTime{Time: utils.GetLastDayOfMonth(calculateYearAndMonth(currentYear, currentMonth, -2)), Valid: true},
@@ -83,6 +83,5 @@ func (s *KidService) GetKidsWithFaceImgFast(ctx context.Context, familyID int32,
 }
 
 func calculateYearAndMonth(currentYear int, currentMonth int, offset int) (int, int) {
-
 	return currentYear + offset/12, currentMonth + offset%12
 }

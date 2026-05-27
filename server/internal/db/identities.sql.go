@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 const createIdentity = `-- name: CreateIdentity :one
@@ -19,7 +21,7 @@ RETURNING
     id, family_id, created_at, updated_at
 `
 
-func (q *Queries) CreateIdentity(ctx context.Context, familyID int32) (Identity, error) {
+func (q *Queries) CreateIdentity(ctx context.Context, familyID string) (Identity, error) {
 	row := q.db.QueryRowContext(ctx, createIdentity, familyID)
 	var i Identity
 	err := row.Scan(
@@ -37,10 +39,10 @@ SELECT
 FROM
     identities
 WHERE
-    family_id = $1::int
+    family_id = $1::uuid
 `
 
-func (q *Queries) FindIdentitiesByFamilyId(ctx context.Context, familyID int32) ([]Identity, error) {
+func (q *Queries) FindIdentitiesByFamilyId(ctx context.Context, familyID string) ([]Identity, error) {
 	rows, err := q.db.QueryContext(ctx, findIdentitiesByFamilyId, familyID)
 	if err != nil {
 		return nil, err
@@ -75,12 +77,12 @@ FROM
     identities
 WHERE
     id = $1::int
-    AND family_id = $2::int
+    AND family_id = $2::uuid
 `
 
 type FindIdentityByIdAndFamilyIdParams struct {
 	ID       int32
-	FamilyID int32
+	FamilyID string
 }
 
 func (q *Queries) FindIdentityByIdAndFamilyId(ctx context.Context, arg FindIdentityByIdAndFamilyIdParams) (Identity, error) {
@@ -120,12 +122,12 @@ type GetIdentityOptionsRow struct {
 	ID         int32
 	KidID      sql.NullInt32
 	KidName    sql.NullString
-	UserID     sql.NullInt32
+	UserID     uuid.NullUUID
 	UserName   sql.NullString
 	StorageKey sql.NullString
 }
 
-func (q *Queries) GetIdentityOptions(ctx context.Context, familyID int32) ([]GetIdentityOptionsRow, error) {
+func (q *Queries) GetIdentityOptions(ctx context.Context, familyID string) ([]GetIdentityOptionsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getIdentityOptions, familyID)
 	if err != nil {
 		return nil, err

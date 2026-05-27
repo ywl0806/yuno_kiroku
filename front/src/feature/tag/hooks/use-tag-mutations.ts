@@ -1,7 +1,7 @@
 import { addTagToMediaItem, createTag, deleteTag, removeTagFromMediaItem } from '@/service/tag-service'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-export const useTagMutations = (mediaItemId: number | null) => {
+export const useTagMutations = (mediaItemId: string | null) => {
   const queryClient = useQueryClient()
 
   const invalidateTags = () => {

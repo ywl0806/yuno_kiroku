@@ -1,19 +1,21 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/ywl0806/yuno_kiroku/internal/api/handlers/models"
 	"github.com/ywl0806/yuno_kiroku/internal/api/middlewares"
 	"github.com/ywl0806/yuno_kiroku/internal/services"
-	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
+	"github.com/ywl0806/yuno_kiroku/pkg/utils"
 )
 
 type MediaItemHandler struct {
+	log              *slog.Logger
 	mediaItemService *services.MediaItemService
 }
 
@@ -21,6 +23,7 @@ func NewMediaItemHandler(
 	mediaItemService *services.MediaItemService,
 ) *MediaItemHandler {
 	return &MediaItemHandler{
+		log:              slog.Default().With("layer", "handler", "component", "media_item"),
 		mediaItemService: mediaItemService,
 	}
 }
@@ -28,22 +31,10 @@ func NewMediaItemHandler(
 // @Tags MediaItem
 // @Description S3 직접 업로드를 위한 Presigned PUT URL 발급
 // @Accept json
-// @Param album_id query string true "Album ID"
-// @Param upload_batch_id query string true "Upload Batch ID"
 // @Param body body models.PresignedUploadRequest true "파일 정보"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/presigned-url [post]
 func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
-	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "album_id"})
-	}
-
-	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
-	if err != nil {
-		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "upload_batch_id"})
-	}
-
 	req := new(models.PresignedUploadRequest)
 	if err := c.Bind(req); err != nil {
 		return err
@@ -55,9 +46,9 @@ func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
 	authUser := middlewares.GetAuthUser(c)
 	ctx := c.Request().Context()
 
-	result, err := con.mediaItemService.CreatePresignedUpload(ctx, req.FileName, req.ContentType, authUser.FamilyId, albumId, uploadBatchID)
+	result, err := con.mediaItemService.CreatePresignedUpload(ctx, req.FileName, req.ContentType, authUser.FamilyId, req.AlbumID, req.UploadBatchID)
 	if err != nil {
-		log.Println("create presigned upload error:", err)
+		con.log.ErrorContext(ctx, "create presigned upload failed", "error", err)
 		return err
 	}
 
@@ -70,14 +61,64 @@ func (con *MediaItemHandler) CreatePresignedUpload(c echo.Context) error {
 }
 
 // @Tags MediaItem
+// @Description S3 직접 업로드를 위한 Presigned PUT URL 배치 발급
+// @Accept json
+// @Param body body models.BatchPresignedUploadRequest true "파일 정보 배열"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/presigned-urls [post]
+func (con *MediaItemHandler) CreateBatchPresignedUpload(c echo.Context) error {
+	req := new(models.BatchPresignedUploadRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+
+	items := make([]services.BatchPresignedUploadItem, len(req.Files))
+	for i, f := range req.Files {
+		items[i] = services.BatchPresignedUploadItem{
+			FileName:    f.FileName,
+			ContentType: f.ContentType,
+		}
+	}
+
+	results, err := con.mediaItemService.CreateBatchPresignedUpload(ctx, items, authUser.FamilyId, req.AlbumID, req.UploadBatchID)
+	if err != nil {
+		con.log.ErrorContext(ctx, "create batch presigned upload failed", "error", err)
+		return err
+	}
+
+	successItems := make([]models.BatchPresignedUploadSuccessItem, len(results.Success))
+	for i, r := range results.Success {
+		successItems[i] = models.BatchPresignedUploadSuccessItem{
+			MediaItemID:   r.MediaItemID,
+			PresignedURL:  r.PresignedURL,
+			StorageKey:    r.StorageKey,
+			ExpiresIn:     3600,
+			OriginalIndex: r.OriginalIndex,
+		}
+	}
+
+	failedItems := make([]models.BatchPresignedUploadFailedItem, len(results.Failed))
+	for i, f := range results.Failed {
+		failedItems[i] = models.BatchPresignedUploadFailedItem{FileName: f.FileName, Index: f.Index, Reason: f.Reason}
+	}
+
+	return c.JSON(200, models.BatchPresignedUploadResponse{Success: successItems, Failed: failedItems})
+}
+
+// @Tags MediaItem
 // @Description 업로드 배치 생성
 // @Param album_id query string true "Album ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/upload-batch [post]
 func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
-	// album 쿼리 파라미터 가져오기
-	albumId, err := utils.ConvertToInt32(c.QueryParam("album_id"))
-	if err != nil {
+	albumId := c.QueryParam("album_id")
+	if albumId == "" {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.album_id"})
 	}
 
@@ -88,9 +129,11 @@ func (con *MediaItemHandler) CreateUploadBatch(c echo.Context) error {
 
 	uploadBatch, err := con.mediaItemService.CreateUploadBatch(ctx, familyId, albumId)
 	if err != nil {
+		con.log.ErrorContext(ctx, "create upload batch failed", "album_id", albumId, "error", err)
 		return err
 	}
 
+	con.log.InfoContext(ctx, "upload batch created", "upload_batch_id", uploadBatch.ID, "album_id", albumId)
 	return c.JSON(200, models.CreateUploadBatchResponse{
 		ID:        uploadBatch.ID,
 		AlbumID:   uploadBatch.AlbumID,
@@ -120,12 +163,11 @@ func (con *MediaItemHandler) GetMediaItemRange(c echo.Context) error {
 // @Param from query string true "From" example(2025-01-01)
 // @Param to query string true "To" example(2025-01-01)
 // @Param identity_ids query []int false "Identity IDs"
-// @Param album_id query int false "Album ID"
+// @Param album_id query string false "Album ID"
 // @Success 200
 func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 	reqParams := new(models.GetMediaItemsRequest)
 	if err := c.Bind(reqParams); err != nil {
-		log.Println("bind get media items request error: ", err)
 		return err
 	}
 	if err := c.Validate(reqParams); err != nil {
@@ -137,7 +179,7 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 
 	mediaItems, err := con.mediaItemService.GetMediaItemsByTakenAt(ctx, authUser.GroupId, authUser.ID, *reqParams.From, *reqParams.To)
 	if err != nil {
-		log.Println("get media items by taken at error: ", err)
+		con.log.ErrorContext(ctx, "get media items by taken at failed", "error", err)
 		return err
 	}
 	return c.JSON(200, models.NewMediaItemsResponse(mediaItems))
@@ -150,7 +192,7 @@ func (con *MediaItemHandler) GetMediaItems(c echo.Context) error {
 // @Param from query string false "From (RFC3339)"
 // @Param to query string false "To (RFC3339)"
 // @Param identity_ids query []int false "Identity IDs"
-// @Param album_id query int false "Album ID"
+// @Param album_id query string false "Album ID"
 // @Param page query int false "Page (1-based, default 1)"
 // @Success 200 {object} models.SearchMediaItemsResponse
 func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
@@ -164,7 +206,7 @@ func (con *MediaItemHandler) SearchMediaItems(c echo.Context) error {
 
 	result, err := con.mediaItemService.SearchMediaItems(ctx, authUser.GroupId, authUser.ID, reqParams.From, reqParams.To, reqParams.AlbumID, reqParams.IdentityIDs, reqParams.Liked, reqParams.TagIDs, reqParams.Page)
 	if err != nil {
-		log.Println("search media items error:", err)
+		con.log.ErrorContext(ctx, "search media items failed", "error", err)
 		return err
 	}
 
@@ -188,8 +230,8 @@ func (con *MediaItemHandler) GetUploadBatches(c echo.Context) error {
 	ctx := c.Request().Context()
 	page := 1
 	if p := c.QueryParam("page"); p != "" {
-		if parsed, err := utils.ConvertToInt32(p); err == nil {
-			page = int(parsed)
+		if parsed, err := strconv.Atoi(p); err == nil {
+			page = parsed
 		}
 	}
 
@@ -223,8 +265,8 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 
 	page := 1
 	if p := c.QueryParam("page"); p != "" {
-		if parsed, err := utils.ConvertToInt32(p); err == nil {
-			page = int(parsed)
+		if parsed, err := strconv.Atoi(p); err == nil {
+			page = parsed
 		}
 	}
 
@@ -233,7 +275,7 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 
 	result, err := con.mediaItemService.GetMediaItemsByUploadBatch(ctx, uploadBatchID, authUser.ID, page)
 	if err != nil {
-		log.Println("get upload batch items error:", err)
+		con.log.ErrorContext(ctx, "get upload batch items failed", "error", err)
 		return err
 	}
 
@@ -249,21 +291,64 @@ func (con *MediaItemHandler) GetUploadBatchItems(c echo.Context) error {
 }
 
 // @Tags MediaItem
+// @Description 미디어 아이템 삭제
+// @Param id path string true "MediaItem ID"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/{id} [delete]
+func (con *MediaItemHandler) DeleteMediaItem(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
+	}
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+	if err := con.mediaItemService.DeleteMediaItem(ctx, id, authUser.FamilyId, authUser.ID); err != nil {
+		return err
+	}
+	con.log.InfoContext(ctx, "media item deleted", "media_item_id", id)
+	return c.NoContent(204)
+}
+
+// @Tags MediaItem
+// @Description 미디어 아이템 앨범 변경
+// @Param id path string true "MediaItem ID"
+// @Param body body models.UpdateMediaItemAlbumRequest true "앨범 변경 요청"
+// @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
+// @Router /media-item/{id}/album [patch]
+func (con *MediaItemHandler) UpdateMediaItemAlbum(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "id"})
+	}
+	req := new(models.UpdateMediaItemAlbumRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+	authUser := middlewares.GetAuthUser(c)
+	ctx := c.Request().Context()
+	if err := con.mediaItemService.UpdateMediaItemAlbum(ctx, id, authUser.FamilyId, authUser.ID, req.AlbumID); err != nil {
+		return err
+	}
+	con.log.InfoContext(ctx, "media item album updated", "media_item_id", id, "album_id", req.AlbumID)
+	return c.NoContent(204)
+}
+
+// @Tags MediaItem
 // @Description 업로드 배치 상태 조회
 // @Param upload_batch_id query string true "Upload Batch ID"
 // @Param Authorization header string true "Authorization" format(bearer) example(bearer token)
 // @Router /media-item/upload-batch/status [get]
 func (con *MediaItemHandler) GetUploadBatchStatus(c echo.Context) error {
-	// upload_batch_id 쿼리 파라미터 가져오기
 	uploadBatchID, err := utils.ConvertToInt32(c.QueryParam("upload_batch_id"))
 	if err != nil {
 		return apperr.NewValidationError("message.validation.required", map[string]string{"field": "message-item.upload_batch_id"})
 	}
 
-	// 컨텍스트 가져오기
 	ctx := c.Request().Context()
 
-	// 업로드 배치 조회
 	uploadStatuses, err := con.mediaItemService.GetUploadStatuses(ctx, uploadBatchID)
 	if err != nil {
 		return err

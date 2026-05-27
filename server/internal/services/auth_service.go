@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"log"
+	"log/slog"
 
 	"github.com/spf13/cast"
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
@@ -23,6 +23,7 @@ var (
 )
 
 type AuthService struct {
+	log           *slog.Logger
 	userService   *UserService
 	inviteService *InviteService
 	authSecretKey string
@@ -38,6 +39,7 @@ func NewAuthService(
 	kakaoConfig *oauth.KakaoConfig,
 ) *AuthService {
 	return &AuthService{
+		log:           slog.Default().With("layer", "service", "component", "auth"),
 		userService:   userService,
 		inviteService: inviteService,
 		authSecretKey: authSecretKey,
@@ -59,7 +61,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	if err != nil {
 		return nil, err
 	}
-	if user.ID == 0 || !utils.CheckPassword(password, user.Password) {
+	if user.ID == "" || !utils.CheckPassword(password, user.Password) {
 		return nil, ErrInvalidCredentials
 	}
 	accessToken, err := s.issueAccessToken(user)
@@ -79,7 +81,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 
 // InviteState 초대 토큰에서 추출한 가입 정보
 type InviteState struct {
-	FamilyID          int32
+	FamilyID          string
 	GroupID           int32
 	FamilyTitle       string
 	CustomFamilyTitle string
@@ -117,23 +119,23 @@ func (s *AuthService) GetLineAuthURL(state string) (url string, configured bool)
 func (s *AuthService) ProcessLineCallback(ctx context.Context, code, state string) (*db.User, error) {
 	accessToken, err := s.lineConfig.ExchangeCode(code)
 	if err != nil {
-		log.Println("LINE token exchange error:", err)
+		s.log.ErrorContext(ctx, "LINE token exchange failed", "error", err)
 		return nil, err
 	}
 	userID, displayName, err := s.lineConfig.UserProfile(accessToken)
 	if err != nil {
-		log.Println("LINE profile error:", err)
+		s.log.ErrorContext(ctx, "LINE profile fetch failed", "error", err)
 		return nil, err
 	}
 	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
-		log.Println("ResolveInviteState LINE error:", err)
+		s.log.ErrorContext(ctx, "resolve invite state failed (LINE)", "error", err)
 		return nil, err
 	}
 
 	user, err := s.userService.FindOrCreateUserOAuth(ctx, "line", userID, displayName, inviteState.FamilyID, inviteState.GroupID, inviteState.FamilyTitle, inviteState.CustomFamilyTitle)
 	if err != nil {
-		log.Println("FindOrCreateUserOAuth LINE error:", err)
+		s.log.ErrorContext(ctx, "find or create user failed (LINE)", "error", err)
 		return nil, err
 	}
 	if state != "" {
@@ -157,22 +159,22 @@ func (s *AuthService) GetKakaoAuthURL(state string) (url string, configured bool
 func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state string) (*db.User, error) {
 	accessToken, err := s.kakaoConfig.ExchangeCode(code)
 	if err != nil {
-		log.Println("Kakao token exchange error:", err)
+		s.log.ErrorContext(ctx, "Kakao token exchange failed", "error", err)
 		return nil, err
 	}
 	userID, displayName, err := s.kakaoConfig.UserProfile(accessToken)
 	if err != nil {
-		log.Println("Kakao profile error:", err)
+		s.log.ErrorContext(ctx, "Kakao profile fetch failed", "error", err)
 		return nil, err
 	}
 	inviteState, err := s.ResolveInviteState(ctx, state)
 	if err != nil {
-		log.Println("ResolveInviteState Kakao error:", err)
+		s.log.ErrorContext(ctx, "resolve invite state failed (Kakao)", "error", err)
 		return nil, err
 	}
 	user, err := s.userService.FindOrCreateUserOAuth(ctx, "kakao", userID, displayName, inviteState.FamilyID, inviteState.GroupID, inviteState.FamilyTitle, inviteState.CustomFamilyTitle)
 	if err != nil {
-		log.Println("FindOrCreateUserOAuth Kakao error:", err)
+		s.log.ErrorContext(ctx, "find or create user failed (Kakao)", "error", err)
 		return nil, err
 	}
 	if state != "" {
@@ -181,9 +183,17 @@ func (s *AuthService) ProcessKakaoCallback(ctx context.Context, code, state stri
 	return &user, nil
 }
 
-// IssueOAuthAccessToken OAuth 로그인 유저용 액세스 토큰 발급
-func (s *AuthService) IssueOAuthAccessToken(user *db.User) (string, error) {
-	return s.issueAccessToken(*user)
+// IssueOAuthTokens OAuth 로그인 유저용 액세스 토큰과 리프레시 토큰 발급
+func (s *AuthService) IssueOAuthTokens(user *db.User) (accessToken, refreshToken string, err error) {
+	accessToken, err = s.issueAccessToken(*user)
+	if err != nil {
+		return "", "", err
+	}
+	refreshToken, err = s.issueRefreshToken(*user)
+	if err != nil {
+		return "", "", err
+	}
+	return accessToken, refreshToken, nil
 }
 
 func (s *AuthService) issueAccessToken(user db.User) (string, error) {
@@ -199,6 +209,38 @@ func (s *AuthService) issueAccessToken(user db.User) (string, error) {
 func (s *AuthService) issueRefreshToken(user db.User) (string, error) {
 	claims := &jwt.RefreshTokenClaims{ID: cast.ToString(user.ID)}
 	return jwt.GenerateJWT(claims, s.authSecretKey, consts.RefreshTokenCookieMaxAge)
+}
+
+// RefreshResult 토큰 갱신 성공 시 반환 데이터
+type RefreshResult struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+// RefreshAccessToken 리프레시 토큰으로 새 액세스 토큰과 리프레시 토큰 발급
+func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenStr string) (*RefreshResult, error) {
+	claims := &jwt.RefreshTokenClaims{}
+	if err := jwt.ParseJWT(refreshTokenStr, s.authSecretKey, claims); err != nil {
+		return nil, errors.New("invalid refresh token")
+	}
+
+	user, err := s.userService.GetUserByID(ctx, claims.ID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	accessToken, err := s.issueAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+	newRefreshToken, err := s.issueRefreshToken(user)
+	if err != nil {
+		return nil, err
+	}
+	return &RefreshResult{
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+	}, nil
 }
 
 func randomState() string {

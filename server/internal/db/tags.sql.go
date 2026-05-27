@@ -7,7 +7,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 const addTagToMediaItem = `-- name: AddTagToMediaItem :exec
@@ -17,9 +18,9 @@ ON CONFLICT DO NOTHING
 `
 
 type AddTagToMediaItemParams struct {
-	MediaItemID int32
+	MediaItemID string
 	TagID       int32
-	TaggedBy    int32
+	TaggedBy    string
 }
 
 func (q *Queries) AddTagToMediaItem(ctx context.Context, arg AddTagToMediaItemParams) error {
@@ -34,9 +35,9 @@ RETURNING id, family_id, name, is_preset, created_by, created_at
 `
 
 type CreateTagParams struct {
-	FamilyID  sql.NullInt32
+	FamilyID  uuid.NullUUID
 	Name      string
-	CreatedBy sql.NullInt32
+	CreatedBy uuid.NullUUID
 }
 
 func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error) {
@@ -60,7 +61,7 @@ WHERE id = $1 AND family_id = $2
 
 type DeleteTagParams struct {
 	ID       int32
-	FamilyID sql.NullInt32
+	FamilyID uuid.NullUUID
 }
 
 func (q *Queries) DeleteTag(ctx context.Context, arg DeleteTagParams) error {
@@ -74,7 +75,7 @@ WHERE family_id = $1 OR is_preset = true
 ORDER BY is_preset DESC, id ASC
 `
 
-func (q *Queries) GetTagsByFamilyID(ctx context.Context, familyID sql.NullInt32) ([]Tag, error) {
+func (q *Queries) GetTagsByFamilyID(ctx context.Context, familyID uuid.NullUUID) ([]Tag, error) {
 	rows, err := q.db.QueryContext(ctx, getTagsByFamilyID, familyID)
 	if err != nil {
 		return nil, err
@@ -111,7 +112,7 @@ WHERE mt.media_item_id = $1
 ORDER BY t.id ASC
 `
 
-func (q *Queries) GetTagsForMediaItem(ctx context.Context, mediaItemID int32) ([]Tag, error) {
+func (q *Queries) GetTagsForMediaItem(ctx context.Context, mediaItemID string) ([]Tag, error) {
 	rows, err := q.db.QueryContext(ctx, getTagsForMediaItem, mediaItemID)
 	if err != nil {
 		return nil, err
@@ -147,7 +148,7 @@ WHERE media_item_id = $1 AND tag_id = $2
 `
 
 type RemoveTagFromMediaItemParams struct {
-	MediaItemID int32
+	MediaItemID string
 	TagID       int32
 }
 

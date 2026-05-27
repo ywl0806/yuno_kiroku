@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -32,6 +33,8 @@ RETURNING
     album_id,
     upload_batch_id,
     upload_status,
+    failure_reason,
+    face_recognition_status,
     taken_location_latitude,
     taken_location_longitude,
     taken_at,
@@ -41,8 +44,8 @@ RETURNING
 `
 
 type CreateMediaItemParams struct {
-	FamilyID               int32
-	AlbumID                int32
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	TakenAt                time.Time
 	FileName               sql.NullString
@@ -67,6 +70,8 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
+		&i.FailureReason,
+		&i.FaceRecognitionStatus,
 		&i.TakenLocationLatitude,
 		&i.TakenLocationLongitude,
 		&i.TakenAt,
@@ -77,14 +82,23 @@ func (q *Queries) CreateMediaItem(ctx context.Context, arg CreateMediaItemParams
 	return i, err
 }
 
+const deleteMediaItem = `-- name: DeleteMediaItem :exec
+DELETE FROM media_items WHERE id = $1
+`
+
+func (q *Queries) DeleteMediaItem(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteMediaItem, id)
+	return err
+}
+
 const getMediaItemByFaceDetection = `-- name: GetMediaItemByFaceDetection :one
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.failure_reason, mi.face_recognition_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at
 FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
 WHERE
-    mi.family_id = $1::int
+    mi.family_id = $1::uuid
     AND fd.embedding = ANY($2::vector[])
 GROUP BY
     mi.id
@@ -92,7 +106,7 @@ LIMIT 1
 `
 
 type GetMediaItemByFaceDetectionParams struct {
-	FamilyID   int32
+	FamilyID   string
 	Embeddings []interface{}
 }
 
@@ -105,6 +119,8 @@ func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaI
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
+		&i.FailureReason,
+		&i.FaceRecognitionStatus,
 		&i.TakenLocationLatitude,
 		&i.TakenLocationLongitude,
 		&i.TakenAt,
@@ -115,12 +131,17 @@ func (q *Queries) GetMediaItemByFaceDetection(ctx context.Context, arg GetMediaI
 	return i, err
 }
 
-const getMediaItemByID = `-- name: GetMediaItemByID :one
-SELECT id, family_id, album_id, upload_batch_id, upload_status, taken_location_latitude, taken_location_longitude, taken_at, file_name, created_at, updated_at FROM media_items WHERE id = $1 LIMIT 1
+const getMediaItemByIDAndFamilyID = `-- name: GetMediaItemByIDAndFamilyID :one
+SELECT id, family_id, album_id, upload_batch_id, upload_status, failure_reason, face_recognition_status, taken_location_latitude, taken_location_longitude, taken_at, file_name, created_at, updated_at FROM media_items WHERE id = $1 AND family_id = $2 LIMIT 1
 `
 
-func (q *Queries) GetMediaItemByID(ctx context.Context, id int32) (MediaItem, error) {
-	row := q.db.QueryRowContext(ctx, getMediaItemByID, id)
+type GetMediaItemByIDAndFamilyIDParams struct {
+	ID       string
+	FamilyID string
+}
+
+func (q *Queries) GetMediaItemByIDAndFamilyID(ctx context.Context, arg GetMediaItemByIDAndFamilyIDParams) (MediaItem, error) {
+	row := q.db.QueryRowContext(ctx, getMediaItemByIDAndFamilyID, arg.ID, arg.FamilyID)
 	var i MediaItem
 	err := row.Scan(
 		&i.ID,
@@ -128,6 +149,8 @@ func (q *Queries) GetMediaItemByID(ctx context.Context, id int32) (MediaItem, er
 		&i.AlbumID,
 		&i.UploadBatchID,
 		&i.UploadStatus,
+		&i.FailureReason,
+		&i.FaceRecognitionStatus,
 		&i.TakenLocationLatitude,
 		&i.TakenLocationLongitude,
 		&i.TakenAt,
@@ -195,7 +218,7 @@ func (q *Queries) GetMediaItemRange(ctx context.Context, groupID int32) ([]GetMe
 
 const getMediaItemThumbnailsByUploadBatchId = `-- name: GetMediaItemThumbnailsByUploadBatchId :many
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.failure_reason, mi.face_recognition_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
@@ -215,11 +238,13 @@ LIMIT 5
 `
 
 type GetMediaItemThumbnailsByUploadBatchIdRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
+	FailureReason          sql.NullString
+	FaceRecognitionStatus  string
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time
@@ -252,6 +277,8 @@ func (q *Queries) GetMediaItemThumbnailsByUploadBatchId(ctx context.Context, upl
 			&i.AlbumID,
 			&i.UploadBatchID,
 			&i.UploadStatus,
+			&i.FailureReason,
+			&i.FaceRecognitionStatus,
 			&i.TakenLocationLatitude,
 			&i.TakenLocationLongitude,
 			&i.TakenAt,
@@ -283,10 +310,11 @@ func (q *Queries) GetMediaItemThumbnailsByUploadBatchId(ctx context.Context, upl
 
 const getMediaItemsByTakenAt = `-- name: GetMediaItemsByTakenAt :many
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.failure_reason, mi.face_recognition_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -298,10 +326,11 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = $2::int
     AND agp.permission = 'R'
@@ -313,18 +342,20 @@ ORDER BY
 `
 
 type GetMediaItemsByTakenAtParams struct {
-	UserID      int32
+	UserID      string
 	GroupID     int32
 	TakenAtFrom time.Time
 	TakenAtTo   time.Time
 }
 
 type GetMediaItemsByTakenAtRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
+	FailureReason          sql.NullString
+	FaceRecognitionStatus  string
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time
@@ -334,6 +365,7 @@ type GetMediaItemsByTakenAtRow struct {
 	OriginalStorageKey     sql.NullString
 	ThumbnailStorageKey    sql.NullString
 	ViewStorageKey         sql.NullString
+	VideoStorageKey        sql.NullString
 	OriginalWidth          sql.NullInt32
 	OriginalHeight         sql.NullInt32
 	ThumbnailWidth         sql.NullInt32
@@ -363,6 +395,8 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.AlbumID,
 			&i.UploadBatchID,
 			&i.UploadStatus,
+			&i.FailureReason,
+			&i.FaceRecognitionStatus,
 			&i.TakenLocationLatitude,
 			&i.TakenLocationLongitude,
 			&i.TakenAt,
@@ -372,6 +406,7 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
 			&i.ViewStorageKey,
+			&i.VideoStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,
@@ -395,10 +430,11 @@ func (q *Queries) GetMediaItemsByTakenAt(ctx context.Context, arg GetMediaItemsB
 
 const getMediaItemsByUploadBatchId = `-- name: GetMediaItemsByUploadBatchId :many
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.failure_reason, mi.face_recognition_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -407,10 +443,11 @@ SELECT
     mf_view.height AS view_height,
     mil.id AS is_liked
 FROM media_items AS mi
-LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::uuid
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE mi.upload_batch_id = $2::int AND mi.upload_status = '03'
 ORDER BY mi.taken_at ASC
 LIMIT $4::int
@@ -418,18 +455,20 @@ OFFSET $3::int
 `
 
 type GetMediaItemsByUploadBatchIdParams struct {
-	UserID        int32
+	UserID        string
 	UploadBatchID int32
 	PageOffset    int32
 	PageSize      int32
 }
 
 type GetMediaItemsByUploadBatchIdRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
+	FailureReason          sql.NullString
+	FaceRecognitionStatus  string
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time
@@ -439,6 +478,7 @@ type GetMediaItemsByUploadBatchIdRow struct {
 	OriginalStorageKey     sql.NullString
 	ThumbnailStorageKey    sql.NullString
 	ViewStorageKey         sql.NullString
+	VideoStorageKey        sql.NullString
 	OriginalWidth          sql.NullInt32
 	OriginalHeight         sql.NullInt32
 	ThumbnailWidth         sql.NullInt32
@@ -468,6 +508,8 @@ func (q *Queries) GetMediaItemsByUploadBatchId(ctx context.Context, arg GetMedia
 			&i.AlbumID,
 			&i.UploadBatchID,
 			&i.UploadStatus,
+			&i.FailureReason,
+			&i.FaceRecognitionStatus,
 			&i.TakenLocationLatitude,
 			&i.TakenLocationLongitude,
 			&i.TakenAt,
@@ -477,6 +519,7 @@ func (q *Queries) GetMediaItemsByUploadBatchId(ctx context.Context, arg GetMedia
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
 			&i.ViewStorageKey,
+			&i.VideoStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,
@@ -523,11 +566,11 @@ ORDER BY ub.upload_at DESC
 
 type GetUploadBatchWithThumbnailsRow struct {
 	ID          int32
-	AlbumID     int32
+	AlbumID     string
 	StorageKey  string
 	Width       sql.NullInt32
 	Height      sql.NullInt32
-	MediaItemID int32
+	MediaItemID string
 }
 
 func (q *Queries) GetUploadBatchWithThumbnails(ctx context.Context, batchIds []int32) ([]GetUploadBatchWithThumbnailsRow, error) {
@@ -563,15 +606,17 @@ func (q *Queries) GetUploadBatchWithThumbnails(ctx context.Context, batchIds []i
 const getUploadStatuses = `-- name: GetUploadStatuses :many
 SELECT
     mi.id,
-    mi.upload_status
+    mi.upload_status,
+    mi.failure_reason
 FROM media_items AS mi
 WHERE mi.upload_batch_id = $1
 ORDER BY mi.id ASC
 `
 
 type GetUploadStatusesRow struct {
-	ID           int32
-	UploadStatus string
+	ID            string
+	UploadStatus  string
+	FailureReason sql.NullString
 }
 
 func (q *Queries) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]GetUploadStatusesRow, error) {
@@ -583,7 +628,7 @@ func (q *Queries) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([
 	var items []GetUploadStatusesRow
 	for rows.Next() {
 		var i GetUploadStatusesRow
-		if err := rows.Scan(&i.ID, &i.UploadStatus); err != nil {
+		if err := rows.Scan(&i.ID, &i.UploadStatus, &i.FailureReason); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -599,10 +644,11 @@ func (q *Queries) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([
 
 const searchMediaItems = `-- name: SearchMediaItems :many
 SELECT
-    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
+    mi.id, mi.family_id, mi.album_id, mi.upload_batch_id, mi.upload_status, mi.failure_reason, mi.face_recognition_status, mi.taken_location_latitude, mi.taken_location_longitude, mi.taken_at, mi.file_name, mi.created_at, mi.updated_at,
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -614,17 +660,18 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = $1::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = $2::int
     AND agp.permission = 'R'
     AND mi.upload_status = '03'
     AND ($3::timestamp IS NULL OR mi.taken_at >= $3::timestamp)
     AND ($4::timestamp IS NULL OR mi.taken_at <= $4::timestamp)
-    AND ($5::int IS NULL OR mi.album_id = $5::int)
+    AND ($5::uuid IS NULL OR mi.album_id = $5::uuid)
     AND (
         cardinality($6::int[]) = 0
         OR EXISTS (
@@ -638,7 +685,7 @@ WHERE
         OR EXISTS (
             SELECT 1 FROM media_item_likes mil
             WHERE mil.media_item_id = mi.id
-              AND mil.user_id = $1::int
+              AND mil.user_id = $1::uuid
         )
     )
     AND (
@@ -656,11 +703,11 @@ OFFSET $9::int
 `
 
 type SearchMediaItemsParams struct {
-	UserID      int32
+	UserID      string
 	GroupID     int32
 	TakenAtFrom sql.NullTime
 	TakenAtTo   sql.NullTime
-	AlbumID     sql.NullInt32
+	AlbumID     uuid.NullUUID
 	IdentityIds []int32
 	Liked       bool
 	TagIds      []int32
@@ -669,11 +716,13 @@ type SearchMediaItemsParams struct {
 }
 
 type SearchMediaItemsRow struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
+	FailureReason          sql.NullString
+	FaceRecognitionStatus  string
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time
@@ -683,6 +732,7 @@ type SearchMediaItemsRow struct {
 	OriginalStorageKey     sql.NullString
 	ThumbnailStorageKey    sql.NullString
 	ViewStorageKey         sql.NullString
+	VideoStorageKey        sql.NullString
 	OriginalWidth          sql.NullInt32
 	OriginalHeight         sql.NullInt32
 	ThumbnailWidth         sql.NullInt32
@@ -718,6 +768,8 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 			&i.AlbumID,
 			&i.UploadBatchID,
 			&i.UploadStatus,
+			&i.FailureReason,
+			&i.FaceRecognitionStatus,
 			&i.TakenLocationLatitude,
 			&i.TakenLocationLongitude,
 			&i.TakenAt,
@@ -727,6 +779,7 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 			&i.OriginalStorageKey,
 			&i.ThumbnailStorageKey,
 			&i.ViewStorageKey,
+			&i.VideoStorageKey,
 			&i.OriginalWidth,
 			&i.OriginalHeight,
 			&i.ThumbnailWidth,
@@ -748,6 +801,55 @@ func (q *Queries) SearchMediaItems(ctx context.Context, arg SearchMediaItemsPara
 	return items, nil
 }
 
+const updateFaceRecognitionStatus = `-- name: UpdateFaceRecognitionStatus :exec
+UPDATE media_items
+SET face_recognition_status = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+`
+
+type UpdateFaceRecognitionStatusParams struct {
+	ID                    string
+	FaceRecognitionStatus string
+}
+
+// S2-07: face recognition 발행 결과 상태 추적
+func (q *Queries) UpdateFaceRecognitionStatus(ctx context.Context, arg UpdateFaceRecognitionStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateFaceRecognitionStatus, arg.ID, arg.FaceRecognitionStatus)
+	return err
+}
+
+const updateMediaItemAlbum = `-- name: UpdateMediaItemAlbum :exec
+UPDATE media_items SET album_id = $2 WHERE id = $1
+`
+
+type UpdateMediaItemAlbumParams struct {
+	ID      string
+	AlbumID string
+}
+
+func (q *Queries) UpdateMediaItemAlbum(ctx context.Context, arg UpdateMediaItemAlbumParams) error {
+	_, err := q.db.ExecContext(ctx, updateMediaItemAlbum, arg.ID, arg.AlbumID)
+	return err
+}
+
+const updateMediaItemFailed = `-- name: UpdateMediaItemFailed :exec
+UPDATE media_items
+SET upload_status = '04',
+    failure_reason = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+`
+
+type UpdateMediaItemFailedParams struct {
+	ID            string
+	FailureReason sql.NullString
+}
+
+func (q *Queries) UpdateMediaItemFailed(ctx context.Context, arg UpdateMediaItemFailedParams) error {
+	_, err := q.db.ExecContext(ctx, updateMediaItemFailed, arg.ID, arg.FailureReason)
+	return err
+}
+
 const updateMediaItemTakenAt = `-- name: UpdateMediaItemTakenAt :exec
 UPDATE media_items
 SET taken_at = $2,
@@ -758,7 +860,7 @@ WHERE id = $1
 `
 
 type UpdateMediaItemTakenAtParams struct {
-	ID                     int32
+	ID                     string
 	TakenAt                time.Time
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
@@ -774,6 +876,26 @@ func (q *Queries) UpdateMediaItemTakenAt(ctx context.Context, arg UpdateMediaIte
 	return err
 }
 
+const updateMediaItemToProcessingIfPending = `-- name: UpdateMediaItemToProcessingIfPending :one
+UPDATE media_items
+SET upload_status = '02', updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND upload_status = '01'
+RETURNING id, upload_status
+`
+
+type UpdateMediaItemToProcessingIfPendingRow struct {
+	ID           string
+	UploadStatus string
+}
+
+// S2-08: pending(01) 상태일 때만 processing(02)으로 원자적 전환 — 중복 이벤트 early exit용
+func (q *Queries) UpdateMediaItemToProcessingIfPending(ctx context.Context, id string) (UpdateMediaItemToProcessingIfPendingRow, error) {
+	row := q.db.QueryRowContext(ctx, updateMediaItemToProcessingIfPending, id)
+	var i UpdateMediaItemToProcessingIfPendingRow
+	err := row.Scan(&i.ID, &i.UploadStatus)
+	return i, err
+}
+
 const updateMediaItemUploadStatus = `-- name: UpdateMediaItemUploadStatus :one
 UPDATE media_items
 SET upload_status = $2
@@ -782,12 +904,12 @@ RETURNING id, upload_status, created_at, updated_at
 `
 
 type UpdateMediaItemUploadStatusParams struct {
-	ID           int32
+	ID           string
 	UploadStatus string
 }
 
 type UpdateMediaItemUploadStatusRow struct {
-	ID           int32
+	ID           string
 	UploadStatus string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

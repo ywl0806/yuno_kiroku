@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 export const useDeleteAlbum = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       await MyAxiosWithAuth.delete(API_ROUTES.ALBUM.DELETE(id))
     },
     onSuccess: () => {

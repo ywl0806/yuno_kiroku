@@ -7,18 +7,21 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Album struct {
-	ID        int32
-	FamilyID  int32
+	ID        string
+	FamilyID  string
 	Name      string
+	IsCommon  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type AlbumGroupsPermission struct {
-	AlbumID    int32
+	AlbumID    string
 	GroupID    int32
 	Permission string
 	CreatedAt  time.Time
@@ -27,7 +30,7 @@ type AlbumGroupsPermission struct {
 
 type FaceDetection struct {
 	ID             int32
-	MediaItemID    int32
+	MediaItemID    string
 	IdentityID     int32
 	LocationTop    int32
 	LocationRight  int32
@@ -39,15 +42,14 @@ type FaceDetection struct {
 }
 
 type Family struct {
-	ID        int32
-	Name      string
+	ID        string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type Group struct {
 	ID        int32
-	FamilyID  int32
+	FamilyID  string
 	IsAdmin   bool
 	Name      string
 	CreatedAt time.Time
@@ -56,7 +58,7 @@ type Group struct {
 
 type Identity struct {
 	ID        int32
-	FamilyID  int32
+	FamilyID  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -64,7 +66,7 @@ type Identity struct {
 type IdentityFaceImg struct {
 	ID          int32
 	IdentityID  int32
-	MediaItemID int32
+	MediaItemID string
 	StorageKey  string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -75,9 +77,9 @@ type InviteToken struct {
 	Token             string
 	FamilyTitle       sql.NullString
 	CustomFamilyTitle sql.NullString
-	FamilyID          int32
+	FamilyID          string
 	GroupID           int32
-	CreatedByUserID   int32
+	CreatedByUserID   string
 	ExpiresAt         time.Time
 	UsedAt            sql.NullTime
 	CreatedAt         time.Time
@@ -88,30 +90,30 @@ type Kid struct {
 	Name       sql.NullString
 	BirthDate  sql.NullTime
 	IdentityID sql.NullInt32
-	FamilyID   int32
+	FamilyID   string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
 type MediaFile struct {
 	ID          int32
-	MediaItemID int32
+	MediaItemID string
 	Role        string
 	StorageKey  string
-	MimeType    sql.NullString
 	Width       sql.NullInt32
 	Height      sql.NullInt32
-	FileSize    sql.NullInt64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
 type MediaItem struct {
-	ID                     int32
-	FamilyID               int32
-	AlbumID                int32
+	ID                     string
+	FamilyID               string
+	AlbumID                string
 	UploadBatchID          int32
 	UploadStatus           string
+	FailureReason          sql.NullString
+	FaceRecognitionStatus  string
 	TakenLocationLatitude  sql.NullFloat64
 	TakenLocationLongitude sql.NullFloat64
 	TakenAt                time.Time
@@ -122,15 +124,15 @@ type MediaItem struct {
 
 type MediaItemLike struct {
 	ID          int32
-	MediaItemID int32
-	UserID      int32
+	MediaItemID string
+	UserID      string
 	CreatedAt   time.Time
 }
 
 type MediaItemTag struct {
-	MediaItemID int32
+	MediaItemID string
 	TagID       int32
-	TaggedBy    int32
+	TaggedBy    string
 	CreatedAt   time.Time
 }
 
@@ -138,35 +140,35 @@ type RefreshToken struct {
 	ID        int32
 	Token     string
 	ExpiresAt time.Time
-	UserID    int32
+	UserID    string
 	CreatedAt time.Time
 }
 
 type Tag struct {
 	ID        int32
-	FamilyID  sql.NullInt32
+	FamilyID  uuid.NullUUID
 	Name      string
 	IsPreset  bool
-	CreatedBy sql.NullInt32
+	CreatedBy uuid.NullUUID
 	CreatedAt time.Time
 }
 
 type UploadBatch struct {
 	ID        int32
-	AlbumID   int32
+	AlbumID   string
 	UploadAt  time.Time
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type User struct {
-	ID                int32
+	ID                string
 	Name              sql.NullString
 	Username          string
 	FamilyTitle       sql.NullString
 	CustomFamilyTitle sql.NullString
 	Password          string
-	FamilyID          int32
+	FamilyID          string
 	GroupID           int32
 	IdentityID        sql.NullInt32
 	Provider          sql.NullString

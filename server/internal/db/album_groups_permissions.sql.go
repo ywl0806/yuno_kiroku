@@ -9,28 +9,56 @@ import (
 	"context"
 )
 
+const checkUserHasPermissionForAlbum = `-- name: CheckUserHasPermissionForAlbum :one
+SELECT EXISTS(
+    SELECT 1 FROM album_groups_permissions as agp
+    INNER JOIN groups as g on agp.group_id = g.id
+    INNER JOIN users as u on g.id = u.group_id AND u.id = $1::uuid
+    WHERE agp.album_id = $2::uuid AND agp.permission = $3::varchar
+) AS has_permission
+`
+
+type CheckUserHasPermissionForAlbumParams struct {
+	UserID     string
+	AlbumID    string
+	Permission string
+}
+
+func (q *Queries) CheckUserHasPermissionForAlbum(ctx context.Context, arg CheckUserHasPermissionForAlbumParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, checkUserHasPermissionForAlbum, arg.UserID, arg.AlbumID, arg.Permission)
+	var has_permission bool
+	err := row.Scan(&has_permission)
+	return has_permission, err
+}
+
 const deleteAlbumGroupPermissionsByAlbumID = `-- name: DeleteAlbumGroupPermissionsByAlbumID :exec
 DELETE FROM album_groups_permissions
 WHERE
     album_id = $1
 `
 
-func (q *Queries) DeleteAlbumGroupPermissionsByAlbumID(ctx context.Context, albumID int32) error {
+func (q *Queries) DeleteAlbumGroupPermissionsByAlbumID(ctx context.Context, albumID string) error {
 	_, err := q.db.ExecContext(ctx, deleteAlbumGroupPermissionsByAlbumID, albumID)
 	return err
 }
 
 const getAlbumGroupPermissions = `-- name: GetAlbumGroupPermissions :many
 SELECT
-    album_id, group_id, permission, created_at, updated_at
+    agp.album_id, agp.group_id, agp.permission, agp.created_at, agp.updated_at
 FROM
-    album_groups_permissions
+    album_groups_permissions as agp
+    INNER JOIN albums as a on agp.album_id = a.id AND a.family_id = $2
 WHERE
-    album_id = $1
+    agp.album_id = $1
 `
 
-func (q *Queries) GetAlbumGroupPermissions(ctx context.Context, albumID int32) ([]AlbumGroupsPermission, error) {
-	rows, err := q.db.QueryContext(ctx, getAlbumGroupPermissions, albumID)
+type GetAlbumGroupPermissionsParams struct {
+	AlbumID  string
+	FamilyID string
+}
+
+func (q *Queries) GetAlbumGroupPermissions(ctx context.Context, arg GetAlbumGroupPermissionsParams) ([]AlbumGroupsPermission, error) {
+	rows, err := q.db.QueryContext(ctx, getAlbumGroupPermissions, arg.AlbumID, arg.FamilyID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +86,34 @@ func (q *Queries) GetAlbumGroupPermissions(ctx context.Context, albumID int32) (
 	return items, nil
 }
 
+const getWritableAlbumIDsByGroupID = `-- name: GetWritableAlbumIDsByGroupID :many
+SELECT album_id FROM album_groups_permissions
+WHERE group_id = $1 AND permission = 'W'
+`
+
+func (q *Queries) GetWritableAlbumIDsByGroupID(ctx context.Context, groupID int32) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getWritableAlbumIDsByGroupID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var album_id string
+		if err := rows.Scan(&album_id); err != nil {
+			return nil, err
+		}
+		items = append(items, album_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertAlbumGroupPermission = `-- name: InsertAlbumGroupPermission :exec
 INSERT INTO
     album_groups_permissions (album_id, group_id, permission)
@@ -66,7 +122,7 @@ VALUES
 `
 
 type InsertAlbumGroupPermissionParams struct {
-	AlbumID    int32
+	AlbumID    string
 	GroupID    int32
 	Permission string
 }

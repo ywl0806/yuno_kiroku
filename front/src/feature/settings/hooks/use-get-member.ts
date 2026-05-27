@@ -3,7 +3,7 @@ import { MyAxiosWithAuth } from '@/lib/my-axios'
 import { Member } from '@/types'
 import { useQuery } from '@tanstack/react-query'
 
-export const useGetMember = (id: number) => {
+export const useGetMember = (id: string) => {
   return useQuery({
     queryKey: ['member', id],
     queryFn: async () => {
@@ -11,5 +11,6 @@ export const useGetMember = (id: number) => {
       return response.data
     },
     staleTime: 1000 * 60 * 5,
+    enabled: !!id,
   })
 }

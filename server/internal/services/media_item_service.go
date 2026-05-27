@@ -3,39 +3,48 @@ package services
 import (
 	"context"
 	"database/sql"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/ywl0806/yuno_kiroku/internal/apperr"
+	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
+	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 )
 
 type MediaItemService struct {
-	mediaItemStore store.MediaItemStore
-	imageUploader  *ImageUploader
+	log                       *slog.Logger
+	mediaItemStore            store.MediaItemStore
+	albumGroupPermissionStore store.AlbumGroupPermissionStore
+	storage                   storage.StorageService
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
-	imageUploader *ImageUploader,
+	albumGroupPermissionStore store.AlbumGroupPermissionStore,
+	storageService storage.StorageService,
 ) *MediaItemService {
 	return &MediaItemService{
-		mediaItemStore: mediaItemStore,
-		imageUploader:  imageUploader,
+		log:                       slog.Default().With("layer", "service", "component", "media_item"),
+		mediaItemStore:            mediaItemStore,
+		albumGroupPermissionStore: albumGroupPermissionStore,
+		storage:                   storageService,
 	}
 }
 
 // UploadImageResult는 이미지 업로드 시작 후 반환하는 응답
 type UploadImageResult struct {
-	MediaItemID int32
+	MediaItemID string
 	Status      string
 }
 
 // 미디어 아이템의 업로드 상태를 업데이트
-func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
+func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID string, uploadStatus enums.UploadStatus) error {
 	_, err := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(uploadStatus),
@@ -44,7 +53,7 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 }
 
 // GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환
-func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
+func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID string, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
 	params := db.GetMediaItemsByTakenAtParams{
 		GroupID:     groupID,
 		TakenAtFrom: from,
@@ -53,7 +62,7 @@ func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID i
 	}
 	mediaItems, err := s.mediaItemStore.GetMediaItemsByTakenAt(ctx, params)
 	if err != nil {
-		log.Println("get media items by taken at error:", err)
+		s.log.ErrorContext(ctx, "get media items by taken at failed", "error", err)
 		return nil, err
 	}
 	return mediaItems, nil
@@ -96,16 +105,20 @@ type SearchMediaItemsResult struct {
 }
 
 // SearchMediaItems는 검색 조건으로 미디어 아이템을 페이지 단위로 반환
-func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID, userID int32, from, to *time.Time, albumID *int32, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
+func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID int32, userID string, from, to *time.Time, albumID *string, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
 	if identityIDs == nil {
 		identityIDs = []int32{}
 	}
 	if tagIDs == nil {
 		tagIDs = []int32{}
 	}
-	albumIDNull := sql.NullInt32{Valid: false}
+	albumIDNull := uuid.NullUUID{Valid: false}
 	if albumID != nil {
-		albumIDNull = sql.NullInt32{Int32: *albumID, Valid: true}
+		parsed, err := uuid.Parse(*albumID)
+		if err != nil {
+			return nil, err
+		}
+		albumIDNull = uuid.NullUUID{UUID: parsed, Valid: true}
 	}
 	fromNull := sql.NullTime{Valid: false}
 	if from != nil {
@@ -145,19 +158,55 @@ func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID, userID
 
 // PresignedUploadResult는 Presigned URL 발급 후 반환하는 응답
 type PresignedUploadResult struct {
-	MediaItemID  int32
-	PresignedURL string
-	StorageKey   string
+	MediaItemID   string
+	PresignedURL  string
+	StorageKey    string
+	OriginalIndex int
+}
+
+const (
+	maxImageSize = 50 * 1024 * 1024       // 50MB
+	maxVideoSize = 2 * 1024 * 1024 * 1024 // 2GB
+)
+
+var allowedContentTypes = map[string]bool{
+	"image/jpeg": true, "image/png": true, "image/webp": true,
+	"image/heic": true, "image/heif": true, "image/gif": true,
+	"image/tiff": true, "image/bmp": true,
+	"video/mp4": true, "video/quicktime": true, "video/x-msvideo": true,
+	"video/x-matroska": true, "video/webm": true, "video/x-m4v": true,
+}
+
+var videoContentTypes = map[string]bool{
+	"video/mp4": true, "video/quicktime": true, "video/x-msvideo": true,
+	"video/x-matroska": true, "video/webm": true, "video/x-m4v": true,
+}
+
+func validateFileSize(contentType string, fileSize int64) error {
+	if videoContentTypes[contentType] {
+		if fileSize > maxVideoSize {
+			return apperr.NewValidationError("message.validation.file_too_large", nil)
+		}
+	} else {
+		if fileSize > maxImageSize {
+			return apperr.NewValidationError("message.validation.file_too_large", nil)
+		}
+	}
+	return nil
 }
 
 // CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급
-// DB 레코드를 먼저 생성(DB-first)하여 고아 파일을 방지
+// Presigned URL 발급 실패 시 생성된 DB 레코드를 수동으로 롤백함
 func (s *MediaItemService) CreatePresignedUpload(
 	ctx context.Context,
 	fileName, contentType string,
-	familyId, albumId, uploadBatchID int32,
+	familyId, albumId string, uploadBatchID int32,
 ) (*PresignedUploadResult, error) {
-	// 1. media_item 먼저 생성 (storageKey에 mediaItemID 필요)
+	if !allowedContentTypes[contentType] {
+		return nil, apperr.NewValidationError("message.validation.unsupported_format", nil)
+	}
+
+	// 1. media_item 생성 (storageKey에 mediaItemID 필요)
 	mediaItem, err := s.mediaItemStore.CreateMediaItem(ctx, db.CreateMediaItemParams{
 		FamilyID:      familyId,
 		AlbumID:       albumId,
@@ -169,8 +218,8 @@ func (s *MediaItemService) CreatePresignedUpload(
 		return nil, err
 	}
 
-	// 2. mediaItemID 확정 후 키 생성 (original/{familyId}/{mediaItemId}.ext)
-	storageKey := s.imageUploader.BuildOriginalKey(familyId, mediaItem.ID, fileName)
+	// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
+	storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
 
 	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
 		MediaItemID: mediaItem.ID,
@@ -178,11 +227,18 @@ func (s *MediaItemService) CreatePresignedUpload(
 		StorageKey:  storageKey,
 	})
 	if err != nil {
+		if rollbackErr := s.mediaItemStore.DeleteMediaItem(ctx, mediaItem.ID); rollbackErr != nil {
+			s.log.ErrorContext(ctx, "media_item rollback failed", "media_item_id", mediaItem.ID, "error", rollbackErr)
+		}
 		return nil, err
 	}
 
-	presignedURL, err := s.imageUploader.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
+	// 3. Presigned URL 발급 — 실패 시 DB 레코드 삭제 (media_files는 CASCADE)
+	presignedURL, err := s.storage.GeneratePresignedPutURL(ctx, storageKey, contentType, time.Hour)
 	if err != nil {
+		if rollbackErr := s.mediaItemStore.DeleteMediaItem(ctx, mediaItem.ID); rollbackErr != nil {
+			s.log.ErrorContext(ctx, "media_item rollback failed", "media_item_id", mediaItem.ID, "error", rollbackErr)
+		}
 		return nil, err
 	}
 
@@ -193,8 +249,56 @@ func (s *MediaItemService) CreatePresignedUpload(
 	}, nil
 }
 
+// BatchPresignedUploadItem는 배치 Presigned URL 발급 요청 항목
+type BatchPresignedUploadItem struct {
+	FileName    string
+	ContentType string
+}
+
+// BatchPresignedUploadResult는 배치 Presigned URL 발급 결과 (부분 성공 지원)
+type BatchPresignedUploadResult struct {
+	Success []*PresignedUploadResult
+	Failed  []BatchPresignedUploadFailedItem
+}
+
+// BatchPresignedUploadFailedItem은 배치 발급 실패 항목
+type BatchPresignedUploadFailedItem struct {
+	FileName string
+	Index    int
+	Reason   string // "unsupported_format" 등
+}
+
+// CreateBatchPresignedUpload는 여러 파일에 대한 Presigned PUT URL을 한 번에 발급
+// 개별 항목 실패 시 해당 항목 DB 레코드는 트랜잭션 롤백으로 자동 정리되며, 나머지 항목은 계속 처리
+func (s *MediaItemService) CreateBatchPresignedUpload(
+	ctx context.Context,
+	items []BatchPresignedUploadItem,
+	familyId, albumId string,
+	uploadBatchID int32,
+) (*BatchPresignedUploadResult, error) {
+	result := &BatchPresignedUploadResult{
+		Success: make([]*PresignedUploadResult, 0, len(items)),
+		Failed:  make([]BatchPresignedUploadFailedItem, 0),
+	}
+	for i, item := range items {
+		r, err := s.CreatePresignedUpload(ctx, item.FileName, item.ContentType, familyId, albumId, uploadBatchID)
+		if err != nil {
+			s.log.WarnContext(ctx, "batch presigned upload item failed", "index", i, "file", item.FileName, "error", err)
+			reason := ""
+			if !allowedContentTypes[item.ContentType] {
+				reason = string(enums.FailureReasonUnsupportedFormat)
+			}
+			result.Failed = append(result.Failed, BatchPresignedUploadFailedItem{FileName: item.FileName, Index: i, Reason: reason})
+			continue
+		}
+		r.OriginalIndex = i
+		result.Success = append(result.Success, r)
+	}
+	return result, nil
+}
+
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성
-func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error) {
+func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId string) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)
 	if err != nil {
 		return nil, err
@@ -208,7 +312,7 @@ func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID 
 }
 
 type BatchThumbnail struct {
-	ID              int32
+	ID              string
 	ThumbnailUrl    string
 	ThumbnailWidth  int32
 	ThumbnailHeight int32
@@ -216,7 +320,7 @@ type BatchThumbnail struct {
 
 type UploadBatchWithThumbnails struct {
 	ID         int32
-	AlbumID    int32
+	AlbumID    string
 	UploadAt   time.Time
 	Count      int64
 	Thumbnails []BatchThumbnail
@@ -297,7 +401,7 @@ type UploadBatchItemsResult struct {
 }
 
 // GetMediaItemsByUploadBatch는 특정 배치의 미디어 아이템을 페이지 단위로 반환합니다.
-func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID int32, page int) (*UploadBatchItemsResult, error) {
+func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID string, page int) (*UploadBatchItemsResult, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -316,4 +420,46 @@ func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploa
 		items = items[:SearchPageSize]
 	}
 	return &UploadBatchItemsResult{Items: items, HasNext: hasNext}, nil
+}
+
+// DeleteMediaItem는 미디어 아이템을 삭제합니다.
+func (s *MediaItemService) DeleteMediaItem(ctx context.Context, mediaItemID string, familyID string, userID string) error {
+	// media_item 조회
+	mediaItem, err := s.mediaItemStore.GetMediaItemByIDAndFamilyID(ctx, mediaItemID, familyID)
+	if err != nil {
+		return err
+	}
+
+	hasPermission, err := s.albumGroupPermissionStore.CheckUserHasPermissionForAlbum(ctx, mediaItem.AlbumID, userID, "W")
+	if err != nil {
+		return err
+	}
+
+	if !hasPermission {
+		return apperr.NewForbiddenError("error.forbidden", nil)
+	}
+
+	return s.mediaItemStore.DeleteMediaItem(ctx, mediaItemID)
+}
+
+// UpdateMediaItemAlbum는 미디어 아이템의 앨범을 업데이트합니다.
+func (s *MediaItemService) UpdateMediaItemAlbum(ctx context.Context, id string, familyID string, userID string, albumID string) error {
+	mediaItem, err := s.mediaItemStore.GetMediaItemByIDAndFamilyID(ctx, id, familyID)
+	if err != nil {
+		return err
+	}
+
+	hasPermission, err := s.albumGroupPermissionStore.CheckUserHasPermissionForAlbum(ctx, mediaItem.AlbumID, userID, "W")
+	if err != nil {
+		return err
+	}
+
+	if !hasPermission {
+		return apperr.NewForbiddenError("error.forbidden", nil)
+	}
+
+	return s.mediaItemStore.UpdateMediaItemAlbum(ctx, db.UpdateMediaItemAlbumParams{
+		ID:      id,
+		AlbumID: albumID,
+	})
 }

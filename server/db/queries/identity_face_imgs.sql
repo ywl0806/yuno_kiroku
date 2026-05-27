@@ -45,8 +45,8 @@ WHERE
             (k.id = ALL (sqlc.arg (with_kid_ids)::int[]))
             ELSE TRUE
         END
-        OR CASE WHEN sqlc.arg (with_user_ids)::int[] IS NOT NULL THEN
-            (u.id = ALL (sqlc.arg (with_user_ids)::int[]))
+        OR CASE WHEN sqlc.arg (with_user_ids)::uuid[] IS NOT NULL THEN
+            (u.id = ALL (sqlc.arg (with_user_ids)::uuid[]))
             ELSE TRUE
         END
     )

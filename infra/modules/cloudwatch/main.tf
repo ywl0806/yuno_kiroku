@@ -32,3 +32,37 @@ resource "aws_cloudwatch_metric_alarm" "sqs_scale_in" {
 
   alarm_actions = [var.ai_task_scale_in_policy_arn]
 }
+
+resource "aws_cloudwatch_metric_alarm" "video_task_scale_out" {
+  alarm_name          = "yuno-video-task-scale-out-${var.env}"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 1
+
+  dimensions = {
+    QueueName = var.video_queue_name
+  }
+
+  alarm_actions = [var.video_task_scale_out_policy_arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "video_task_scale_in" {
+  alarm_name          = "yuno-video-task-scale-in-${var.env}"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 1
+
+  dimensions = {
+    QueueName = var.video_queue_name
+  }
+
+  alarm_actions = [var.video_task_scale_in_policy_arn]
+}

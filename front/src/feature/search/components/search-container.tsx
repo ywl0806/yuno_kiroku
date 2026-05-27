@@ -48,7 +48,7 @@ export const SearchContainer = () => {
         <p className="px-4 pb-2 text-lg font-bold">{t('search.title')}</p>
         <SearchFilterPanel filter={filter} onFilterChange={setFilter} />
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))]">
         {hasFilter && photos.length === 0 && !isFetchingNextPage && (
           <p className="mt-10 text-center text-sm text-muted-foreground">{t('search.noResults')}</p>
         )}

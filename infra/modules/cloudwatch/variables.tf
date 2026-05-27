@@ -23,3 +23,18 @@ variable "face_recognition_queue_name" {
   type = string
   description = "Face Recognition Queue Name"
 }
+
+variable "video_queue_name" {
+  type        = string
+  description = "Video Processing Queue Name"
+}
+
+variable "video_task_scale_out_policy_arn" {
+  type        = string
+  description = "Video Task Scale Out Policy ARN"
+}
+
+variable "video_task_scale_in_policy_arn" {
+  type        = string
+  description = "Video Task Scale In Policy ARN"
+}

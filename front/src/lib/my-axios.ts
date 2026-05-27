@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosRequestConfig } from 'axios'
 
 const baseURL = import.meta.env.VITE_API_URL as string
 
@@ -28,21 +28,56 @@ export const MyAxios = axios.create(axiosDefaults)
 
 const MyAxiosWithAuth = axios.create({
   ...axiosDefaults,
-  headers: {
-    Authorization: localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : undefined,
-  },
+  withCredentials: true,
 })
 
+let isRefreshing = false
+let pendingQueue: Array<{ resolve: () => void; reject: (err: unknown) => void }> = []
+
+function flushQueue(error: unknown) {
+  for (const { resolve, reject } of pendingQueue) {
+    if (error) reject(error)
+    else resolve()
+  }
+  pendingQueue = []
+}
+
+async function tryRefresh(): Promise<void> {
+  await MyAxios.post('/auth/refresh', null, { withCredentials: true })
+}
+
 MyAxiosWithAuth.interceptors.response.use(
-  (res) => {
-    return res
-  },
-  (error) => {
-    if (error.response.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+  (res) => res,
+  async (error) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
+
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error)
     }
-    return Promise.reject(error)
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        pendingQueue.push({
+          resolve: () => resolve(MyAxiosWithAuth(originalRequest)),
+          reject,
+        })
+      })
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      await tryRefresh()
+      flushQueue(null)
+      return MyAxiosWithAuth(originalRequest)
+    } catch (refreshError) {
+      flushQueue(refreshError)
+      window.location.href = '/login'
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
   },
 )
 

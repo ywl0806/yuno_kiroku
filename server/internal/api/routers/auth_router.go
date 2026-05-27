@@ -17,6 +17,8 @@ func (ar *AuthRouter) Register(root *echo.Group) {
 	auth := root.Group("/auth")
 
 	auth.POST("/login", ar.authHandler.Login)
+	auth.POST("/refresh", ar.authHandler.Refresh)
+	auth.POST("/logout", ar.authHandler.Logout)
 
 	// 소셜 로그인: 로그인 페이지로 리다이렉트
 	auth.GET("/line", ar.authHandler.LineLoginRedirect)

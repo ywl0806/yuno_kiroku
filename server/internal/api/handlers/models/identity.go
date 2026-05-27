@@ -9,7 +9,7 @@ import (
 
 type IdentityResponse struct {
 	ID        int32     `json:"id"`
-	FamilyId  int32     `json:"family_id"`
+	FamilyId  string    `json:"family_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -45,7 +45,7 @@ type IdentityOptionResponse struct {
 	ID       int32   `json:"id"`
 	KidID    *int32  `json:"kid_id"`
 	KidName  *string `json:"kid_name"`
-	UserID   *int32  `json:"user_id"`
+	UserID   *string `json:"user_id"`
 	UserName *string `json:"user_name"`
 	ImageURL *string `json:"image_url"`
 }
@@ -55,9 +55,10 @@ func NewIdentityOptionResponse(identityOption *db.GetIdentityOptionsRow) *Identi
 	if identityOption.KidID.Valid {
 		kidID = &identityOption.KidID.Int32
 	}
-	var userID *int32
+	var userID *string
 	if identityOption.UserID.Valid {
-		userID = &identityOption.UserID.Int32
+		v := identityOption.UserID.UUID.String()
+		userID = &v
 	}
 	var kidName *string
 	if identityOption.KidName.Valid {

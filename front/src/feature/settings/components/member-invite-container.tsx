@@ -56,7 +56,7 @@ export const MemberInviteContainer = () => {
               <SelectContent>
                 {groups?.map((group) => (
                   <SelectItem key={group.id} value={String(group.id)}>
-                    {group.name}
+                    {group.is_admin ? t('settings.group.adminName') : group.name}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -27,27 +27,49 @@ func (s *LocalStorageService) GeneratePresignedPutURL(ctx context.Context, key s
 	return "", fmt.Errorf("local storage does not support presigned URLs")
 }
 
-func (s *LocalStorageService) SaveFile(ctx context.Context, file []byte, filePath string, fileName string) (string, error) {
+func (s *LocalStorageService) DeleteFile(ctx context.Context, key string) error {
+	path := filepath.Join("uploads", s.rootDir, key)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("파일 삭제 실패: %w", err)
+	}
+	return nil
+}
 
-	dirPath := filepath.Join("uploads", s.rootDir, filePath)
+func (s *LocalStorageService) SaveFile(ctx context.Context, key string, file []byte) (string, error) {
+	path := filepath.Join("uploads", s.rootDir, key)
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, file, 0644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
 
-	err := os.MkdirAll(dirPath, os.ModePerm)
-	path := filepath.Join(dirPath, fileName)
-
+func (s *LocalStorageService) DownloadToFile(ctx context.Context, key string, destPath string) error {
+	data, err := os.ReadFile(key)
 	if err != nil {
-		return "", err
+		return err
 	}
+	return os.WriteFile(destPath, data, 0644)
+}
 
-	dst, err := os.Create(path)
-
+func (s *LocalStorageService) GetFileSize(ctx context.Context, key string) (int64, error) {
+	fi, err := os.Stat(key)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	defer dst.Close()
+	return fi.Size(), nil
+}
 
-	if _, err := dst.Write(file); err != nil {
-		return "", err
+func (s *LocalStorageService) UploadFromFile(ctx context.Context, key string, contentType string, srcPath string) error {
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return err
 	}
-
-	return path, err
+	dir := filepath.Dir(key)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+	return os.WriteFile(key, data, 0644)
 }

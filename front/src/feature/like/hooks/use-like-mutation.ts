@@ -9,16 +9,16 @@ export const useLikeMutation = () => {
   }
 
   const likeMutation = useMutation({
-    mutationFn: (mediaItemId: number) => likeMediaItem(mediaItemId),
+    mutationFn: (mediaItemId: string) => likeMediaItem(mediaItemId),
     onSuccess: invalidate,
   })
 
   const unlikeMutation = useMutation({
-    mutationFn: (mediaItemId: number) => unlikeMediaItem(mediaItemId),
+    mutationFn: (mediaItemId: string) => unlikeMediaItem(mediaItemId),
     onSuccess: invalidate,
   })
 
-  const toggle = (mediaItemId: number, currentIsLiked: boolean) => {
+  const toggle = (mediaItemId: string, currentIsLiked: boolean) => {
     if (currentIsLiked) {
       unlikeMutation.mutate(mediaItemId)
     } else {

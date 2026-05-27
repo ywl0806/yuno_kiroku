@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"log/slog"
+	"os"
 	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -14,35 +15,34 @@ import (
 func main() {
 	setting.SettingEnv()
 
-	// 마이그레이션 경로 설정
 	migrationsPath, err := filepath.Abs("db/migrations")
 	if err != nil {
-		log.Fatal("마이그레이션 경로 오류: ", err)
+		slog.Error("마이그레이션 경로 오류", "error", err)
+		os.Exit(1)
 	}
 
-	log.Printf("마이그레이션 경로: %s", migrationsPath)
-	log.Printf("DATABASE_URL: %s", viper.GetString("DATABASE_URL"))
+	slog.Info("마이그레이션 시작", "path", migrationsPath, "database_url", viper.GetString("DATABASE_URL"))
 
 	m, err := migrate.New(
 		"file://"+migrationsPath,
 		viper.GetString("DATABASE_URL"),
 	)
-
 	if err != nil {
-		log.Fatal(err)
-	}
-	err = m.Up()
-
-	if err != nil {
-		log.Fatal(err)
+		slog.Error("migrate 초기화 실패", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("마이그레이션 성공")
-
-	_, err = m.Close()
-	if err != nil {
-		log.Fatal(err)
+	if err = m.Up(); err != nil {
+		slog.Error("마이그레이션 실패", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("마이그레이션 종료")
+	slog.Info("마이그레이션 성공")
+
+	if _, err = m.Close(); err != nil {
+		slog.Error("migrate 종료 실패", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("마이그레이션 종료")
 }

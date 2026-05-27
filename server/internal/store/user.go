@@ -13,8 +13,9 @@ type UserStore interface {
 	CreateUserOAuth(ctx context.Context, params db.CreateUserOAuthParams) (db.User, error)
 	FindUserByUsername(ctx context.Context, username string) (db.User, error)
 	FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error)
-	FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.User, error)
-	FindUserByID(ctx context.Context, id int32, familyID int32) (db.User, error)
+	FindMembersByFamilyID(ctx context.Context, familyID string) ([]db.User, error)
+	FindUserByID(ctx context.Context, id string) (db.User, error)
+	FindUserByIDAndFamilyID(ctx context.Context, id string, familyID string) (db.User, error)
 	UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error)
 	UpdateMember(ctx context.Context, arg db.UpdateMemberParams) (db.User, error)
 }
@@ -40,7 +41,7 @@ func (s *userStore) FindUserByUsername(ctx context.Context, username string) (db
 	return wrapErr(s.queries.FindUserByUsername(ctx, username))
 }
 
-func (s *userStore) FindMembersByFamilyID(ctx context.Context, familyID int32) ([]db.User, error) {
+func (s *userStore) FindMembersByFamilyID(ctx context.Context, familyID string) ([]db.User, error) {
 	return wrapErr(s.queries.FindMembersByFamilyID(ctx, familyID))
 }
 
@@ -51,12 +52,17 @@ func (s *userStore) FindUserByProvider(ctx context.Context, provider, providerUs
 	}))
 }
 
-func (s *userStore) FindUserByID(ctx context.Context, id int32, familyID int32) (db.User, error) {
-	return wrapErr(s.queries.FindUserByID(ctx, db.FindUserByIDParams{
+func (s *userStore) FindUserByID(ctx context.Context, id string) (db.User, error) {
+	return wrapErr(s.queries.FindUserByID(ctx, id))
+}
+
+func (s *userStore) FindUserByIDAndFamilyID(ctx context.Context, id string, familyID string) (db.User, error) {
+	return wrapErr(s.queries.FindUserByIDAndFamilyID(ctx, db.FindUserByIDAndFamilyIDParams{
 		ID:       id,
 		FamilyID: familyID,
 	}))
 }
+
 func (s *userStore) UpdateUserName(ctx context.Context, arg db.UpdateUserNameParams) (db.User, error) {
 	return wrapErr(s.queries.UpdateUserName(ctx, arg))
 }

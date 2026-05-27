@@ -17,6 +17,8 @@ RETURNING
     album_id,
     upload_batch_id,
     upload_status,
+    failure_reason,
+    face_recognition_status,
     taken_location_latitude,
     taken_location_longitude,
     taken_at,
@@ -30,6 +32,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -41,10 +44,11 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = sqlc.arg(group_id)::int
     AND agp.permission = 'R'
@@ -87,7 +91,7 @@ FROM
     media_items AS mi
     INNER JOIN face_detections AS fd ON mi.id = fd.media_item_id
 WHERE
-    mi.family_id = sqlc.arg(family_id)::int
+    mi.family_id = sqlc.arg(family_id)::uuid
     AND fd.embedding = ANY(sqlc.arg(embeddings)::vector[])
 GROUP BY
     mi.id
@@ -99,6 +103,13 @@ SET upload_status = $2
 WHERE id = $1
 RETURNING id, upload_status, created_at, updated_at;
 
+-- name: UpdateMediaItemFailed :exec
+UPDATE media_items
+SET upload_status = '04',
+    failure_reason = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;
+
 -- name: UpdateMediaItemTakenAt :exec
 UPDATE media_items
 SET taken_at = $2,
@@ -107,8 +118,8 @@ SET taken_at = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
--- name: GetMediaItemByID :one
-SELECT * FROM media_items WHERE id = $1 LIMIT 1;
+-- name: GetMediaItemByIDAndFamilyID :one
+SELECT * FROM media_items WHERE id = $1 AND family_id = $2 LIMIT 1;
 
 -- name: SearchMediaItems :many
 SELECT
@@ -116,6 +127,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -127,17 +139,18 @@ FROM
     media_items AS mi
     INNER JOIN albums AS a ON mi.album_id = a.id
     INNER JOIN album_groups_permissions AS agp ON a.id = agp.album_id
-    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::int
+    LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::uuid
     LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
     LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
     LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+    LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE
     agp.group_id = sqlc.arg(group_id)::int
     AND agp.permission = 'R'
     AND mi.upload_status = '03'
     AND (sqlc.narg(taken_at_from)::timestamp IS NULL OR mi.taken_at >= sqlc.narg(taken_at_from)::timestamp)
     AND (sqlc.narg(taken_at_to)::timestamp IS NULL OR mi.taken_at <= sqlc.narg(taken_at_to)::timestamp)
-    AND (sqlc.narg(album_id)::int IS NULL OR mi.album_id = sqlc.narg(album_id)::int)
+    AND (sqlc.narg(album_id)::uuid IS NULL OR mi.album_id = sqlc.narg(album_id)::uuid)
     AND (
         cardinality(sqlc.arg(identity_ids)::int[]) = 0
         OR EXISTS (
@@ -151,7 +164,7 @@ WHERE
         OR EXISTS (
             SELECT 1 FROM media_item_likes mil
             WHERE mil.media_item_id = mi.id
-              AND mil.user_id = sqlc.arg(user_id)::int
+              AND mil.user_id = sqlc.arg(user_id)::uuid
         )
     )
     AND (
@@ -170,7 +183,8 @@ OFFSET sqlc.arg(page_offset)::int;
 -- name: GetUploadStatuses :many
 SELECT
     mi.id,
-    mi.upload_status
+    mi.upload_status,
+    mi.failure_reason
 FROM media_items AS mi
 WHERE mi.upload_batch_id = $1
 ORDER BY mi.id ASC;
@@ -201,6 +215,7 @@ SELECT
     mf_orig.storage_key AS original_storage_key,
     mf_thumb.storage_key AS thumbnail_storage_key,
     mf_view.storage_key AS view_storage_key,
+    mf_video.storage_key AS video_storage_key,
     mf_orig.width AS original_width,
     mf_orig.height AS original_height,
     mf_thumb.width AS thumbnail_width,
@@ -209,10 +224,11 @@ SELECT
     mf_view.height AS view_height,
     mil.id AS is_liked
 FROM media_items AS mi
-LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::int
+LEFT JOIN media_item_likes AS mil ON mil.media_item_id = mi.id AND mil.user_id = sqlc.arg(user_id)::uuid
 LEFT JOIN media_files AS mf_orig  ON mf_orig.media_item_id  = mi.id AND mf_orig.role  = '01'
 LEFT JOIN media_files AS mf_thumb ON mf_thumb.media_item_id = mi.id AND mf_thumb.role = '02'
 LEFT JOIN media_files AS mf_view  ON mf_view.media_item_id  = mi.id AND mf_view.role  = '03'
+LEFT JOIN media_files AS mf_video ON mf_video.media_item_id = mi.id AND mf_video.role = '05'
 WHERE mi.upload_batch_id = sqlc.arg(upload_batch_id)::int AND mi.upload_status = '03'
 ORDER BY mi.taken_at ASC
 LIMIT sqlc.arg(page_size)::int
@@ -239,3 +255,23 @@ LEFT JOIN LATERAL (
 WHERE ub.id = ANY(sqlc.arg(batch_ids)::int[])
 AND mf_thumb.storage_key IS NOT NULL
 ORDER BY ub.upload_at DESC;
+
+
+-- name: DeleteMediaItem :exec
+DELETE FROM media_items WHERE id = $1;
+
+-- name: UpdateMediaItemAlbum :exec
+UPDATE media_items SET album_id = $2 WHERE id = $1;
+
+-- name: UpdateMediaItemToProcessingIfPending :one
+-- S2-08: pending(01) 상태일 때만 processing(02)으로 원자적 전환 — 중복 이벤트 early exit용
+UPDATE media_items
+SET upload_status = '02', updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND upload_status = '01'
+RETURNING id, upload_status;
+
+-- name: UpdateFaceRecognitionStatus :exec
+-- S2-07: face recognition 발행 결과 상태 추적
+UPDATE media_items
+SET face_recognition_status = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;

@@ -9,13 +9,15 @@ import (
 )
 
 type MeResponse struct {
-	ID       int32   `json:"id"`
-	Name     *string `json:"name"`
-	Username string  `json:"username"`
-	Provider *string `json:"provider"`
+	ID               string   `json:"id"`
+	Name             *string  `json:"name"`
+	Username         string   `json:"username"`
+	Provider         *string  `json:"provider"`
+	IsAdmin          bool     `json:"is_admin"`
+	WritableAlbumIDs []string `json:"writable_album_ids"`
 }
 
-func NewMeResponse(u *db.User) *MeResponse {
+func NewMeResponse(u *db.User, isAdmin bool, writableAlbumIDs []string) *MeResponse {
 	var name *string
 	if u.Name.Valid {
 		name = &u.Name.String
@@ -24,11 +26,16 @@ func NewMeResponse(u *db.User) *MeResponse {
 	if u.Provider.Valid {
 		provider = &u.Provider.String
 	}
+	if writableAlbumIDs == nil {
+		writableAlbumIDs = []string{}
+	}
 	return &MeResponse{
-		ID:       u.ID,
-		Name:     name,
-		Username: u.Username,
-		Provider: provider,
+		ID:               u.ID,
+		Name:             name,
+		Username:         u.Username,
+		Provider:         provider,
+		IsAdmin:          isAdmin,
+		WritableAlbumIDs: writableAlbumIDs,
 	}
 }
 
@@ -43,10 +50,10 @@ type UpdateMemberRequest struct {
 }
 
 type MemberResponse struct {
-	ID                int32   `json:"id"`
+	ID                string  `json:"id"`
 	Name              string  `json:"name"`
 	Username          string  `json:"username"`
-	FamilyID          int32   `json:"family_id"`
+	FamilyID          string  `json:"family_id"`
 	GroupID           int32   `json:"group_id"`
 	FamilyTitle       *string `json:"family_title"`
 	CustomFamilyTitle *string `json:"custom_family_title"`
@@ -81,7 +88,7 @@ type CreateUserRequest struct {
 	Name     string `json:"name" validate:"required"`
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required,min=6"`
-	FamilyID int32  `json:"family_id" validate:"required"`
+	FamilyID string `json:"family_id" validate:"required"`
 	GroupID  int32  `json:"group_id" validate:"required"`
 }
 

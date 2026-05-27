@@ -19,7 +19,7 @@ RETURNING
 `
 
 type CreateGroupParams struct {
-	FamilyID int32
+	FamilyID string
 	IsAdmin  bool
 	Name     string
 }
@@ -63,7 +63,7 @@ WHERE
 
 type FindGroupByIDRow struct {
 	ID       int32
-	FamilyID int32
+	FamilyID string
 	IsAdmin  bool
 	Name     string
 }
@@ -91,7 +91,7 @@ ORDER BY
     id
 `
 
-func (q *Queries) FindGroupsByFamilyID(ctx context.Context, familyID int32) ([]Group, error) {
+func (q *Queries) FindGroupsByFamilyID(ctx context.Context, familyID string) ([]Group, error) {
 	rows, err := q.db.QueryContext(ctx, findGroupsByFamilyID, familyID)
 	if err != nil {
 		return nil, err

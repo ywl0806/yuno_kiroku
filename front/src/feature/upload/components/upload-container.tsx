@@ -30,13 +30,40 @@ export const UploadContainer: FC = () => {
     navigate(-1)
   }
 
+  const MAX_IMAGE_SIZE = 50 * 1024 * 1024          // 50MB
+  const MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024    // 2GB
+
+  const isVideo = (file: File) => file.type.startsWith('video/')
+
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
+
+    const validFiles: File[] = []
+    const oversizedImages: string[] = []
+    const oversizedVideos: string[] = []
+    Array.from(files).forEach((file) => {
+      const limit = isVideo(file) ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE
+      if (file.size > limit) {
+        if (isVideo(file)) oversizedVideos.push(file.name)
+        else oversizedImages.push(file.name)
+      } else {
+        validFiles.push(file)
+      }
+    })
+
+    if (oversizedImages.length > 0) {
+      alert(t('upload.fileTooLargeImage', { files: oversizedImages.join(', ') }))
+    }
+    if (oversizedVideos.length > 0) {
+      alert(t('upload.fileTooLargeVideo', { files: oversizedVideos.join(', ') }))
+    }
+
     setMediaItems((prev: UploadMediaItem[]) => [
       ...prev,
-      ...Array.from(files).map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.PENDING })),
+      ...validFiles.map((file) => ({ file, src: URL.createObjectURL(file), status: UPLOAD_STATUS.PENDING })),
     ])
+    e.target.value = ''
   }
 
   const isEmpty = mediaItems.length === 0
@@ -116,7 +143,7 @@ export const UploadContainer: FC = () => {
             ref={imgInputRef}
             hidden
             type="file"
-            accept="image/*"
+            accept="image/*, video/*"
             name="images"
             multiple
             onChange={handleAddImages}
@@ -129,7 +156,7 @@ export const UploadContainer: FC = () => {
             inputRef={imgInputRef}
             images={mediaItems}
             setImages={setMediaItems}
-            albumId={selectedAlbumId}
+            albumId={selectedAlbumId ?? ''}
           />
         </div>
       )}

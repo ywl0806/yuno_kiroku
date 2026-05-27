@@ -3,8 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/ywl0806/yuno_kiroku/internal/utils"
@@ -12,6 +11,7 @@ import (
 
 // queryLogger는 DBTX를 래핑하고 쿼리를 로깅
 type queryLogger struct {
+	log     *slog.Logger
 	inner   DBTX
 	enabled bool
 }
@@ -21,23 +21,20 @@ func NewQueryLogger(inner DBTX, enabled bool) DBTX {
 	if !enabled {
 		return inner
 	}
-	return &queryLogger{inner: inner, enabled: true}
+	return &queryLogger{
+		log:     slog.Default().With("layer", "db"),
+		inner:   inner,
+		enabled: true,
+	}
 }
 
-// 쿼리와 리퀘스트ID를 로깅
+// 쿼리와 리퀘스트ID를 로깅 (DEBUG 레벨 — 프로덕션에서는 출력되지 않음)
 func (q *queryLogger) logQuery(ctx context.Context, query string, args ...interface{}) {
-	query = strings.TrimSpace(query)
-
-	requestId := utils.GetRequestID(ctx)
-	if requestId == "" {
-		requestId = "unknown"
-	}
-	argJson, err := json.Marshal(args)
-	if err != nil {
-		log.Printf("[DB] request_id=%s \n query: %s \n args: %s", requestId, query, "error marshalling args")
-	} else {
-		log.Printf("[DB] request_id=%s \n query: %s \n args: %s", requestId, query, string(argJson))
-	}
+	q.log.DebugContext(ctx, "db query",
+		"request_id", utils.GetRequestID(ctx),
+		"query", strings.TrimSpace(query),
+		"args", args,
+	)
 }
 
 func (q *queryLogger) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {

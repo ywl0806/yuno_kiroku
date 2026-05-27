@@ -13,6 +13,7 @@ import tempfile
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from src.service.face import detect_face
 
@@ -59,7 +60,15 @@ def process_job(s3_client, job: dict) -> bool:
 
     tmp_path = None
     try:
-        tmp_path = download_image(s3_client, view_key)
+        try:
+            tmp_path = download_image(s3_client, view_key)
+        except ClientError as e:
+            if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
+                logger.error(
+                    f"media_item={media_item_id} S3 파일 없음 (key={view_key}), 재시도 불필요 - 메시지 삭제"
+                )
+                return True  # 재시도 불필요 → 즉시 메시지 삭제
+            raise
 
         result = detect_face(tmp_path)
         faces = result.get("faces", [])
@@ -89,4 +98,7 @@ def process_job(s3_client, job: dict) -> bool:
         return False
     finally:
         if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+            try:
+                os.unlink(tmp_path)
+            except OSError as e:
+                logger.warning(f"임시 파일 삭제 실패 (path={tmp_path}): {e}")

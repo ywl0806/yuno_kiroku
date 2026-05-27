@@ -1,8 +1,10 @@
 import { DropdownYear } from '@/components/blocks/dropdown-year'
 import { cn } from '@/lib/utils'
 import { MediaItemRange } from '@/types'
+import { RefreshCcw } from 'lucide-react'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 
 type SelectedDate = {
   year: number
@@ -13,10 +15,11 @@ type Props = {
   date: string
   range: MediaItemRange[]
   hidden: boolean
+
 }
 export const HomeHeader: FC<Props> = ({ date, range, hidden }) => {
   const nav = useNavigate()
-
+  const queryClient = useQueryClient()
   const [selectedDate, setSelectedDate] = useState<SelectedDate>({
     year: parseInt(date?.split('-')[0] ?? '0') ?? new Date().getFullYear(),
     month: parseInt(date?.split('-')[1] ?? '0') ?? new Date().getMonth() + 1,
@@ -37,6 +40,11 @@ export const HomeHeader: FC<Props> = ({ date, range, hidden }) => {
     return Array.from(set)
   }, [range])
 
+  const refresh = () => {
+    queryClient.refetchQueries({ queryKey: ['mediaItems', selectedDate.year, selectedDate.month] })
+    queryClient.refetchQueries({ queryKey: ['mediaItemsRange'] })
+  }
+
   useEffect(() => {
     if (!date) return
     const [y, m] = date.split('-')
@@ -49,17 +57,25 @@ export const HomeHeader: FC<Props> = ({ date, range, hidden }) => {
       <div className={cn('grid transition-all duration-300 ease-in-out', hidden ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}>
         <div className="overflow-hidden">
           <div className={cn('flex items-center justify-center gap-2 pt-2 pb-1 transition-opacity duration-300', hidden ? 'opacity-0' : 'opacity-100')}>
-            <DropdownYear
-              years={years}
-              selectedYear={selectedDate.year}
-              onChange={(changeYear) => {
-                setSelectedDate({ ...selectedDate, year: changeYear })
-                const newD = range.find((y) => y.year === changeYear)
-                if (newD) {
-                  nav(`/${newD.year}-${newD.month}`)
-                }
-              }}
-            />
+            <div className="w-1/3" />
+            <div className="w-1/3 flex justify-center">
+              <div className='w-20'>
+                <DropdownYear
+                  years={years}
+                  selectedYear={selectedDate.year}
+                  onChange={(changeYear) => {
+                    setSelectedDate({ ...selectedDate, year: changeYear })
+                    const newD = range.find((y) => y.year === changeYear)
+                    if (newD) {
+                      nav(`/${newD.year}-${newD.month}`)
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <button type="button" onClick={refresh} className="w-1/3 flex justify-end flex-row pr-5">
+              <RefreshCcw className="size-5 text-muted-foreground hover:text-foreground transition-all active:scale-95 active:rotate-180 duration-300" />
+            </button>
           </div>
         </div>
       </div>

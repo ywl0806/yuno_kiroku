@@ -2,7 +2,8 @@ package worker
 
 import (
 	"database/sql"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/spf13/viper"
 
@@ -17,14 +18,15 @@ import (
 func InitResize() *workerServices.ResizeService {
 	conn, err := sql.Open("pgx", viper.GetString("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("DB 연결 실패: %v", err)
+		slog.Error("DB 연결 실패", "error", err)
+		os.Exit(1)
 	}
 	st := store.New(conn, db.New(conn))
 
 	storageService := providers.NewStorageProvider().StorageService()
-	imageUploader := services.NewImageUploader(storageService)
 
 	faceDispatcher := services.NewSQSFaceRecognitionDispatcher(nil, "")
+	videoDispatcher := services.NewSQSVideoJobDispatcher(nil, "")
 
-	return workerServices.NewResizeService(st.MediaItem, imageUploader, faceDispatcher)
+	return workerServices.NewResizeService(st.MediaItem, storageService, faceDispatcher, videoDispatcher)
 }
