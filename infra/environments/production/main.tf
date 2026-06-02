@@ -91,6 +91,7 @@ module "cloudfront" {
   media_domain    =  "media.${var.domain_name}" 
   acm_certificate_arn =  data.terraform_remote_state.acm.outputs.cloudfront_certificate_arn
   common_tags = local.common_tags
+  cloudfront_public_key_pem = var.cloudfront_public_key_pem
 }
 
 # ── Lambda ────────────────────────────────────────────────────
@@ -186,4 +187,10 @@ module "cloudwatch" {
   video_queue_name                = module.sqs.video_queue_name
   video_task_scale_out_policy_arn = module.ecs.video_task_scale_out_policy_arn
   video_task_scale_in_policy_arn  = module.ecs.video_task_scale_in_policy_arn
+
+  alert_email               = var.alert_email
+  resize_dlq_name           = module.sqs.resize_dlq_name
+  face_recognition_dlq_name = module.sqs.face_recognition_dlq_name
+  video_dlq_name            = module.sqs.video_dlq_name
+  api_log_group_name        = "/aws/lambda/yuno-api-${local.env}"
 }

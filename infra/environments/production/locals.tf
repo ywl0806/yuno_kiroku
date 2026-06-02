@@ -42,6 +42,10 @@ locals {
     LINE_CHANNEL_SECRET = var.line_channel_secret
     KAKAO_CLIENT_ID     = var.kakao_client_id
     KAKAO_CLIENT_SECRET = var.kakao_client_secret
+    CLOUDFRONT_KEY_PAIR_ID = module.cloudfront.media_signing_key_pair_id
+    CLOUDFRONT_PRIVATE_KEY = var.cloudfront_private_key
+    CLOUDFRONT_MEDIA_DOMAIN = "media.${var.domain_name}"
+
   }
 }
 

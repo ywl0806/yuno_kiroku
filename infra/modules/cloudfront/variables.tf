@@ -41,6 +41,13 @@ variable "media_domain" {
     default = ""
 }
 
+variable "cloudfront_public_key_pem" {
+    type        = string
+    description = "CloudFront signed cookie용 RSA 공개키 PEM (미설정 시 signed cookie 비활성화)"
+    default     = ""
+    sensitive   = true
+}
+
 variable "frontend_domain" {
     type = string
     description = "프론트엔드 도메인"

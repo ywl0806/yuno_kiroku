@@ -19,9 +19,16 @@ type AuthHandler struct {
 	log         *slog.Logger
 	authService *services.AuthService
 	frontURL    string
+	cfSigner    CloudFrontSigner
 }
 
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+// CloudFrontSigner CloudFront signed cookie 서명 인터페이스 (nil이면 비활성화)
+type CloudFrontSigner interface {
+	SetFamilyCookies(c echo.Context, familyID string) error
+	ClearFamilyCookies(c echo.Context, familyID string)
+}
+
+func NewAuthHandler(authService *services.AuthService, cfSigner CloudFrontSigner) *AuthHandler {
 	frontURL := viper.GetString("APP_URL")
 	if frontURL == "" {
 		frontURL = "http://localhost:5173"
@@ -30,10 +37,21 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 		log:         slog.Default().With("layer", "handler", "component", "auth"),
 		authService: authService,
 		frontURL:    frontURL,
+		cfSigner:    cfSigner,
 	}
 }
 
-func setAccessTokenCookie(c echo.Context, token string) {
+// setMediaCookie cfSigner가 설정된 경우에만 CloudFront signed cookie를 발급. 실패해도 로그만 남기고 진행.
+func (h *AuthHandler) setMediaCookie(c echo.Context, familyID string) {
+	if h.cfSigner == nil || familyID == "" {
+		return
+	}
+	if err := h.cfSigner.SetFamilyCookies(c, familyID); err != nil {
+		h.log.WarnContext(c.Request().Context(), "failed to set CloudFront media cookie", "error", err)
+	}
+}
+
+func (h *AuthHandler) setAccessTokenCookie(c echo.Context, token string) {
 	isProduction := viper.GetString("APP_ENV") == "production"
 	c.SetCookie(&http.Cookie{
 		Name:     consts.AccessTokenCookieName,
@@ -93,7 +111,8 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		Secure:   true,
 		MaxAge:   consts.RefreshTokenCookieMaxAge,
 	})
-	setAccessTokenCookie(c, result.AccessToken)
+	h.setAccessTokenCookie(c, result.AccessToken)
+	h.setMediaCookie(c, result.User.FamilyID)
 
 	return c.JSON(http.StatusOK, LoginResponse{
 		User: models.LoginUserResponse{
@@ -165,7 +184,8 @@ func (h *AuthHandler) LineCallback(c echo.Context) error {
 		MaxAge:   consts.RefreshTokenCookieMaxAge,
 		Path:     "/",
 	})
-	setAccessTokenCookie(c, accessToken)
+	h.setAccessTokenCookie(c, accessToken)
+	h.setMediaCookie(c, user.FamilyID)
 	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback")
 }
 
@@ -219,7 +239,8 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		MaxAge:   consts.RefreshTokenCookieMaxAge,
 		Path:     "/",
 	})
-	setAccessTokenCookie(c, result.AccessToken)
+	h.setAccessTokenCookie(c, result.AccessToken)
+	h.setMediaCookie(c, result.FamilyID)
 
 	return c.NoContent(http.StatusOK)
 }
@@ -289,6 +310,7 @@ func (h *AuthHandler) KakaoCallback(c echo.Context) error {
 		MaxAge:   consts.RefreshTokenCookieMaxAge,
 		Path:     "/",
 	})
-	setAccessTokenCookie(c, accessToken)
+	h.setAccessTokenCookie(c, accessToken)
+	h.setMediaCookie(c, user.FamilyID)
 	return c.Redirect(http.StatusFound, h.frontURL+"/login/callback")
 }

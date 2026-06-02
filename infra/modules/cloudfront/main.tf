@@ -1,5 +1,21 @@
 locals {
-    is_custom_domain = var.acm_certificate_arn != ""
+    is_custom_domain      = var.acm_certificate_arn != ""
+    enable_signed_cookies = var.cloudfront_public_key_pem != ""
+}
+
+# ── CloudFront Signed Cookie 키 관리 ──────────────────────────────────
+# cloudfront_public_key_pem 미설정 시 생성 안 함
+
+resource "aws_cloudfront_public_key" "media_signing" {
+    count       = local.enable_signed_cookies ? 1 : 0
+    name        = "yuno-media-signing-${var.env}"
+    encoded_key = var.cloudfront_public_key_pem
+}
+
+resource "aws_cloudfront_key_group" "media_signing" {
+    count = local.enable_signed_cookies ? 1 : 0
+    name  = "yuno-media-signing-${var.env}"
+    items = [aws_cloudfront_public_key.media_signing[0].id]
 }
 
 # ── 미디어 CloudFront ──────────────────────────────────────────
@@ -44,12 +60,14 @@ resource "aws_cloudfront_distribution" "media" {
 
     aliases = local.is_custom_domain && var.media_domain != "" ? [var.media_domain] : []
 
+    # 그 외 모든 경로 — signed cookie 필수 (original/* 제외 모든 컨텐츠 보호)
     default_cache_behavior {
-        allowed_methods = ["GET", "HEAD"]
-        cached_methods = ["GET", "HEAD"]
-        target_origin_id = "S3-media-${var.env}"
+        allowed_methods    = ["GET", "HEAD"]
+        cached_methods     = ["GET", "HEAD"]
+        target_origin_id   = "S3-media-${var.env}"
         viewer_protocol_policy = "redirect-to-https"
-        cache_policy_id = aws_cloudfront_cache_policy.media_long_ttl.id
+        cache_policy_id    = aws_cloudfront_cache_policy.media_long_ttl.id
+        trusted_key_groups = local.enable_signed_cookies ? [aws_cloudfront_key_group.media_signing[0].id] : []
     }
     
     # 커스텀 도메인 사용 시 ACM 인증서 사용

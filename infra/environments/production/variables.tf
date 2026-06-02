@@ -32,3 +32,17 @@ variable "kakao_client_secret" {
   type      = string
   sensitive = true
 }
+
+variable "alert_email" {
+  type = string
+}
+
+variable "cloudfront_public_key_pem" {  
+  type      = string
+  sensitive = true
+}
+
+variable "cloudfront_private_key" {
+  type      = string
+  sensitive = true
+}

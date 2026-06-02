@@ -213,6 +213,7 @@ func (s *AuthService) issueRefreshToken(user db.User) (string, error) {
 
 // RefreshResult 토큰 갱신 성공 시 반환 데이터
 type RefreshResult struct {
+	FamilyID     string
 	AccessToken  string
 	RefreshToken string
 }
@@ -238,6 +239,7 @@ func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshTokenStr st
 		return nil, err
 	}
 	return &RefreshResult{
+		FamilyID:     user.FamilyID,
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 	}, nil

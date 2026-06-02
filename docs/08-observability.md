@@ -7,7 +7,6 @@
 ```
 Lambda (API Server)         → CloudWatch Logs: /aws/lambda/yuno-api-{env}
 Lambda (Resize Worker)      → CloudWatch Logs: /aws/lambda/yuno-resize-{env}
-Lambda (Face Recognition)   → CloudWatch Logs: /aws/lambda/yuno-face-recognition-{env}
 ECS AI Batch                → CloudWatch Logs: /ecs/yuno-ai-{env}
 ECS Video Worker            → CloudWatch Logs: /ecs/yuno-video-{env}
 ```
@@ -16,24 +15,23 @@ ECS Video Worker            → CloudWatch Logs: /ecs/yuno-video-{env}
 
 ### 로그 보존 기간
 
-| 로그 그룹 | 보존 기간 |
-|-----------|-----------|
-| `/aws/lambda/yuno-api-{env}` | 30일 |
-| `/aws/lambda/yuno-resize-{env}` | 30일 |
-| `/aws/lambda/yuno-face-recognition-{env}` | 30일 |
-| `/ecs/yuno-ai-{env}` | 30일 |
-| `/ecs/yuno-video-{env}` | 30일 |
+| 로그 그룹                       | 보존 기간 |
+| ------------------------------- | --------- |
+| `/aws/lambda/yuno-api-{env}`    | 30일      |
+| `/aws/lambda/yuno-resize-{env}` | 30일      |
+| `/ecs/yuno-ai-{env}`            | 30일      |
+| `/ecs/yuno-video-{env}`         | 30일      |
 
 모든 로그 그룹은 Terraform `aws_cloudwatch_log_group`으로 명시적 관리되며, 보존 기간은 30일로 통일되어 있다.
 
 ### 로그 레벨 정책
 
-| 레벨 | 사용 기준 |
-|------|-----------|
+| 레벨  | 사용 기준                                           |
+| ----- | --------------------------------------------------- |
 | DEBUG | DB 쿼리, 외부 API 요청·응답 상세 (local/dev 환경만) |
-| INFO | 정상 처리 완료, 상태 전이 |
-| WARN | 재시도 발생, 부분 실패, 임계값 근접 |
-| ERROR | 처리 실패, DLQ 이동, 복구 불가 오류 |
+| INFO  | 정상 처리 완료, 상태 전이                           |
+| WARN  | 재시도 발생, 부분 실패, 임계값 근접                 |
+| ERROR | 처리 실패, DLQ 이동, 복구 불가 오류                 |
 
 ---
 
@@ -89,10 +87,18 @@ logger.Init(viper.GetString("APP_ENV"), "yuno-face-worker")
 ```
 
 **출력 예시 (프로덕션 JSON):**
+
 ```json
-{"time":"2026-05-19T10:00:00Z","level":"INFO","msg":"resize completed",
- "env":"prod","service":"yuno-resize-worker","layer":"worker",
- "component":"resize","media_item_id":"abc-123"}
+{
+  "time": "2026-05-19T10:00:00Z",
+  "level": "INFO",
+  "msg": "resize completed",
+  "env": "prod",
+  "service": "yuno-resize-worker",
+  "layer": "worker",
+  "component": "resize",
+  "media_item_id": "abc-123"
+}
 ```
 
 ---
@@ -139,17 +145,17 @@ func LogAttrs(ctx context.Context) []any {
 
 모든 로그에는 아래 필드를 일관되게 사용한다.
 
-| 필드 | 타입 | 설명 |
-|------|------|------|
-| `request_id` | string | Echo RequestIDWithConfig 미들웨어가 삽입 |
-| `user_id` | string | 인증된 사용자 UUID |
-| `family_id` | string | 현재 요청의 가족 UUID |
-| `media_item_id` | string | 미디어 처리 파이프라인 추적 키 |
-| `layer` | string | `handler` / `service` / `worker` / `middleware` / `db` |
-| `component` | string | 세부 컴포넌트명 (예: `"resize"`, `"resize_handler"`, `"media_item"`) |
-| `op` | string | 수행 중인 작업명 (예: `"batch_presign_upload"`) |
-| `duration_ms` | int64 | 처리 소요 시간 (ms) |
-| `error` | string | 오류 메시지 (ERROR 레벨에서만) |
+| 필드            | 타입   | 설명                                                                 |
+| --------------- | ------ | -------------------------------------------------------------------- |
+| `request_id`    | string | Echo RequestIDWithConfig 미들웨어가 삽입                             |
+| `user_id`       | string | 인증된 사용자 UUID                                                   |
+| `family_id`     | string | 현재 요청의 가족 UUID                                                |
+| `media_item_id` | string | 미디어 처리 파이프라인 추적 키                                       |
+| `layer`         | string | `handler` / `service` / `worker` / `middleware` / `db`               |
+| `component`     | string | 세부 컴포넌트명 (예: `"resize"`, `"resize_handler"`, `"media_item"`) |
+| `op`            | string | 수행 중인 작업명 (예: `"batch_presign_upload"`)                      |
+| `duration_ms`   | int64  | 처리 소요 시간 (ms)                                                  |
+| `error`         | string | 오류 메시지 (ERROR 레벨에서만)                                       |
 
 ---
 
@@ -390,6 +396,7 @@ func RequestLogger() echo.MiddlewareFunc {
 ```
 
 미들웨어 등록 순서 (`internal/api/app.go`):
+
 1. `RequestIDWithConfig` — request_id를 `consts.RequestIDKey`로 context에 저장 (`/api/health` 제외)
 2. `Recover` — 패닉 복구
 3. `RequestLogger` — slog 기반 HTTP 요청 로깅
@@ -427,37 +434,37 @@ fields @timestamp, msg, media_item_id, error
 
 ### SQS 핵심 메트릭
 
-| 메트릭 | 네임스페이스 | 용도 |
-|--------|-------------|------|
-| `ApproximateNumberOfMessagesVisible` | `AWS/SQS` | 적체량 — Worker 스케일링 트리거 |
-| `NumberOfMessagesSent` | `AWS/SQS` | 업로드 처리량 |
-| `ApproximateAgeOfOldestMessage` | `AWS/SQS` | 처리 지연 감지 |
+| 메트릭                               | 네임스페이스 | 용도                            |
+| ------------------------------------ | ------------ | ------------------------------- |
+| `ApproximateNumberOfMessagesVisible` | `AWS/SQS`    | 적체량 — Worker 스케일링 트리거 |
+| `NumberOfMessagesSent`               | `AWS/SQS`    | 업로드 처리량                   |
+| `ApproximateAgeOfOldestMessage`      | `AWS/SQS`    | 처리 지연 감지                  |
 
 ### ECS 핵심 메트릭
 
-| 메트릭 | 네임스페이스 | 용도 |
-|--------|-------------|------|
-| `DesiredCount` | `AWS/ECS` | 현재 태스크 수 |
-| `MemoryUtilization` | `AWS/ECS` | OOM 위험 감지 |
-| `CPUUtilization` | `AWS/ECS` | 처리 부하 확인 |
+| 메트릭              | 네임스페이스 | 용도           |
+| ------------------- | ------------ | -------------- |
+| `DesiredCount`      | `AWS/ECS`    | 현재 태스크 수 |
+| `MemoryUtilization` | `AWS/ECS`    | OOM 위험 감지  |
+| `CPUUtilization`    | `AWS/ECS`    | 처리 부하 확인 |
 
 ### Lambda 핵심 메트릭
 
-| 메트릭 | 용도 |
-|--------|------|
-| `Duration` | API / Resize Worker 응답 시간 |
-| `Errors` | 5xx 오류율 |
-| `Throttles` | 동시 실행 한계 도달 |
+| 메트릭      | 용도                          |
+| ----------- | ----------------------------- |
+| `Duration`  | API / Resize Worker 응답 시간 |
+| `Errors`    | 5xx 오류율                    |
+| `Throttles` | 동시 실행 한계 도달           |
 
 ### 업로드 파이프라인 커스텀 지표 (미구현)
 
 현재 구현되어 있지 않으나, 추후 추가를 권장하는 지표:
 
-| 지표 | 계산 방법 |
-|------|-----------|
-| 이미지 처리 성공률 | `upload_status = 03` / 전체 |
+| 지표                | 계산 방법                            |
+| ------------------- | ------------------------------------ |
+| 이미지 처리 성공률  | `upload_status = 03` / 전체          |
 | 평균 처리 소요 시간 | `status=03` 전환 시각 - `created_at` |
-| 일별 실패 건수 | `upload_status = 04` count/일 |
+| 일별 실패 건수      | `upload_status = 04` count/일        |
 
 ```sql
 -- 오늘 처리 현황 확인 쿼리
@@ -475,35 +482,45 @@ GROUP BY upload_status;
 
 ### 현재 구성된 CloudWatch 알람 (`infra/modules/cloudwatch/main.tf`)
 
-| 알람 이름 | 조건 | 액션 |
-|-----------|------|------|
-| `yuno-ai-task-scale-out-{env}` | face-recognition SQS 메시지 ≥ 1 (1분) | AI Task 스케일아웃 (StepScaling ExactCapacity) |
-| `yuno-ai-task-scale-in-{env}` | face-recognition SQS 메시지 < 1 (3분 연속) | AI Task 스케일인 (desired_count=0) |
-| `yuno-video-task-scale-out-{env}` | video-processing SQS 메시지 ≥ 1 (1분) | Video Task 스케일아웃 |
-| `yuno-video-task-scale-in-{env}` | video-processing SQS 메시지 < 1 (3분 연속) | Video Task 스케일인 (desired_count=0) |
+| 알람 이름                               | 조건                                       | 액션                                           |
+| --------------------------------------- | ------------------------------------------ | ---------------------------------------------- |
+| `yuno-ai-task-scale-out-{env}`          | face-recognition SQS 메시지 ≥ 1 (1분)      | AI Task 스케일아웃 (StepScaling ExactCapacity) |
+| `yuno-ai-task-scale-in-{env}`           | face-recognition SQS 메시지 < 1 (3분 연속) | AI Task 스케일인 (desired_count=0)             |
+| `yuno-video-task-scale-out-{env}`       | video-processing SQS 메시지 ≥ 1 (1분)      | Video Task 스케일아웃                          |
+| `yuno-video-task-scale-in-{env}`        | video-processing SQS 메시지 < 1 (3분 연속) | Video Task 스케일인 (desired_count=0)          |
+| `yuno-resize-dlq-alarm-{env}`           | resize DLQ 메시지 ≥ 1 (1분)                | SNS 이메일 알림                                |
+| `yuno-face-recognition-dlq-alarm-{env}` | face-recognition DLQ 메시지 ≥ 1 (1분)      | SNS 이메일 알림                                |
+| `yuno-video-processing-dlq-alarm-{env}` | video-processing DLQ 메시지 ≥ 1 (1분)      | SNS 이메일 알림                                |
+| `yuno-api-error-alarm-{env}`            | API ERROR 로그 ≥ 10건/5분                  | SNS 이메일 알림                                |
 
 AI Task 스케일아웃 단계 (StepScaling):
 
 | SQS 메시지 수 | 태스크 수 |
-|--------------|-----------|
-| 1 ~ 20 | 1 |
-| 21 ~ 40 | 2 |
-| 41+ | 3 |
+| ------------- | --------- |
+| 1 ~ 20        | 1         |
+| 21 ~ 40       | 2         |
+| 41+           | 3         |
 
 Video Task 스케일아웃 단계:
 
 | SQS 메시지 수 | 태스크 수 |
-|--------------|-----------|
-| 1 ~ 10 | 1 |
-| 11+ | 3 |
+| ------------- | --------- |
+| 1 ~ 10        | 1         |
+| 11+           | 3         |
 
 ### 추가 권장 알람 (미구현)
 
-| 알람 | 조건 | 알림 대상 |
-|------|------|-----------|
-| DLQ 메시지 누적 | face/video DLQ 메시지 수 > 0 | 운영자 이메일 / Slack |
-| API 오류율 급증 | Lambda Errors > 50건/5분 | 운영자 |
-| SQS 메시지 고령화 | `ApproximateAgeOfOldestMessage` > 30분 | 운영자 |
+| 알람              | 조건                                   | 알림 대상 |
+| ----------------- | -------------------------------------- | --------- |
+| SQS 메시지 고령화 | `ApproximateAgeOfOldestMessage` > 30분 | 운영자    |
+
+### 알림 인프라 (SNS)
+
+- SNS Topic: `yuno-alerts-{env}` (`infra/modules/cloudwatch/main.tf`)
+- 구독: `ywl0806@gmail.com` (Email 프로토콜)
+- 모든 이메일 알람의 공통 `alarm_actions` 대상
+- DLQ 알람은 메시지 처리 후 자동으로 OK 상태로 복귀
+- ⚠️ `terraform apply` 후 구독 확인 이메일 클릭 필수 (클릭 전까지 알림 미발송)
 
 ---
 

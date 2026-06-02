@@ -11,6 +11,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
+	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 	imagepkg "github.com/ywl0806/yuno_kiroku/pkg/image"
 	"github.com/ywl0806/yuno_kiroku/pkg/storage"
 	"github.com/ywl0806/yuno_kiroku/pkg/utils"
@@ -220,7 +221,7 @@ func cropFace(imageData []byte, in FaceCropInput) ([]byte, error) {
 
 // uploadFaceImage 크롭된 얼굴 이미지를 스토리지에 업로드하고 storage key를 반환합니다.
 func (s *FaceRecognitionService) uploadFaceImage(ctx context.Context, data []byte, familyID string, identityID int32, mediaItemID string) (string, error) {
-	key := fmt.Sprintf("%s/%s/%d/face_%s.webp", familyID, consts.IDENTITY_STORAGE_PREFIX, identityID, mediaItemID)
+	key := internalutils.BuildIdentityKey(familyID, identityID, mediaItemID)
 	storageKey, err := s.storage.SaveFile(ctx, key, data)
 	if err != nil {
 		return "", fmt.Errorf("얼굴 크롭 이미지 업로드 실패: %w", err)
