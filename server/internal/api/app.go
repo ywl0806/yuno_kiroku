@@ -23,6 +23,7 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/services"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 	"github.com/ywl0806/yuno_kiroku/internal/validator"
+	"github.com/ywl0806/yuno_kiroku/pkg/cloudfront"
 )
 
 // Initialize the root router on the app
@@ -75,10 +76,23 @@ func Init(e *echo.Echo) {
 	likeService := services.NewLikeService(st.Like)
 	tagService := services.NewTagService(st.Tag)
 
+	// CloudFront signed cookie signer (CLOUDFRONT_KEY_PAIR_ID 미설정 시 nil → 비활성화)
+	var cfSigner handlers.CloudFrontSigner
+	if keyPairID := viper.GetString("CLOUDFRONT_KEY_PAIR_ID"); keyPairID != "" {
+		mediaDomain := viper.GetString("CLOUDFRONT_MEDIA_DOMAIN")
+		isProduction := viper.GetString("APP_ENV") == "production"
+		signer, err := cloudfront.NewSigner(keyPairID, viper.GetString("CLOUDFRONT_PRIVATE_KEY"), mediaDomain, isProduction)
+		if err != nil {
+			slog.Warn("CloudFront signer initialization failed, media cookie disabled", "error", err)
+		} else {
+			cfSigner = signer
+		}
+	}
+
 	// handler
 	userHandler := handlers.NewUserHandler(userService)
 	mediaItemHandler := handlers.NewMediaItemHandler(mediaItemService)
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, cfSigner)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 	identityHandler := handlers.NewIdentityHandler(identityService)
 	albumHandler := handlers.NewAlbumHandler(albumService)

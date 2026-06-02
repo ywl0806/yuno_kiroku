@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ywl0806/yuno_kiroku/internal/apperr"
-	"github.com/ywl0806/yuno_kiroku/internal/consts"
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 	"github.com/ywl0806/yuno_kiroku/internal/enums"
 	"github.com/ywl0806/yuno_kiroku/internal/store"
@@ -218,8 +217,8 @@ func (s *MediaItemService) CreatePresignedUpload(
 		return nil, err
 	}
 
-	// 2. mediaItemID 확정 후 키 생성 ({familyId}/original/{mediaItemId}.ext)
-	storageKey := internalutils.BuildMediaKeyFromFileName(familyId, consts.ORIGINAL_STORAGE_PREFIX, mediaItem.ID, fileName)
+	// 2. mediaItemID 확정 후 original 키 생성 (original/{familyId}/{mediaItemId}.ext)
+	storageKey := internalutils.BuildOriginalKeyFromFileName(familyId, mediaItem.ID, fileName)
 
 	_, err = s.mediaItemStore.CreateMediaFile(ctx, db.CreateMediaFileParams{
 		MediaItemID: mediaItem.ID,

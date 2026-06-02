@@ -49,8 +49,6 @@ flowchart TD
 | RDS PostgreSQL | Docker PostgreSQL     |
 | ECS Worker     | Docker Compose Worker |
 
-Storage・Queue を Interface 化しているため、ローカル／本番の切り替えは環境変数のみで完結する。
-
 ---
 
 ## バックエンド設計
@@ -63,25 +61,49 @@ Handler (HTTP) → Service (ビジネスロジック) → Store (データアク
 
 責務を明確に分離することで、テスト容易性と変更への耐性を確保している。
 
+```
+server
+    |
+    |-- cmd (エントリポイント)
+    |    |-- api
+    |    |-- resize
+    |    |-- video-processing-worker
+    |    |-- face-recognition-worker
+    |    |-- lambda
+    |    |-- db
+    |-- internal
+    |    |
+    |    |-- api (API ハンドラー)
+    |    |    |
+    |    |    |-- handlers (HTTP ハンドラー)
+    |    |    |-- middlewares (HTTP ミドルウェア)
+    |    |    |-- routers (API ルーター)
+    |    |    |-- app.go (Echo アプリケーション初期化)
+    |    |-- worker (ワーカー)
+    |    |    |-- handlers (ワーカー HTTP ハンドラー)
+    |    |    |-- services (ワーカー サービス)
+    |    |-- store （データアクセス層）
+    |    |-- db (sqlc生成コード)
+    |    |-- services (共通ビジネスロジック)
+    |    |-- providers (依存注入)
+    |    |-- validator (バリデーション)
+    |    |-- i18n (国際化)
+    |    |-- logger (ロギング)
+    |    |-- oauth (OAuth プロバイダー)
+    |    |-- consts (定数)
+    |    |-- enums (列挙型)
+    |    |-- apperr (カスタムエラー)
+    ．．．
+
+
+```
+
+APIサーバー、画像処理、動画処理、顔認識など複数の実行環境を単一コードベースで管理していて，共通ロジックを集約しつつエントリポイントごとに責務を分離することで、保守性と拡張性を向上している。
+
 ### 型安全なクエリ（sqlc）
 
 SQL を直接記述し、sqlc で Go コードを自動生成する。  
 ORM のリフレクションを使わず、コンパイル時に型の整合性が保証されるためランタイムエラーを排除できる。
-
-### DB インデックス設計
-
-```sql
--- 完了済みメディアのみを対象とした Partial Index
-CREATE INDEX idx_media_items_album ON media_items (album_id, taken_at DESC)
-  WHERE upload_status = '03';
-
--- アルバム権限検索用 複合インデックス
-CREATE INDEX idx_album_groups_permissions ON album_groups_permissions (group_id, permission)
-  INCLUDE (album_id);
-
--- 顔埋め込みの近傍検索用 IVFFlat インデックス
-CREATE INDEX ON face_detections USING ivfflat (embedding vector_cosine_ops);
-```
 
 ### マルチテナント設計
 
@@ -98,7 +120,7 @@ CREATE INDEX ON face_detections USING ivfflat (embedding vector_cosine_ops);
 
 ## アップロードパイプライン
 
-クライアントは API サーバーを経由せず S3 に直接アップロードし、Webhook で後続処理をトリガーする。
+クライアントは API サーバーを経由せず S3 に直接アップロードし、SQS で後続処理をトリガーする。
 
 ```mermaid
 flowchart LR
@@ -132,11 +154,15 @@ flowchart LR
 
 ### 設計上のポイント
 
-**DB 先行生成**: S3 アップロード前に `media_items(status=01)` を作成し、孤立ファイルを防ぐ。アップロード放棄レコードは定期 cleanup で削除。
+**API サーバーを経由しない直接アップロード**: クライアントは Presigned URL を取得し、メディアファイルを S3 へ直接 PUT する。API サーバーにバイナリデータが流れないため、帯域コストとレイテンシを削減できる。
 
-**べき等性保証**: `client_upload_id` とファイルハッシュの二重チェックで、再送による重複登録を防ぐ。
+**イベント駆動の後続処理**: S3 PutObject イベントが SQS に流れ、resize-worker が自動的に起動する。アップロード API はファイルの受け渡し後すぐにレスポンスを返せるため、クライアントの待機時間をゼロに抑えられる。
 
-**ML と DB の分離**: Python (InsightFace) が顔検出・埋め込み計算を担当し、Go CLI が DB 書き込みと S3 アップロードを担当。それぞれ独立してスケール可能。
+**バッチ Presigned URL 発行**: 複数ファイルを 1 リクエストでまとめて処理することで、n 枚アップロード時の API ラウンドトリップを 1 回に削減している。
+
+**ポーリングによる非同期ステータス追跡**: アップロード後はクライアントが 5 秒間隔で `upload_batch_status` をポーリングし、resize・顔認識の完了を検知する。WebSocket 接続を維持せずに済むため、Lambda 環境でも動作する。
+
+**アップロードリカバリー**: `localStorage` に進行中の `batchId` を保持し、ページリロードや誤って離脱した場合でも自動的に処理状況を再取得できる。
 
 ### S3 バケット構造
 
@@ -153,10 +179,32 @@ yuno-media-bucket/
 
 ## インフラ構成と設計判断
 
-### ECS Fargate — API サーバー・Worker
+### ECS Fargate — 動画処理・顔認識 Worker
 
-API サーバーはコールドスタートが許容できないため、常時稼働の ECS Fargate を選択した。  
-顔認識 Worker・動画処理 Worker も 1 リクエストあたりの処理時間が長く Lambda の実行時間制限に収まらないため、同様に ECS に配置している。
+動画リサイズ・顔認識はレイテンシが大きく、アップロード API のレスポンスに含めることができない。
+SQS を挟んで非同期化することで以下を実現している：
+
+- アップロード API の応答速度を維持
+- Worker の失敗時に自動リトライ（Visibility Timeout）
+- 一定回数失敗したジョブを DLQ に隔離しデータ損失を防止
+
+### CloudWatch Events — Fargate Worker のオンデマンド起動
+
+動画処理および顔認識は利用頻度が低く、個人利用ではアップロードが発生しない日も多い。
+
+Worker を常時起動する場合、アイドル状態でもコストが発生し続ける。そのため SQS のメッセージ数を CloudWatch で監視し、キューにジョブが投入された場合のみ ECS Fargate タスクを起動する構成を採用した。
+
+ECS Auto Scaling のスケジュールベースやメトリクスベースも検討したが、最小タスク数を 0 に設定しつつジョブ検知時のみ起動するには、CloudWatch Events から直接 ECS RunTask を呼び出す構成が最もシンプルだった。
+
+- 通常時はタスク数 0 を維持し、アイドルコストを削減
+- ジョブ投入時のみ自動的にスケールアウト
+- 処理完了後は再び 0 までスケールイン
+
+### Lambda — API サーバー
+
+個人利用規模ではリクエスト数が少なく、常時稼働サーバーを維持するメリットが小さい。Lambda はリクエスト数に応じた従量課金のためアイドルコストが発生せず、現状の利用規模では無料枠内に収まっている。
+
+将来的にアクセス数が増加した場合は ECS Fargate + ALB 構成へ移行できるよう、アプリケーションは Lambda 固有の実装に依存しない構造としている。
 
 ### Lambda — 画像リサイズ
 
@@ -175,11 +223,7 @@ SQS を挟んで非同期化することで以下を実現している：
 ### S3 + CloudFront — メディアストレージ + CDN
 
 Presigned URL を発行することで、メディアファイルの送受信が API サーバーを経由しない。  
-API サーバーの負荷とコストを削減しつつ、CloudFront により日本国内ユーザーへの配信レイテンシを改善している。
-
-### pgvector — ベクトル検索
-
-PostgreSQL の拡張である pgvector を採用し、既存 DB 内で 512 次元の顔埋め込みベクトルを管理している。
+API サーバーの負荷とコストを削減しつつ、CloudFront によりレイテンシを改善している。
 
 ### Terraform — IaC
 
@@ -220,7 +264,61 @@ infra/
 
 - **InsightFace**: ONNX 形式のモデルで高精度な顔検出と特徴量抽出
 - **pgvector IVFFlat**: 大量の顔埋め込みに対する近傍検索を効率化
-- **Identity**: 人物ごとに複数の顔画像サンプルを登録し、平均ベクトルで検索精度を向上
+- **Identity（人物管理）**: 人物ごとに複数の顔埋め込みを保持し、その平均ベクトルを代表ベクトルとして管理する。新規顔とのコサイン類似度が閾値（0.6）以上の場合に同一人物候補として提示する。
+
+---
+
+## 障害耐性
+
+本サービスではアップロード後の処理をすべて非同期化し、一時的な障害によるデータ損失を防止している。
+
+**SQS + DLQ によるジョブ保護**
+
+顔認識および動画処理は SQS を介して実行する。Worker 障害時は Visibility Timeout により自動リトライし、一定回数失敗したジョブは DLQ に隔離する。DLQ に隔離されたジョブは手動で再実行が可能。
+
+**再処理可能な設計**
+
+メディアのソースデータは常に S3 の `original/` に保存される。派生データ（view / thumbnail / face embedding）はいつでも再生成できるため、処理失敗時も再実行のみで復旧可能。status=`04`（failed）として記録されたメディアは、ステータスリセット後に再処理できる。
+
+**ステートレス API**
+
+API サーバーはステートレス構成のため、インスタンス障害時も他のインスタンスへ即時フェイルオーバーできる。
+
+---
+
+## コスト最適化
+
+個人開発でも継続運用できるよう、利用頻度を考慮したコスト設計を行っている。
+
+| コンポーネント  | 最適化内容                                   |
+| --------------- | -------------------------------------------- |
+| API サーバー    | Lambda によりアイドルコスト 0                |
+| 顔認識 Worker   | 通常時タスク数 0、SQS 監視でオンデマンド起動 |
+| 動画処理 Worker | 通常時タスク数 0、同上                       |
+| メディア配信    | CloudFront キャッシュでオリジン転送量を削減  |
+| ベクトル検索    | pgvector により専用ベクトル DB 不要          |
+
+Worker の常時起動を廃止したことで、アップロードが発生しない日はコンピューティングコストがほぼゼロになる。
+
+---
+
+## セキュリティ
+
+**マルチテナント分離**
+
+すべての主要テーブルに `family_id` を持たせ、クエリレベルでデータを分離している。他の家族のメディアへアクセスできないよう、全取得系 API で `family_id` を条件に含めている。
+
+**メディアアクセス制御**
+
+`original/` バケットは公開アクセスを完全に禁止している。閲覧用メディア（view / thumbnail / video）は CloudFront OAC を経由した場合のみアクセス可能とし、S3 URL の直接公開を防いでいる。
+
+**CloudFront Signed Cookie**
+
+ログイン時に テナント（family） スコープの Signed Cookie（有効期限 12 時間）を発行する。CloudFront はリクエストごとに署名を検証するため、URL を直接知っていても他の家族のメディアにはアクセスできない。
+
+**IAM 最小権限**
+
+Lambda・ECS タスクには必要最小限の IAM 権限のみを付与している。例えば顔認識 Worker は対象 S3 パスと SQS のみへのアクセス権を持ち、不要な AWS リソースへのアクセスを持たない。
 
 ---
 
@@ -305,3 +403,15 @@ yuno/
     ├── environments/production/
     └── modules/
 ```
+
+---
+
+## 技術的な課題と今後の改善
+
+現在の構成でも運用可能だが、サービス拡大時には以下を検討している。
+
+- **リアルタイム進捗通知**: 現状はポーリング方式（5秒間隔）。SSE または WebSocket による通知に移行することでクライアント負荷を削減できる
+- **CloudFront Signed URL**: 現状は OAC による S3 アクセス制御。Signed URL を導入することで、メディアへの時限アクセス制御が可能になる
+- **顔認識の自動クラスタリング**: 現状は手動で人物を登録する方式。アップロード時に自動クラスタリングを行い、未識別の顔をグループ化する仕組みを検討している
+- **ECS Fargate への API 移行**: アクセス数増加時は Lambda から ECS Fargate + ALB 構成へ移行する
+- **GitHub Actions による Terraform Apply 自動化**: 現状は手動 apply。CI/CD パイプラインに組み込むことで、インフラ変更の安全性と再現性を高められる

@@ -91,6 +91,7 @@ module "cloudfront" {
   media_domain    =  "media.${var.domain_name}" 
   acm_certificate_arn =  data.terraform_remote_state.acm.outputs.cloudfront_certificate_arn
   common_tags = local.common_tags
+  cloudfront_public_key_pem = var.cloudfront_public_key_pem
 }
 
 # ── Lambda ────────────────────────────────────────────────────
