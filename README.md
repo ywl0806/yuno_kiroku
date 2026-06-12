@@ -2,17 +2,25 @@
 
 家族の写真・動画を安全に共有し、AI による顔認識で人物ごとに検索できるプライベートフォトプラットフォーム。
 
+<!-- TODO: 顔処理済みのスクリーンショットを1〜2枚配置 -->
+
+![YUNO screenshot](./docs/imgs/screenshot1.jpeg)
+![YUNO screenshot](./docs/imgs/screenshot2.jpeg)
+
+📐 アーキテクチャ図・設計の意思決定の詳細は [ポートフォリオ](https://ywl0806.github.io) にも掲載しています。
+
 ---
 
 ## 技術スタック
 
-| レイヤー      | 技術                                                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------------ |
-| **Backend**   | Go 1.24, Echo v4, sqlc, golang-migrate, JWT, govips, FFmpeg                                            |
-| **Frontend**  | React 18, TypeScript, Vite, TanStack Query, React Hook Form, Zod, Tailwind CSS, PWA                    |
-| **AI**        | Python 3, InsightFace (ONNX), OpenCV                                                                   |
-| **Infra**     | Terraform, AWS (ECS Fargate / Lambda / S3 / CloudFront / SQS / RDS / Route53 / ACM / CloudWatch / SSM) |
-| **Local Dev** | Docker Compose, MinIO, ElasticMQ, PostgreSQL 17 + pgvector                                             |
+| レイヤー      | 技術                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| **Backend**   | Go 1.24, Echo v4, sqlc, golang-migrate, JWT, govips, FFmpeg                                      |
+| **Frontend**  | React 18, TypeScript, Vite, TanStack Query, React Hook Form, Zod, Tailwind CSS, PWA              |
+| **AI**        | Python 3, InsightFace (ONNX), OpenCV                                                             |
+| **Database**  | Supabase (PostgreSQL 17 + pgvector)                                                              |
+| **Infra**     | Terraform, AWS (ECS Fargate / Lambda / S3 / CloudFront / SQS / Route53 / ACM / CloudWatch / SSM) |
+| **Local Dev** | Docker Compose, MinIO, ElasticMQ, PostgreSQL 17 + pgvector                                       |
 
 ---
 
@@ -23,31 +31,29 @@ flowchart TD
     Client["React SPA (PWA)"]
 
     Client --> CF["CloudFront (CDN)"]
-    Client --> APIGW["API Gateway\n→ Lambda (Go)"]
+    Client --> APIGW["API Gateway"]
 
+    APIGW --> LambdaAPI["Lambda\nAPI Server (Go/Echo)"]
     CF --> S3Front["S3\n静的配信 (Frontend)"]
-    CF --> ECS["ECS Fargate\nAPI Server (Go/Echo)"]
 
-    ECS --> RDS["RDS\nPostgreSQL 17 + pgvector"]
-    ECS --> SQS["SQS Queues\nresize\nface-recognition\nvideo-processing"]
+    LambdaAPI --> PG["Supabase\nPostgreSQL 17 + pgvector"]
 
-    SQS --> PyWorker["ECS Worker (Python)\n顔認識バッチ"]
-    SQS --> GoWorker["ECS Worker (Go)\n動画処理バッチ"]
-
-    ECS -- "Presigned URL" --> S3Media["S3\nメディアストレージ"]
-    S3Media -- "S3イベント" --> SQSResize["SQS\nresize"]
-    SQSResize --> Lambda["Lambda\n画像リサイズ"]
-    S3Media --> CF
+    Client -- "Presigned URL" --> S3Media["S3\nメディアストレージ"]
+    S3Media -- "S3イベント" --> SQSR["SQS (resize)"]
+    SQSR --> LambdaR["Lambda\n画像リサイズ"]
+    LambdaR --> SQSW["SQS (face / video)"]
+    SQSW --> PyWorker["ECS Worker (Python)\n顔認識バッチ"]
+    SQSW --> GoWorker["ECS Worker (Go)\n動画処理バッチ"]
 ```
 
 ### ローカル開発環境との対応
 
-| 本番 (AWS)     | ローカル              |
-| -------------- | --------------------- |
-| S3             | MinIO (S3互換)        |
-| SQS            | ElasticMQ (SQS互換)   |
-| RDS PostgreSQL | Docker PostgreSQL     |
-| ECS Worker     | Docker Compose Worker |
+| 本番                | ローカル              |
+| ------------------- | --------------------- |
+| S3                  | MinIO (S3互換)        |
+| SQS                 | ElasticMQ (SQS互換)   |
+| Supabase PostgreSQL | Docker PostgreSQL     |
+| ECS Worker          | Docker Compose Worker |
 
 ---
 
@@ -80,7 +86,7 @@ server
     |    |    |-- routers (API ルーター)
     |    |    |-- app.go (Echo アプリケーション初期化)
     |    |-- worker (ワーカー)
-    |    |    |-- handlers (ワーカー HTTP ハンドラー)
+    |    |    |-- handlers (ワーカー ハンドラー)
     |    |    |-- services (ワーカー サービス)
     |    |-- store （データアクセス層）
     |    |-- db (sqlc生成コード)
@@ -93,21 +99,19 @@ server
     |    |-- consts (定数)
     |    |-- enums (列挙型)
     |    |-- apperr (カスタムエラー)
-    ．．．
-
-
+    ...
 ```
 
-APIサーバー、画像処理、動画処理、顔認識など複数の実行環境を単一コードベースで管理していて，共通ロジックを集約しつつエントリポイントごとに責務を分離することで、保守性と拡張性を向上している。
+API サーバー・画像処理・動画処理・顔認識など複数の実行環境を単一コードベースで管理している。共通ロジックを集約しつつエントリポイントごとに責務を分離することで、保守性と拡張性を高めている。
 
 ### 型安全なクエリ（sqlc）
 
-SQL を直接記述し、sqlc で Go コードを自動生成する。  
+SQL を直接記述し、sqlc で Go コードを自動生成する。
 ORM のリフレクションを使わず、コンパイル時に型の整合性が保証されるためランタイムエラーを排除できる。
 
 ### マルチテナント設計
 
-すべてのテーブルに `family_id` を持たせ、クエリレベルで家族間のデータを完全に分離している。  
+すべてのテーブルに `family_id` を持たせ、クエリレベルで家族間のデータを完全に分離している。
 アルバムには `album_groups_permissions` テーブルで Read / Write 権限を付与できる。
 
 ### 認証
@@ -181,12 +185,13 @@ yuno-media-bucket/
 
 ### ECS Fargate — 動画処理・顔認識 Worker
 
-動画リサイズ・顔認識はレイテンシが大きく、アップロード API のレスポンスに含めることができない。
-SQS を挟んで非同期化することで以下を実現している：
+動画処理・顔認識を Lambda ではなく ECS Fargate で実行しているのは、Lambda の制約に収まらないワークロードのためである。
 
-- アップロード API の応答速度を維持
-- Worker の失敗時に自動リトライ（Visibility Timeout）
-- 一定回数失敗したジョブを DLQ に隔離しデータ損失を防止
+- **実行時間**: 長尺動画の FFmpeg 変換は Lambda の 15 分制限を超えるリスクがある
+- **モデルサイズと初期化コスト**: InsightFace の ONNX モデルはロードに時間がかかり、Lambda のコールドスタートと相性が悪い。ECS タスクなら起動後に複数メッセージを連続処理でき、モデルロードのコストを償却できる
+- **リソース構成**: FFmpeg・推論処理に必要な CPU / メモリを柔軟に設定できる
+
+一方、軽量で短時間の画像リサイズは Lambda に振り分けており、処理特性に応じて実行環境を使い分けている。
 
 ### CloudWatch Events — Fargate Worker のオンデマンド起動
 
@@ -208,21 +213,27 @@ ECS Auto Scaling のスケジュールベースやメトリクスベースも検
 
 ### Lambda — 画像リサイズ
 
-S3 へのアップロード完了をトリガーに起動するイベント駆動の処理。  
+S3 へのアップロード完了をトリガーに起動するイベント駆動の処理。
 アイドル時のコストが発生せず、バースト的なアップロードにも自動でスケールするため Lambda が最適だった。
 
 ### SQS — 非同期ジョブキュー
 
-顔認識・動画処理はレイテンシが大きく、アップロード API のレスポンスに含めることができない。  
-SQS を挟んで非同期化することで以下を実現している：
+顔認識・動画処理はレイテンシが大きく、アップロード API のレスポンスに含めることができない。
+SQS を挟んで非同期化することで以下を実現している。
 
 - アップロード API の応答速度を維持
 - Worker の失敗時に自動リトライ（Visibility Timeout）
 - 一定回数失敗したジョブを DLQ に隔離しデータ損失を防止
 
+### Supabase — マネージド PostgreSQL + pgvector
+
+個人利用規模では RDS の最小構成でもインスタンスの常時稼働コストが発生する。Supabase は無料枠で PostgreSQL + pgvector が利用でき、現状の規模ではデータベースの運用コストをゼロに抑えられるため採用した。
+
+接続はすべて標準の PostgreSQL プロトコル経由で行っており、アプリケーション側は Supabase 固有の機能に依存していない。データ量・アクセス数の増加時には RDS / Aurora への移行が可能な構成としている。
+
 ### S3 + CloudFront — メディアストレージ + CDN
 
-Presigned URL を発行することで、メディアファイルの送受信が API サーバーを経由しない。  
+Presigned URL を発行することで、メディアファイルの送受信が API サーバーを経由しない。
 API サーバーの負荷とコストを削減しつつ、CloudFront によりレイテンシを改善している。
 
 ### Terraform — IaC
@@ -253,18 +264,18 @@ infra/
 
 ```
 写真アップロード
-    → S3 保存
-    → Lambda (サムネイル生成)
-    → API Server が SQS に顔認識ジョブを発行
-    → Python Worker が SQS からメッセージを受信
+    → S3 (original/) 保存
+    → resize-worker が view / thumbnail を生成
+    → resize-worker が SQS (face-recognition) にジョブを発行
+    → ai-batch (Python) が SQS からメッセージを受信
     → InsightFace (ONNX) で顔検出 → 512次元埋め込みを生成
-    → PostgreSQL (pgvector) に保存
+    → face-recognition-worker (Go) が PostgreSQL (pgvector) に保存
     → フロントエンドでコサイン類似度検索が可能に
 ```
 
 - **InsightFace**: ONNX 形式のモデルで高精度な顔検出と特徴量抽出
-- **pgvector IVFFlat**: 大量の顔埋め込みに対する近傍検索を効率化
-- **Identity（人物管理）**: 人物ごとに複数の顔埋め込みを保持し、その平均ベクトルを代表ベクトルとして管理する。新規顔とのコサイン類似度が閾値（0.6）以上の場合に同一人物候補として提示する。
+- **pgvector IVFFlat**: データ量の増加を見据えてベクトルインデックスを導入し、顔埋め込みの近傍検索に備えている
+- **Identity（人物管理）**: 人物ごとに複数の顔埋め込みを保持し、その平均ベクトルを代表ベクトルとして管理する。新規顔とのコサイン類似度が閾値（0.6）以上の場合に同一人物候補として提示する。閾値は実データでの検証を踏まえて設定した
 
 ---
 
@@ -295,6 +306,7 @@ API サーバーはステートレス構成のため、インスタンス障害�
 | API サーバー    | Lambda によりアイドルコスト 0                |
 | 顔認識 Worker   | 通常時タスク数 0、SQS 監視でオンデマンド起動 |
 | 動画処理 Worker | 通常時タスク数 0、同上                       |
+| データベース    | Supabase 無料枠（PostgreSQL + pgvector）     |
 | メディア配信    | CloudFront キャッシュでオリジン転送量を削減  |
 | ベクトル検索    | pgvector により専用ベクトル DB 不要          |
 
@@ -314,7 +326,7 @@ Worker の常時起動を廃止したことで、アップロードが発生し�
 
 **CloudFront Signed Cookie**
 
-ログイン時に テナント（family） スコープの Signed Cookie（有効期限 12 時間）を発行する。CloudFront はリクエストごとに署名を検証するため、URL を直接知っていても他の家族のメディアにはアクセスできない。
+ログイン時にテナント（family）スコープの Signed Cookie（有効期限 12 時間）を発行する。CloudFront はリクエストごとに署名を検証するため、URL を直接知っていても他の家族のメディアにはアクセスできない。
 
 **IAM 最小権限**
 
@@ -343,7 +355,7 @@ src/
 
 ### サーバー状態管理（TanStack Query）
 
-API レスポンスのキャッシュ・再フェッチ・楽観的更新を TanStack Query で一元管理している。  
+API レスポンスのキャッシュ・再フェッチ・楽観的更新を TanStack Query で一元管理している。
 カスタムフックで各ドメインのデータ取得ロジックをカプセル化している。
 
 ### その他
@@ -383,7 +395,7 @@ yuno/
 │   │   ├── api/                     # メイン API サーバー
 │   │   ├── lambda/api/              # AWS Lambda エンドポイント
 │   │   ├── video-processing-worker/ # 動画処理ワーカー
-│   │   └── resize/                  # 画像リサイズ (Webhook)
+│   │   └── resize/                  # 画像リサイズ (S3 Event → SQS)
 │   ├── internal/
 │   │   ├── api/handlers/            # HTTP ハンドラー
 │   │   ├── services/                # ビジネスロジック
@@ -411,4 +423,5 @@ yuno/
 現在の構成でも運用可能だが、サービス拡大時には以下を検討している。
 
 - **ECS Fargate への API 移行**: アクセス数増加時は Lambda から ECS Fargate + ALB 構成へ移行する
+- **RDS / Aurora への DB 移行**: データ量・接続数の増加時は Supabase から移行する。標準 PostgreSQL プロトコルのみに依存しているため、移行コストは低い
 - **GitHub Actions による Terraform Apply 自動化**: 現状は手動 apply。CI/CD パイプラインに組み込むことで、インフラ変更の安全性と再現性を高められる
