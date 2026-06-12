@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS face_detections (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 수정일시
 );
 
-CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_face_detections_embedding ON face_detections USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 
 CREATE INDEX IF NOT EXISTS idx_face_detections_media_item_id ON face_detections (media_item_id);
 
