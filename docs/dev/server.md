@@ -6,22 +6,22 @@
 
 ## 사용 기술
 
-| 카테고리 | 라이브러리 | 버전 |
-|----------|-----------|------|
-| 언어 | Go | 1.24.0 |
-| Web 프레임워크 | Echo | 4.11.4 |
-| DB | PostgreSQL | 17 |
-| 벡터 검색 | pgvector | - |
-| SQL 코드 생성 | sqlc | - |
-| DB 마이그레이션 | golang-migrate | 4.19.0 |
-| 이미지 처리 | govips (libvips) | v2 |
-| 유효성 검사 | go-playground/validator | v10 |
-| JWT | golang-jwt | v5.3.0 |
-| AWS 클라이언트 | aws-sdk-go-v2 | - |
-| UUID | google/uuid | - |
-| 설정 관리 | viper | - |
-| EXIF | goexif | - |
-| API 문서 | swaggo (Swagger) | - |
+| 카테고리        | 라이브러리              | 버전   |
+| --------------- | ----------------------- | ------ |
+| 언어            | Go                      | 1.24.0 |
+| Web 프레임워크  | Echo                    | 4.11.4 |
+| DB              | PostgreSQL              | 17     |
+| 벡터 검색       | pgvector                | -      |
+| SQL 코드 생성   | sqlc                    | -      |
+| DB 마이그레이션 | golang-migrate          | 4.19.0 |
+| 이미지 처리     | govips (libvips)        | v2     |
+| 유효성 검사     | go-playground/validator | v10    |
+| JWT             | golang-jwt              | v5.3.0 |
+| AWS 클라이언트  | aws-sdk-go-v2           | -      |
+| UUID            | google/uuid             | -      |
+| 설정 관리       | viper                   | -      |
+| EXIF            | goexif                  | -      |
+| API 문서        | swaggo (Swagger)        | -      |
 
 ---
 
@@ -107,67 +107,67 @@ video-processing-worker (Go)
 
 ### 인증
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| GET | `/auth/callback/line` | LINE OAuth 콜백 |
-| GET | `/auth/callback/kakao` | Kakao OAuth 콜백 |
-| POST | `/auth/refresh` | 토큰 갱신 |
-| POST | `/auth/logout` | 로그아웃 |
+| 메서드 | 경로                   | 설명             |
+| ------ | ---------------------- | ---------------- |
+| GET    | `/auth/callback/line`  | LINE OAuth 콜백  |
+| GET    | `/auth/callback/kakao` | Kakao OAuth 콜백 |
+| POST   | `/auth/refresh`        | 토큰 갱신        |
+| POST   | `/auth/logout`         | 로그아웃         |
 
 ### 유저
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| GET | `/users/me` | 프로필 조회 |
-| PUT | `/users/me` | 프로필 수정 |
+| 메서드 | 경로        | 설명        |
+| ------ | ----------- | ----------- |
+| GET    | `/users/me` | 프로필 조회 |
+| PUT    | `/users/me` | 프로필 수정 |
 
 ### 미디어 아이템
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| POST | `/media-item/upload-batch` | 업로드 배치 생성 |
-| POST | `/media-item/presigned-url` | Presigned URL 발급 |
-| GET | `/media-item` | 날짜 범위로 조회 |
-| GET | `/media-item/upload-batch/status` | 배치 업로드 상태 조회 |
+| 메서드 | 경로                              | 설명                  |
+| ------ | --------------------------------- | --------------------- |
+| POST   | `/media-item/upload-batch`        | 업로드 배치 생성      |
+| POST   | `/media-item/presigned-url`       | Presigned URL 발급    |
+| GET    | `/media-item`                     | 날짜 범위로 조회      |
+| GET    | `/media-item/upload-batch/status` | 배치 업로드 상태 조회 |
 
 ### 앨범
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| GET | `/albums` | 앨범 목록 |
-| POST | `/albums` | 앨범 생성 |
-| GET | `/albums/:id` | 앨범 상세 |
-| PUT | `/albums/:id` | 앨범 수정 |
+| 메서드 | 경로          | 설명      |
+| ------ | ------------- | --------- |
+| GET    | `/albums`     | 앨범 목록 |
+| POST   | `/albums`     | 앨범 생성 |
+| GET    | `/albums/:id` | 앨범 상세 |
+| PUT    | `/albums/:id` | 앨범 수정 |
 
 ### 인물(Identity)
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| GET | `/identities` | 인물 목록 |
-| POST | `/identities` | 인물 생성 |
-| PUT | `/identities/:id` | 인물 수정 |
+| 메서드 | 경로              | 설명      |
+| ------ | ----------------- | --------- |
+| GET    | `/identities`     | 인물 목록 |
+| POST   | `/identities`     | 인물 생성 |
+| PUT    | `/identities/:id` | 인물 수정 |
 
 ### 그룹·멤버·아이
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
+| 메서드       | 경로      | 설명      |
+| ------------ | --------- | --------- |
 | GET/POST/PUT | `/groups` | 그룹 관리 |
-| GET/POST/PUT | `/kids` | 아이 관리 |
+| GET/POST/PUT | `/kids`   | 아이 관리 |
 
 ### 초대
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| POST | `/invites` | 초대 토큰 생성 |
-| GET | `/invites/:token` | 초대 토큰 검증 |
+| 메서드 | 경로              | 설명           |
+| ------ | ----------------- | -------------- |
+| POST   | `/invites`        | 초대 토큰 생성 |
+| GET    | `/invites/:token` | 초대 토큰 검증 |
 
 ### 좋아요·태그·설정
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| POST/DELETE | `/likes` | 좋아요 토글 |
-| GET/POST/DELETE | `/tags` | 태그 관리 |
-| GET/PUT | `/settings` | 앱 설정 |
+| 메서드          | 경로        | 설명        |
+| --------------- | ----------- | ----------- |
+| POST/DELETE     | `/likes`    | 좋아요 토글 |
+| GET/POST/DELETE | `/tags`     | 태그 관리   |
+| GET/PUT         | `/settings` | 앱 설정     |
 
 ---
 
@@ -175,19 +175,19 @@ video-processing-worker (Go)
 
 ### 주요 테이블
 
-| 테이블 | 설명 |
-|--------|------|
-| `families` | 가족 조직 |
-| `groups` | 가족 내 그룹 |
-| `users` | 유저 계정 (OAuth 연동) |
-| `albums` | 사진 앨범 (그룹 권한 포함) |
-| `media_items` | 사진·동영상 아이템 |
-| `media_files` | 파일 실체 (original/thumbnail/view) |
-| `identities` | 얼굴인식으로 식별된 인물 |
-| `face_detections` | 얼굴 감지 데이터 (512차원 벡터) |
-| `face_recognition_jobs` | 얼굴인식 처리 작업 큐 |
-| `invite_tokens` | 초대 링크 토큰 |
-| `refresh_tokens` | JWT 리프레시 토큰 |
+| 테이블                  | 설명                                |
+| ----------------------- | ----------------------------------- |
+| `families`              | 가족 조직                           |
+| `groups`                | 가족 내 그룹                        |
+| `users`                 | 유저 계정 (OAuth 연동)              |
+| `albums`                | 사진 앨범 (그룹 권한 포함)          |
+| `media_items`           | 사진·동영상 아이템                  |
+| `media_files`           | 파일 실체 (original/thumbnail/view) |
+| `identities`            | 얼굴인식으로 식별된 인물            |
+| `face_detections`       | 얼굴 감지 데이터 (512차원 벡터)     |
+| `face_recognition_jobs` | 얼굴인식 처리 작업 큐               |
+| `invite_tokens`         | 초대 링크 토큰                      |
+| `refresh_tokens`        | JWT 리프레시 토큰                   |
 
 ### pgvector 얼굴 유사도 검색
 
@@ -195,18 +195,15 @@ video-processing-worker (Go)
 -- 512차원 임베딩 저장
 embedding vector(512)
 
--- IVFFlat 인덱스로 코사인 유사도 검색 고속화
-CREATE INDEX ON face_detections
-  USING ivfflat (embedding vector_cosine_ops);
 ```
 
 ### media_files 파일 역할
 
-| 역할 | 설명 |
-|------|------|
-| `original` | 원본 고해상도 파일 |
-| `thumbnail` | 목록 표시용 썸네일 (512px) |
-| `view` | 뷰어용 최적화 파일 (2048px) |
+| 역할        | 설명                        |
+| ----------- | --------------------------- |
+| `original`  | 원본 고해상도 파일          |
+| `thumbnail` | 목록 표시용 썸네일 (512px)  |
+| `view`      | 뷰어용 최적화 파일 (2048px) |
 
 ---
 
