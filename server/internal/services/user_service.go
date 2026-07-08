@@ -9,32 +9,44 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 )
 
-type UserService struct {
+type UserService interface {
+	GetUserByID(ctx context.Context, userID, familyID int32) (db.User, error)
+	GetMembers(ctx context.Context, familyID int32) ([]db.User, error)
+	UpdateMe(ctx context.Context, userID int32, name string) (db.User, error)
+	UpdateMember(ctx context.Context, memberID, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error)
+	CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error)
+	FindUserByUsername(ctx context.Context, username string) (db.User, error)
+	FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error)
+	FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error)
+	ValidateCreateUserParams(ctx context.Context, params db.CreateUserParams) error
+}
+
+type userService struct {
 	userStore   store.UserStore
 	familyStore store.FamilyStore
 	groupStore  store.GroupStore
 }
 
-func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, groupStore store.GroupStore) *UserService {
-	return &UserService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
+func NewUserService(userStore store.UserStore, familyStore store.FamilyStore, groupStore store.GroupStore) UserService {
+	return &userService{userStore: userStore, familyStore: familyStore, groupStore: groupStore}
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, userID, familyID int32) (db.User, error) {
+func (s *userService) GetUserByID(ctx context.Context, userID, familyID int32) (db.User, error) {
 	return s.userStore.FindUserByID(ctx, userID, familyID)
 }
 
-func (s *UserService) GetMembers(ctx context.Context, familyID int32) ([]db.User, error) {
+func (s *userService) GetMembers(ctx context.Context, familyID int32) ([]db.User, error) {
 	return s.userStore.FindMembersByFamilyID(ctx, familyID)
 }
 
-func (s *UserService) UpdateMe(ctx context.Context, userID int32, name string) (db.User, error) {
+func (s *userService) UpdateMe(ctx context.Context, userID int32, name string) (db.User, error) {
 	return s.userStore.UpdateUserName(ctx, db.UpdateUserNameParams{
 		Name: sql.NullString{String: name, Valid: name != ""},
 		ID:   userID,
 	})
 }
 
-func (s *UserService) UpdateMember(ctx context.Context, memberID, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
+func (s *userService) UpdateMember(ctx context.Context, memberID, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
 	return s.userStore.UpdateMember(ctx, db.UpdateMemberParams{
 		GroupID:           groupID,
 		FamilyTitle:       sql.NullString{String: familyTitle, Valid: familyTitle != ""},
@@ -45,7 +57,7 @@ func (s *UserService) UpdateMember(ctx context.Context, memberID, familyID, grou
 }
 
 // 유저 생성
-func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
+func (s *userService) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 
 	user, err := s.userStore.CreateUser(ctx, params)
 	if err != nil {
@@ -55,7 +67,7 @@ func (s *UserService) CreateUser(ctx context.Context, params db.CreateUserParams
 }
 
 // 유저 이름으로 유저 조회
-func (s *UserService) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
+func (s *userService) FindUserByUsername(ctx context.Context, username string) (db.User, error) {
 	user, err := s.userStore.FindUserByUsername(ctx, username)
 	if err != nil {
 		return db.User{}, err
@@ -64,12 +76,12 @@ func (s *UserService) FindUserByUsername(ctx context.Context, username string) (
 }
 
 // FindUserByProvider 소셜 로그인 provider로 유저 조회
-func (s *UserService) FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error) {
+func (s *userService) FindUserByProvider(ctx context.Context, provider, providerUserID string) (db.User, error) {
 	return s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 }
 
 // FindOrCreateUserOAuth 소셜 로그인 유저 조회 또는 생성. familyID/groupID로 가입할 가족·그룹을 지정한다
-func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
+func (s *userService) FindOrCreateUserOAuth(ctx context.Context, provider, providerUserID, displayName string, familyID, groupID int32, familyTitle, customFamilyTitle string) (db.User, error) {
 	user, err := s.userStore.FindUserByProvider(ctx, provider, providerUserID)
 	if err == nil && user.ID != 0 {
 		return user, nil
@@ -91,7 +103,7 @@ func (s *UserService) FindOrCreateUserOAuth(ctx context.Context, provider, provi
 }
 
 // 유저 생성 파라미터 검증
-func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.CreateUserParams) error {
+func (s *userService) ValidateCreateUserParams(ctx context.Context, params db.CreateUserParams) error {
 	err := s.validateDuplicateUsername(ctx, params.Username)
 	if err != nil {
 		return err
@@ -107,7 +119,7 @@ func (s *UserService) ValidateCreateUserParams(ctx context.Context, params db.Cr
 	return nil
 }
 
-func (s *UserService) validateFamilyExists(ctx context.Context, familyID int32) error {
+func (s *userService) validateFamilyExists(ctx context.Context, familyID int32) error {
 	family, err := s.familyStore.FindFamilyByID(ctx, familyID)
 	if err != nil {
 		return err
@@ -118,7 +130,7 @@ func (s *UserService) validateFamilyExists(ctx context.Context, familyID int32) 
 	return nil
 }
 
-func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) error {
+func (s *userService) validateGroupExists(ctx context.Context, groupID int32) error {
 	group, err := s.groupStore.FindGroupByID(ctx, groupID)
 	if err != nil {
 		return err
@@ -130,7 +142,7 @@ func (s *UserService) validateGroupExists(ctx context.Context, groupID int32) er
 }
 
 // username 중복 체크
-func (s *UserService) validateDuplicateUsername(ctx context.Context, username string) error {
+func (s *userService) validateDuplicateUsername(ctx context.Context, username string) error {
 	user, err := s.userStore.FindUserByUsername(ctx, username)
 	if err != nil {
 		return err

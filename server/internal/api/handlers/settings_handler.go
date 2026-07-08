@@ -9,13 +9,13 @@ import (
 
 type SettingsHandler struct {
 	groupService    *services.GroupService
-	userService     *services.UserService
+	userService     services.UserService
 	albumService    *services.AlbumService
 	kidService      *services.KidService
 	identityService *services.IdentityService
 }
 
-func NewSettingsHandler(groupService *services.GroupService, userService *services.UserService, albumService *services.AlbumService, kidService *services.KidService, identityService *services.IdentityService) *SettingsHandler {
+func NewSettingsHandler(groupService *services.GroupService, userService services.UserService, albumService *services.AlbumService, kidService *services.KidService, identityService *services.IdentityService) *SettingsHandler {
 	return &SettingsHandler{
 		groupService:    groupService,
 		userService:     userService,

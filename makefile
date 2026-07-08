@@ -37,6 +37,12 @@ refresh:
 ai-batch:
 	docker compose up -d ai-batch
 
+test:
+	cd server && go test ./...
+
+mocks:
+	cd server && go tool mockery
+
 init:
 	make up
 	make migrate

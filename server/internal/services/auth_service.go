@@ -23,7 +23,7 @@ var (
 )
 
 type AuthService struct {
-	userService   *UserService
+	userService   UserService
 	inviteService *InviteService
 	authSecretKey string
 	lineConfig    *oauth.LineConfig
@@ -31,7 +31,7 @@ type AuthService struct {
 }
 
 func NewAuthService(
-	userService *UserService,
+	userService UserService,
 	inviteService *InviteService,
 	authSecretKey string,
 	lineConfig *oauth.LineConfig,
