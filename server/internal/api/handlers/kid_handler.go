@@ -12,10 +12,10 @@ import (
 )
 
 type KidHandler struct {
-	kidService *services.KidService
+	kidService services.KidService
 }
 
-func NewKidHandler(kidService *services.KidService) *KidHandler {
+func NewKidHandler(kidService services.KidService) *KidHandler {
 	return &KidHandler{kidService: kidService}
 }
 

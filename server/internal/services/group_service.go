@@ -8,20 +8,27 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 )
 
-type GroupService struct {
+type GroupService interface {
+	GetGroups(ctx context.Context, familyID int32) ([]db.Group, error)
+	CreateGroup(ctx context.Context, familyID int32, name string) (db.Group, error)
+	UpdateGroup(ctx context.Context, groupID int32, familyID int32, name string) (db.Group, error)
+	DeleteGroup(ctx context.Context, groupID int32, familyID int32) error
+}
+
+type groupService struct {
 	familyStore store.FamilyStore
 	groupStore  store.GroupStore
 }
 
-func NewGroupService(familyStore store.FamilyStore, groupStore store.GroupStore) *GroupService {
-	return &GroupService{familyStore: familyStore, groupStore: groupStore}
+func NewGroupService(familyStore store.FamilyStore, groupStore store.GroupStore) GroupService {
+	return &groupService{familyStore: familyStore, groupStore: groupStore}
 }
 
-func (s *GroupService) GetGroups(ctx context.Context, familyID int32) ([]db.Group, error) {
+func (s *groupService) GetGroups(ctx context.Context, familyID int32) ([]db.Group, error) {
 	return s.groupStore.FindGroupsByFamilyID(ctx, familyID)
 }
 
-func (s *GroupService) CreateGroup(ctx context.Context, familyID int32, name string) (db.Group, error) {
+func (s *groupService) CreateGroup(ctx context.Context, familyID int32, name string) (db.Group, error) {
 	return s.groupStore.CreateGroup(ctx, db.CreateGroupParams{
 		FamilyID: familyID,
 		IsAdmin:  false,
@@ -29,7 +36,7 @@ func (s *GroupService) CreateGroup(ctx context.Context, familyID int32, name str
 	})
 }
 
-func (s *GroupService) UpdateGroup(ctx context.Context, groupID int32, familyID int32, name string) (db.Group, error) {
+func (s *groupService) UpdateGroup(ctx context.Context, groupID int32, familyID int32, name string) (db.Group, error) {
 	group, err := s.groupStore.FindGroupByID(ctx, groupID)
 	if err != nil {
 		return db.Group{}, err
@@ -43,7 +50,7 @@ func (s *GroupService) UpdateGroup(ctx context.Context, groupID int32, familyID 
 	})
 }
 
-func (s *GroupService) DeleteGroup(ctx context.Context, groupID int32, familyID int32) error {
+func (s *groupService) DeleteGroup(ctx context.Context, groupID int32, familyID int32) error {
 	group, err := s.groupStore.FindGroupByID(ctx, groupID)
 	if err != nil {
 		return err

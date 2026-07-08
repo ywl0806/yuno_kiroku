@@ -20,29 +20,37 @@ type UploadResult struct {
 }
 
 // 스토리지 업로드와 얼굴 크롭 좌표 계산을 담당
-type ImageUploader struct {
+type ImageUploader interface {
+	BuildOriginalKey(familyId, mediaItemId int32, fileName string) string
+	GeneratePresignedPutURL(ctx context.Context, key string, contentType string, expiresIn time.Duration) (string, error)
+	UploadOriginal(ctx context.Context, data []byte, familyId, mediaItemId int32, ext string) (string, error)
+	GetFile(ctx context.Context, key string) ([]byte, error)
+	SaveFile(ctx context.Context, data []byte, folder, fileName string) (string, error)
+}
+
+type imageUploader struct {
 	storage storage.StorageService
 }
 
-func NewImageUploader(storage storage.StorageService) *ImageUploader {
-	return &ImageUploader{storage: storage}
+func NewImageUploader(storage storage.StorageService) ImageUploader {
+	return &imageUploader{storage: storage}
 }
 
 // 원본 이미지용 S3 키를 생성 (Presigned URL 발급 시 사용)
 // 반환 형식: original/{familyId}/{mediaItemId}.{ext}
-func (u *ImageUploader) BuildOriginalKey(familyId, mediaItemId int32, fileName string) string {
+func (u *imageUploader) BuildOriginalKey(familyId, mediaItemId int32, fileName string) string {
 	ext := strings.ToLower(strings.TrimPrefix(fileName[strings.LastIndex(fileName, "."):], "."))
 	return consts.ORIGINAL_STORAGE_PREFIX + "/" + strconv.Itoa(int(familyId)) + "/" + strconv.Itoa(int(mediaItemId)) + "." + ext
 }
 
 // Presigned PUT URL을 생성
-func (u *ImageUploader) GeneratePresignedPutURL(ctx context.Context, key string, contentType string, expiresIn time.Duration) (string, error) {
+func (u *imageUploader) GeneratePresignedPutURL(ctx context.Context, key string, contentType string, expiresIn time.Duration) (string, error) {
 	return u.storage.GeneratePresignedPutURL(ctx, key, contentType, expiresIn)
 }
 
 // 원본 이미지 bytes를 스토리지에 저장
 // 저장 경로: original/{familyId}/{mediaItemId}.{ext}
-func (u *ImageUploader) UploadOriginal(ctx context.Context, data []byte, familyId, mediaItemId int32, ext string) (string, error) {
+func (u *imageUploader) UploadOriginal(ctx context.Context, data []byte, familyId, mediaItemId int32, ext string) (string, error) {
 	folder := consts.ORIGINAL_STORAGE_PREFIX + "/" + strconv.Itoa(int(familyId))
 	fileName := strconv.Itoa(int(mediaItemId)) + "." + ext
 	storageKey, err := u.storage.SaveFile(ctx, data, folder, fileName)
@@ -52,10 +60,10 @@ func (u *ImageUploader) UploadOriginal(ctx context.Context, data []byte, familyI
 	return storageKey, nil
 }
 
-func (u *ImageUploader) GetFile(ctx context.Context, key string) ([]byte, error) {
+func (u *imageUploader) GetFile(ctx context.Context, key string) ([]byte, error) {
 	return u.storage.GetFile(ctx, key)
 }
 
-func (u *ImageUploader) SaveFile(ctx context.Context, data []byte, folder, fileName string) (string, error) {
+func (u *imageUploader) SaveFile(ctx context.Context, data []byte, folder, fileName string) (string, error) {
 	return u.storage.SaveFile(ctx, data, folder, fileName)
 }

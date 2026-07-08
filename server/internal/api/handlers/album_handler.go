@@ -10,10 +10,10 @@ import (
 )
 
 type AlbumHandler struct {
-	albumService *services.AlbumService
+	albumService services.AlbumService
 }
 
-func NewAlbumHandler(albumService *services.AlbumService) *AlbumHandler {
+func NewAlbumHandler(albumService services.AlbumService) *AlbumHandler {
 	return &AlbumHandler{albumService: albumService}
 }
 

@@ -19,13 +19,13 @@ import (
 // view/thumbnail을 생성한 뒤 face_recognition_job을 등록합니다.
 type ResizeService struct {
 	mediaItemStore store.MediaItemStore
-	imageUploader  *services.ImageUploader
+	imageUploader  services.ImageUploader
 	faceDispatcher services.FaceRecognitionDispatcher
 }
 
 func NewResizeService(
 	mediaItemStore store.MediaItemStore,
-	imageUploader *services.ImageUploader,
+	imageUploader services.ImageUploader,
 	faceDispatcher services.FaceRecognitionDispatcher,
 ) *ResizeService {
 	return &ResizeService{

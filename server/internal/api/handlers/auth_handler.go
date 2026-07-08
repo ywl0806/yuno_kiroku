@@ -16,11 +16,11 @@ import (
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authService services.AuthService
 	frontURL    string
 }
 
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+func NewAuthHandler(authService services.AuthService) *AuthHandler {
 	frontURL := viper.GetString("APP_URL")
 	if frontURL == "" {
 		frontURL = "http://localhost:5173"

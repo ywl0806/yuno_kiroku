@@ -7,16 +7,24 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 )
 
-type IdentityService struct {
+type IdentityService interface {
+	CreateIdentity(ctx context.Context, familyId int32) (db.Identity, error)
+	FindIdentityByIdAndFamilyId(ctx context.Context, id int32, familyId int32) (db.Identity, error)
+	FindIdentitiesByFamilyId(ctx context.Context, familyId int32) ([]db.Identity, error)
+	FindNewestIdentityFaceImgByFamilyId(ctx context.Context, familyId int32, onlyNotLinked bool, withKidIds []int32, withUserIds []int32) ([]db.FindNewestIdentityFaceImgByFamilyIdRow, error)
+	GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error)
+}
+
+type identityService struct {
 	identityStore        store.IdentityStore
 	identityFaceImgStore store.IdentityFaceImgStore
 }
 
-func NewIdentityService(identityStore store.IdentityStore, identityFaceImgStore store.IdentityFaceImgStore) *IdentityService {
-	return &IdentityService{identityStore: identityStore, identityFaceImgStore: identityFaceImgStore}
+func NewIdentityService(identityStore store.IdentityStore, identityFaceImgStore store.IdentityFaceImgStore) IdentityService {
+	return &identityService{identityStore: identityStore, identityFaceImgStore: identityFaceImgStore}
 }
 
-func (s *IdentityService) CreateIdentity(ctx context.Context, familyId int32) (db.Identity, error) {
+func (s *identityService) CreateIdentity(ctx context.Context, familyId int32) (db.Identity, error) {
 	identity, err := s.identityStore.CreateIdentity(ctx, familyId)
 	if err != nil {
 		return db.Identity{}, err
@@ -24,7 +32,7 @@ func (s *IdentityService) CreateIdentity(ctx context.Context, familyId int32) (d
 	return identity, nil
 }
 
-func (s *IdentityService) FindIdentityByIdAndFamilyId(ctx context.Context, id int32, familyId int32) (db.Identity, error) {
+func (s *identityService) FindIdentityByIdAndFamilyId(ctx context.Context, id int32, familyId int32) (db.Identity, error) {
 	identity, err := s.identityStore.FindIdentityByIdAndFamilyId(ctx, db.FindIdentityByIdAndFamilyIdParams{
 		ID:       id,
 		FamilyID: familyId,
@@ -35,7 +43,7 @@ func (s *IdentityService) FindIdentityByIdAndFamilyId(ctx context.Context, id in
 	return identity, nil
 }
 
-func (s *IdentityService) FindIdentitiesByFamilyId(ctx context.Context, familyId int32) ([]db.Identity, error) {
+func (s *identityService) FindIdentitiesByFamilyId(ctx context.Context, familyId int32) ([]db.Identity, error) {
 	identities, err := s.identityStore.FindIdentitiesByFamilyId(ctx, familyId)
 	if err != nil {
 		return nil, err
@@ -47,7 +55,7 @@ func (s *IdentityService) FindIdentitiesByFamilyId(ctx context.Context, familyId
 }
 
 // 가장 최근의 identity 얼굴 이미지 조회
-func (s *IdentityService) FindNewestIdentityFaceImgByFamilyId(ctx context.Context, familyId int32, onlyNotLinked bool, withKidIds []int32, withUserIds []int32) ([]db.FindNewestIdentityFaceImgByFamilyIdRow, error) {
+func (s *identityService) FindNewestIdentityFaceImgByFamilyId(ctx context.Context, familyId int32, onlyNotLinked bool, withKidIds []int32, withUserIds []int32) ([]db.FindNewestIdentityFaceImgByFamilyIdRow, error) {
 	identityFaceImgs, err := s.identityFaceImgStore.FindNewestIdentityFaceImgByFamilyId(ctx, db.FindNewestIdentityFaceImgByFamilyIdParams{
 		FamilyID:      familyId,
 		OnlyNotLinked: onlyNotLinked,
@@ -61,6 +69,6 @@ func (s *IdentityService) FindNewestIdentityFaceImgByFamilyId(ctx context.Contex
 }
 
 // identity 옵션 조회
-func (s *IdentityService) GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error) {
+func (s *identityService) GetIdentityOptions(ctx context.Context, familyID int32) ([]db.GetIdentityOptionsRow, error) {
 	return s.identityStore.GetIdentityOptions(ctx, familyID)
 }

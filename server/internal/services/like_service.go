@@ -7,29 +7,35 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/store"
 )
 
-type LikeService struct {
+type LikeService interface {
+	LikeMediaItem(ctx context.Context, mediaItemID, userID int32) error
+	UnlikeMediaItem(ctx context.Context, mediaItemID, userID int32) error
+	IsMediaItemLiked(ctx context.Context, mediaItemID, userID int32) (bool, error)
+}
+
+type likeService struct {
 	likeStore store.LikeStore
 }
 
-func NewLikeService(likeStore store.LikeStore) *LikeService {
-	return &LikeService{likeStore: likeStore}
+func NewLikeService(likeStore store.LikeStore) LikeService {
+	return &likeService{likeStore: likeStore}
 }
 
-func (s *LikeService) LikeMediaItem(ctx context.Context, mediaItemID, userID int32) error {
+func (s *likeService) LikeMediaItem(ctx context.Context, mediaItemID, userID int32) error {
 	return s.likeStore.LikeMediaItem(ctx, db.LikeMediaItemParams{
 		MediaItemID: mediaItemID,
 		UserID:      userID,
 	})
 }
 
-func (s *LikeService) UnlikeMediaItem(ctx context.Context, mediaItemID, userID int32) error {
+func (s *likeService) UnlikeMediaItem(ctx context.Context, mediaItemID, userID int32) error {
 	return s.likeStore.UnlikeMediaItem(ctx, db.UnlikeMediaItemParams{
 		MediaItemID: mediaItemID,
 		UserID:      userID,
 	})
 }
 
-func (s *LikeService) IsMediaItemLiked(ctx context.Context, mediaItemID, userID int32) (bool, error) {
+func (s *likeService) IsMediaItemLiked(ctx context.Context, mediaItemID, userID int32) (bool, error) {
 	return s.likeStore.IsMediaItemLiked(ctx, db.IsMediaItemLikedParams{
 		MediaItemID: mediaItemID,
 		UserID:      userID,

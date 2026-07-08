@@ -39,7 +39,7 @@ type FaceRecognitionService struct {
 	faceStore       store.FaceStore
 	identityStore   store.IdentityStore
 	identityFaceImg store.IdentityFaceImgStore
-	imageUploader   *services.ImageUploader
+	imageUploader   services.ImageUploader
 }
 
 func NewFaceRecognitionService(
@@ -47,7 +47,7 @@ func NewFaceRecognitionService(
 	faceStore store.FaceStore,
 	identityStore store.IdentityStore,
 	identityFaceImg store.IdentityFaceImgStore,
-	imageUploader *services.ImageUploader,
+	imageUploader services.ImageUploader,
 ) *FaceRecognitionService {
 	return &FaceRecognitionService{
 		transactor:      transactor,

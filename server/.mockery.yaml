@@ -35,4 +35,8 @@ packages:
       InviteService:
       AuthService:
       ImageUploader:
+  github.com/ywl0806/yuno_kiroku/pkg/storage:
+    config:
+      dir: 'pkg/storage/mocks'
+    interfaces:
       StorageService:

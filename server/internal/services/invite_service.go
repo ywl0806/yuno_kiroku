@@ -15,14 +15,21 @@ import (
 // 기본 초대 만료 기간 (7일)
 const defaultInviteExpiryDays = 7
 
-type InviteService struct {
+type InviteService interface {
+	CreateInviteToken(ctx context.Context, familyID, groupID, createdByUserID int32, familyTitle, customFamilyTitle string) (db.InviteToken, error)
+	ValidateInviteToken(ctx context.Context, token string) (familyName, groupName string, familyID, groupID int32, err error)
+	GetValidInviteToken(ctx context.Context, token string) (familyID, groupID int32, familyTitle, customFamilyTitle string, err error)
+	MarkInviteTokenUsed(ctx context.Context, token string) error
+}
+
+type inviteService struct {
 	inviteTokenStore store.InviteTokenStore
 	familyStore      store.FamilyStore
 	groupStore       store.GroupStore
 }
 
-func NewInviteService(inviteTokenStore store.InviteTokenStore, familyStore store.FamilyStore, groupStore store.GroupStore) *InviteService {
-	return &InviteService{
+func NewInviteService(inviteTokenStore store.InviteTokenStore, familyStore store.FamilyStore, groupStore store.GroupStore) InviteService {
+	return &inviteService{
 		inviteTokenStore: inviteTokenStore,
 		familyStore:      familyStore,
 		groupStore:       groupStore,
@@ -30,7 +37,7 @@ func NewInviteService(inviteTokenStore store.InviteTokenStore, familyStore store
 }
 
 // CreateInviteToken 초대 토큰 생성. family_id, group_id에 가입할 수 있는 링크용 토큰을 발급한다.
-func (s *InviteService) CreateInviteToken(ctx context.Context, familyID, groupID, createdByUserID int32, familyTitle, customFamilyTitle string) (db.InviteToken, error) {
+func (s *inviteService) CreateInviteToken(ctx context.Context, familyID, groupID, createdByUserID int32, familyTitle, customFamilyTitle string) (db.InviteToken, error) {
 	if err := s.validateFamilyExists(ctx, familyID); err != nil {
 		return db.InviteToken{}, err
 	}
@@ -55,7 +62,7 @@ func (s *InviteService) CreateInviteToken(ctx context.Context, familyID, groupID
 }
 
 // ValidateInviteToken 토큰이 유효하면 초대 정보(가족/그룹) 반환. 로그인 전 초대 링크 유효성 확인용.
-func (s *InviteService) ValidateInviteToken(ctx context.Context, token string) (familyName, groupName string, familyID, groupID int32, err error) {
+func (s *inviteService) ValidateInviteToken(ctx context.Context, token string) (familyName, groupName string, familyID, groupID int32, err error) {
 	invite, err := s.inviteTokenStore.GetInviteTokenByToken(ctx, token)
 	if err != nil || invite.ID == 0 {
 		return "", "", 0, 0, apperr.NewAppErrorWithData(apperr.NotFound, "error.invite_token_invalid", nil)
@@ -72,7 +79,7 @@ func (s *InviteService) ValidateInviteToken(ctx context.Context, token string) (
 }
 
 // GetValidInviteToken 유효한 초대 토큰 조회 (OAuth/가입 시 사용할 family_id, group_id, family_title 획득용)
-func (s *InviteService) GetValidInviteToken(ctx context.Context, token string) (familyID, groupID int32, familyTitle, customFamilyTitle string, err error) {
+func (s *inviteService) GetValidInviteToken(ctx context.Context, token string) (familyID, groupID int32, familyTitle, customFamilyTitle string, err error) {
 	invite, err := s.inviteTokenStore.GetInviteTokenByToken(ctx, token)
 	if err != nil || invite.ID == 0 {
 		return 0, 0, "", "", apperr.NewAppErrorWithData(apperr.NotFound, "error.invite_token_invalid", nil)
@@ -81,7 +88,7 @@ func (s *InviteService) GetValidInviteToken(ctx context.Context, token string) (
 }
 
 // MarkInviteTokenUsed 초대 토큰 사용 처리 (한 번만 사용 가능)
-func (s *InviteService) MarkInviteTokenUsed(ctx context.Context, token string) error {
+func (s *inviteService) MarkInviteTokenUsed(ctx context.Context, token string) error {
 	return s.inviteTokenStore.MarkInviteTokenUsed(ctx, token)
 }
 
@@ -93,7 +100,7 @@ func generateSecureToken(byteLen int) string {
 }
 
 // validateFamilyExists 가족 존재 확인
-func (s *InviteService) validateFamilyExists(ctx context.Context, familyID int32) error {
+func (s *inviteService) validateFamilyExists(ctx context.Context, familyID int32) error {
 	family, err := s.familyStore.FindFamilyByID(ctx, familyID)
 	if err != nil {
 		return err
@@ -104,7 +111,7 @@ func (s *InviteService) validateFamilyExists(ctx context.Context, familyID int32
 	return nil
 }
 
-func (s *InviteService) validateGroupExists(ctx context.Context, groupID int32) error {
+func (s *inviteService) validateGroupExists(ctx context.Context, groupID int32) error {
 	group, err := s.groupStore.FindGroupByID(ctx, groupID)
 	if err != nil {
 		return err

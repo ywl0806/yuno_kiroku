@@ -8,10 +8,10 @@ import (
 )
 
 type IdentityHandler struct {
-	identityService *services.IdentityService
+	identityService services.IdentityService
 }
 
-func NewIdentityHandler(identityService *services.IdentityService) *IdentityHandler {
+func NewIdentityHandler(identityService services.IdentityService) *IdentityHandler {
 	return &IdentityHandler{identityService: identityService}
 }
 

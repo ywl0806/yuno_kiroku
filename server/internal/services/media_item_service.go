@@ -13,16 +13,28 @@ import (
 	internalutils "github.com/ywl0806/yuno_kiroku/internal/utils"
 )
 
-type MediaItemService struct {
+type MediaItemService interface {
+	UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error
+	GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error)
+	GetMediaItemRange(ctx context.Context, groupId int32) ([]MediaItemRange, error)
+	SearchMediaItems(ctx context.Context, groupID, userID int32, from, to *time.Time, albumID *int32, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error)
+	CreatePresignedUpload(ctx context.Context, fileName, contentType string, familyId, albumId, uploadBatchID int32) (*PresignedUploadResult, error)
+	CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error)
+	GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error)
+	GetUploadBatchesWithThumbnails(ctx context.Context, groupID int32, page int) ([]UploadBatchWithThumbnails, bool, error)
+	GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID int32, page int) (*UploadBatchItemsResult, error)
+}
+
+type mediaItemService struct {
 	mediaItemStore store.MediaItemStore
-	imageUploader  *ImageUploader
+	imageUploader  ImageUploader
 }
 
 func NewMediaItemService(
 	mediaItemStore store.MediaItemStore,
-	imageUploader *ImageUploader,
-) *MediaItemService {
-	return &MediaItemService{
+	imageUploader ImageUploader,
+) MediaItemService {
+	return &mediaItemService{
 		mediaItemStore: mediaItemStore,
 		imageUploader:  imageUploader,
 	}
@@ -35,7 +47,7 @@ type UploadImageResult struct {
 }
 
 // 미디어 아이템의 업로드 상태를 업데이트
-func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
+func (s *mediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, mediaItemID int32, uploadStatus enums.UploadStatus) error {
 	_, err := s.mediaItemStore.UpdateMediaItemUploadStatus(ctx, db.UpdateMediaItemUploadStatusParams{
 		ID:           mediaItemID,
 		UploadStatus: string(uploadStatus),
@@ -44,7 +56,7 @@ func (s *MediaItemService) UpdateMediaItemUploadStatus(ctx context.Context, medi
 }
 
 // GetMediaItemsByTakenAt는 촬영 시간 범위 내의 미디어 아이템을 반환
-func (s *MediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
+func (s *mediaItemService) GetMediaItemsByTakenAt(ctx context.Context, groupID int32, userID int32, from, to time.Time) ([]db.GetMediaItemsByTakenAtRow, error) {
 	params := db.GetMediaItemsByTakenAtParams{
 		GroupID:     groupID,
 		TakenAtFrom: from,
@@ -66,7 +78,7 @@ type MediaItemRange struct {
 }
 
 // GetMediaItemRange는 미디어 아이템이 있는 연/월 목록을 반환
-func (s *MediaItemService) GetMediaItemRange(ctx context.Context, groupId int32) ([]MediaItemRange, error) {
+func (s *mediaItemService) GetMediaItemRange(ctx context.Context, groupId int32) ([]MediaItemRange, error) {
 	ranges, err := s.mediaItemStore.GetMediaItemRange(ctx, groupId)
 	if err != nil {
 		return nil, err
@@ -96,7 +108,7 @@ type SearchMediaItemsResult struct {
 }
 
 // SearchMediaItems는 검색 조건으로 미디어 아이템을 페이지 단위로 반환
-func (s *MediaItemService) SearchMediaItems(ctx context.Context, groupID, userID int32, from, to *time.Time, albumID *int32, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
+func (s *mediaItemService) SearchMediaItems(ctx context.Context, groupID, userID int32, from, to *time.Time, albumID *int32, identityIDs []int32, liked bool, tagIDs []int32, page int) (*SearchMediaItemsResult, error) {
 	if identityIDs == nil {
 		identityIDs = []int32{}
 	}
@@ -152,7 +164,7 @@ type PresignedUploadResult struct {
 
 // CreatePresignedUpload는 S3 직접 업로드용 Presigned PUT URL을 발급
 // DB 레코드를 먼저 생성(DB-first)하여 고아 파일을 방지
-func (s *MediaItemService) CreatePresignedUpload(
+func (s *mediaItemService) CreatePresignedUpload(
 	ctx context.Context,
 	fileName, contentType string,
 	familyId, albumId, uploadBatchID int32,
@@ -194,7 +206,7 @@ func (s *MediaItemService) CreatePresignedUpload(
 }
 
 // CreateUploadBatch는 앨범에 대한 새 업로드 배치를 생성
-func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error) {
+func (s *mediaItemService) CreateUploadBatch(ctx context.Context, familyId, albumId int32) (*db.UploadBatch, error) {
 	uploadBatch, err := s.mediaItemStore.CreateUploadBatch(ctx, albumId)
 	if err != nil {
 		return nil, err
@@ -203,7 +215,7 @@ func (s *MediaItemService) CreateUploadBatch(ctx context.Context, familyId, albu
 }
 
 // GetUploadStatuses는 배치 내 모든 아이템의 업로드 상태를 반환합니다.
-func (s *MediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
+func (s *mediaItemService) GetUploadStatuses(ctx context.Context, uploadBatchID int32) ([]db.GetUploadStatusesRow, error) {
 	return s.mediaItemStore.GetUploadStatuses(ctx, uploadBatchID)
 }
 
@@ -223,7 +235,7 @@ type UploadBatchWithThumbnails struct {
 }
 
 // GetUploadBatchesWithThumbnails는 배치 목록과 각 배치의 썸네일 5개를 반환합니다. (2-쿼리 방식)
-func (s *MediaItemService) GetUploadBatchesWithThumbnails(ctx context.Context, groupID int32, page int) ([]UploadBatchWithThumbnails, bool, error) {
+func (s *mediaItemService) GetUploadBatchesWithThumbnails(ctx context.Context, groupID int32, page int) ([]UploadBatchWithThumbnails, bool, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -297,7 +309,7 @@ type UploadBatchItemsResult struct {
 }
 
 // GetMediaItemsByUploadBatch는 특정 배치의 미디어 아이템을 페이지 단위로 반환합니다.
-func (s *MediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID int32, page int) (*UploadBatchItemsResult, error) {
+func (s *mediaItemService) GetMediaItemsByUploadBatch(ctx context.Context, uploadBatchID int32, userID int32, page int) (*UploadBatchItemsResult, error) {
 	if page < 1 {
 		page = 1
 	}

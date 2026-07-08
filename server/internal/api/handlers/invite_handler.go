@@ -12,11 +12,11 @@ import (
 )
 
 type InviteHandler struct {
-	inviteService *services.InviteService
+	inviteService services.InviteService
 	frontURL      string
 }
 
-func NewInviteHandler(inviteService *services.InviteService) *InviteHandler {
+func NewInviteHandler(inviteService services.InviteService) *InviteHandler {
 	frontURL := viper.GetString("APP_URL")
 	if frontURL == "" {
 		frontURL = "http://localhost:5155"

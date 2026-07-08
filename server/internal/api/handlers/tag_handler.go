@@ -10,10 +10,10 @@ import (
 )
 
 type TagHandler struct {
-	tagService *services.TagService
+	tagService services.TagService
 }
 
-func NewTagHandler(tagService *services.TagService) *TagHandler {
+func NewTagHandler(tagService services.TagService) *TagHandler {
 	return &TagHandler{tagService: tagService}
 }
 
