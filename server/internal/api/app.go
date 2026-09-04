@@ -45,8 +45,8 @@ func Init(e *echo.Echo) {
 	storageService := storageProvider.StorageService()
 
 	// service (store 계층을 통해 데이터 접근)
-	userService := services.NewUserService(st.User, st.Family, st.Group)
-	inviteService := services.NewInviteService(st.InviteToken, st.Family, st.Group)
+	userService := services.NewUserService(st.User(), st.Family(), st.Group())
+	inviteService := services.NewInviteService(st.InviteToken(), st.Family(), st.Group())
 	authService := services.NewAuthService(
 		userService,
 		inviteService,
@@ -63,13 +63,13 @@ func Init(e *echo.Echo) {
 		},
 	)
 	imageUploader := services.NewImageUploader(storageService)
-	mediaItemService := services.NewMediaItemService(st.MediaItem, imageUploader)
-	identityService := services.NewIdentityService(st.Identity, st.IdentityFaceImg)
-	albumService := services.NewAlbumService(st.Album, st.AlbumGroupPermission, st)
-	groupService := services.NewGroupService(st.Family, st.Group)
-	kidService := services.NewKidService(st.Kid)
-	likeService := services.NewLikeService(st.Like)
-	tagService := services.NewTagService(st.Tag)
+	mediaItemService := services.NewMediaItemService(st.MediaItem(), imageUploader)
+	identityService := services.NewIdentityService(st.Identity(), st.IdentityFaceImg())
+	albumService := services.NewAlbumService(st.Album(), st.AlbumGroupPermission(), st)
+	groupService := services.NewGroupService(st.Family(), st.Group())
+	kidService := services.NewKidService(st.Kid())
+	likeService := services.NewLikeService(st.Like())
+	tagService := services.NewTagService(st.Tag())
 
 	// handler
 	userHandler := handlers.NewUserHandler(userService)

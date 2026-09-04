@@ -42,9 +42,9 @@ func main() {
 
 	svc := workerServices.NewFaceRecognitionService(
 		st,
-		st.Face,
-		st.Identity,
-		st.IdentityFaceImg,
+		st.Face(),
+		st.Identity(),
+		st.IdentityFaceImg(),
 		imageUploader,
 	)
 

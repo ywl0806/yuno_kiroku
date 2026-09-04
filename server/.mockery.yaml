@@ -7,6 +7,8 @@ issue-845-fix: true
 packages:
   github.com/ywl0806/yuno_kiroku/internal/store:
     interfaces:
+      Transactor:
+      TxStore:
       UserStore:
       FamilyStore:
       GroupStore:
@@ -35,6 +37,7 @@ packages:
       InviteService:
       AuthService:
       ImageUploader:
+      FaceRecognitionDispatcher:
   github.com/ywl0806/yuno_kiroku/pkg/storage:
     config:
       dir: 'pkg/storage/mocks'

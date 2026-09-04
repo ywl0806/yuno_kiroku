@@ -60,8 +60,8 @@ func NewFaceRecognitionService(
 
 // matchOrCreateIdentity 얼굴 임베딩을 데이터베이스에서 검색 후 매칭된 identity가 없으면 새로운 identity를 생성합니다.
 // 반드시 advisory lock이 획득된 트랜잭션 Store(tx) 위에서 호출해야 합니다.
-func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID int32, embedding []float64) (int32, error) {
-	similar, err := tx.Face.FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
+func matchOrCreateIdentity(ctx context.Context, tx store.TxStore, familyID int32, embedding []float64) (int32, error) {
+	similar, err := tx.Face().FindMostSimilarFace(ctx, db.FindMostSimilarFaceParams{
 		FamilyID:            familyID,
 		Embedding:           utils.Float64SliceToVectorString(embedding),
 		SimilarityThreshold: consts.FACE_SEARCH_THRESHOLD,
@@ -70,7 +70,7 @@ func matchOrCreateIdentity(ctx context.Context, tx *store.Store, familyID int32,
 	log.Printf("err: %+v", err)
 	if err != nil {
 		if apperr.IsAppError(err, apperr.NotFound) {
-			newIdentity, err := tx.Identity.CreateIdentity(ctx, familyID)
+			newIdentity, err := tx.Identity().CreateIdentity(ctx, familyID)
 			if err != nil {
 				return 0, err
 			}
@@ -97,13 +97,13 @@ func (s *FaceRecognitionService) ProcessFaces(ctx context.Context, params Proces
 
 	for _, face := range faces {
 		var identityID int32
-		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|int64(params.FamilyID), func(tx *store.Store) error {
+		err := s.transactor.TransactWithAdvisoryLock(ctx, advisoryLockNamespace<<32|int64(params.FamilyID), func(tx store.TxStore) error {
 			id, err := matchOrCreateIdentity(ctx, tx, params.FamilyID, face.Embedding)
 			if err != nil {
 				return err
 			}
 			identityID = id
-			_, err = tx.Face.CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
+			_, err = tx.Face().CreateFaceDetection(ctx, db.CreateFaceDetectionParams{
 				MediaItemID:    params.MediaItemID,
 				IdentityID:     identityID,
 				LocationTop:    int32(face.FaceLocation.Top),

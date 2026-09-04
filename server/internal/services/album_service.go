@@ -69,8 +69,8 @@ func (s *albumService) GetAlbumWithPermissions(ctx context.Context, albumID int3
 
 func (s *albumService) CreateAlbum(ctx context.Context, familyID int32, name string, perms []GroupPermission) (db.Album, error) {
 	var result db.Album
-	err := s.transactor.Transact(ctx, func(tx *store.Store) error {
-		album, err := tx.Album.CreateAlbum(ctx, db.CreateAlbumParams{
+	err := s.transactor.Transact(ctx, func(tx store.TxStore) error {
+		album, err := tx.Album().CreateAlbum(ctx, db.CreateAlbumParams{
 			FamilyID: familyID,
 			Name:     name,
 		})
@@ -78,7 +78,7 @@ func (s *albumService) CreateAlbum(ctx context.Context, familyID int32, name str
 			return err
 		}
 		for _, p := range perms {
-			if err := tx.AlbumGroupPermission.InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
+			if err := tx.AlbumGroupPermission().InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
 				AlbumID:    album.ID,
 				GroupID:    p.GroupID,
 				Permission: p.Permission,
@@ -103,19 +103,19 @@ func (s *albumService) UpdateAlbum(ctx context.Context, albumID int32, familyID 
 	}
 
 	var result db.Album
-	err = s.transactor.Transact(ctx, func(tx *store.Store) error {
-		updated, err := tx.Album.UpdateAlbum(ctx, db.UpdateAlbumParams{
+	err = s.transactor.Transact(ctx, func(tx store.TxStore) error {
+		updated, err := tx.Album().UpdateAlbum(ctx, db.UpdateAlbumParams{
 			Name: name,
 			ID:   albumID,
 		})
 		if err != nil {
 			return err
 		}
-		if err := tx.AlbumGroupPermission.DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
+		if err := tx.AlbumGroupPermission().DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
 			return err
 		}
 		for _, p := range perms {
-			if err := tx.AlbumGroupPermission.InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
+			if err := tx.AlbumGroupPermission().InsertAlbumGroupPermission(ctx, db.InsertAlbumGroupPermissionParams{
 				AlbumID:    albumID,
 				GroupID:    p.GroupID,
 				Permission: p.Permission,
@@ -137,10 +137,10 @@ func (s *albumService) DeleteAlbum(ctx context.Context, albumID int32, familyID 
 	if album.FamilyID != familyID {
 		return apperr.NewForbiddenError("error.forbidden", nil)
 	}
-	return s.transactor.Transact(ctx, func(tx *store.Store) error {
-		if err := tx.AlbumGroupPermission.DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
+	return s.transactor.Transact(ctx, func(tx store.TxStore) error {
+		if err := tx.AlbumGroupPermission().DeleteAlbumGroupPermissionsByAlbumID(ctx, albumID); err != nil {
 			return err
 		}
-		return tx.Album.DeleteAlbum(ctx, albumID)
+		return tx.Album().DeleteAlbum(ctx, albumID)
 	})
 }

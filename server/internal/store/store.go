@@ -7,30 +7,48 @@ import (
 	"github.com/ywl0806/yuno_kiroku/internal/db"
 )
 
-// Transactor 트랜잭션 범위 관리 인터페이스
-type Transactor interface {
-	Transact(ctx context.Context, fn func(tx *Store) error) error
-	TransactWithAdvisoryLock(ctx context.Context, key int64, fn func(tx *Store) error) error
+// TxStore 트랜잭션 범위 안에서 접근할 수 있는 도메인 Store 집합.
+// Transact 콜백의 인자 타입이며, 인터페이스이므로 테스트에서 목으로 대체할 수 있다.
+type TxStore interface {
+	User() UserStore
+	Family() FamilyStore
+	Group() GroupStore
+	Album() AlbumStore
+	AlbumGroupPermission() AlbumGroupPermissionStore
+	Identity() IdentityStore
+	Face() FaceStore
+	MediaItem() MediaItemStore
+	InviteToken() InviteTokenStore
+	Kid() KidStore
+	IdentityFaceImg() IdentityFaceImgStore
+	Like() LikeStore
+	Tag() TagStore
 }
 
-// Store 모든 도메인 Store를 묶은 컨테이너
+// Transactor 트랜잭션 범위 관리 인터페이스
+type Transactor interface {
+	Transact(ctx context.Context, fn func(tx TxStore) error) error
+	TransactWithAdvisoryLock(ctx context.Context, key int64, fn func(tx TxStore) error) error
+}
+
+// Store 모든 도메인 Store를 묶은 컨테이너 (TxStore, Transactor 구현체)
 type Store struct {
 	db      *sql.DB     // BeginTx 전용
 	queries *db.Queries // WithTx 전용
 
-	User                 UserStore
-	Family               FamilyStore
-	Group                GroupStore
-	Album                AlbumStore
-	AlbumGroupPermission AlbumGroupPermissionStore
-	Identity             IdentityStore
-	Face                 FaceStore
-	MediaItem            MediaItemStore
-	InviteToken          InviteTokenStore
-	Kid                  KidStore
-	IdentityFaceImg      IdentityFaceImgStore
-	Like                 LikeStore
-	Tag                  TagStore
+	user                 UserStore
+	family               FamilyStore
+	group                GroupStore
+	album                AlbumStore
+	albumGroupPermission AlbumGroupPermissionStore
+	identity             IdentityStore
+	face                 FaceStore
+	mediaItem            MediaItemStore
+	inviteToken          InviteTokenStore
+	kid                  KidStore
+	identityFaceImg      IdentityFaceImgStore
+	like                 LikeStore
+	tag                  TagStore
 }
 
 // New Store 컨테이너 생성 (각 도메인 Store 구현체 주입)
@@ -39,21 +57,37 @@ func New(sqlDB *sql.DB, queries *db.Queries) *Store {
 		db:      sqlDB,
 		queries: queries,
 
-		User:                 NewUserStore(queries),
-		Family:               NewFamilyStore(queries),
-		Group:                NewGroupStore(queries),
-		Album:                NewAlbumStore(queries),
-		AlbumGroupPermission: NewAlbumGroupPermissionStore(queries),
-		Identity:             NewIdentityStore(queries),
-		Face:                 NewFaceStore(queries),
-		MediaItem:            NewMediaItemStore(queries),
-		InviteToken:          NewInviteTokenStore(queries),
-		Kid:                  NewKidStore(queries),
-		IdentityFaceImg:      NewIdentityFaceImgStore(queries),
-		Like:                 NewLikeStore(queries),
-		Tag:                  NewTagStore(queries),
+		user:                 NewUserStore(queries),
+		family:               NewFamilyStore(queries),
+		group:                NewGroupStore(queries),
+		album:                NewAlbumStore(queries),
+		albumGroupPermission: NewAlbumGroupPermissionStore(queries),
+		identity:             NewIdentityStore(queries),
+		face:                 NewFaceStore(queries),
+		mediaItem:            NewMediaItemStore(queries),
+		inviteToken:          NewInviteTokenStore(queries),
+		kid:                  NewKidStore(queries),
+		identityFaceImg:      NewIdentityFaceImgStore(queries),
+		like:                 NewLikeStore(queries),
+		tag:                  NewTagStore(queries),
 	}
 }
+
+func (s *Store) User() UserStore     { return s.user }
+func (s *Store) Family() FamilyStore { return s.family }
+func (s *Store) Group() GroupStore   { return s.group }
+func (s *Store) Album() AlbumStore   { return s.album }
+func (s *Store) AlbumGroupPermission() AlbumGroupPermissionStore {
+	return s.albumGroupPermission
+}
+func (s *Store) Identity() IdentityStore               { return s.identity }
+func (s *Store) Face() FaceStore                       { return s.face }
+func (s *Store) MediaItem() MediaItemStore             { return s.mediaItem }
+func (s *Store) InviteToken() InviteTokenStore         { return s.inviteToken }
+func (s *Store) Kid() KidStore                         { return s.kid }
+func (s *Store) IdentityFaceImg() IdentityFaceImgStore { return s.identityFaceImg }
+func (s *Store) Like() LikeStore                       { return s.like }
+func (s *Store) Tag() TagStore                         { return s.tag }
 
 // AcquireAdvisoryXactLock 트랜잭션 범위 advisory lock을 획득
 // 트랜잭션 종료(커밋/롤백) 시 자동 해제. Transact 내부에서만 사용해야 함.
@@ -70,7 +104,7 @@ func ReleaseAdvisoryXactLock(ctx context.Context, key int64, tx db.DBTX) error {
 }
 
 // Transact 트랜잭션 범위 내에서 fn을 실행한다. fn이 에러를 반환하면 롤백, 성공하면 커밋한다.
-func (s *Store) Transact(ctx context.Context, fn func(tx *Store) error) error {
+func (s *Store) Transact(ctx context.Context, fn func(tx TxStore) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 
 	if err != nil {
@@ -93,7 +127,7 @@ func (s *Store) Transact(ctx context.Context, fn func(tx *Store) error) error {
 }
 
 // TransactWithAdvisoryLock 트랜잭션 범위 내에서 advisory lock을 획득한 후 fn을 실행한다.
-func (s *Store) TransactWithAdvisoryLock(ctx context.Context, key int64, fn func(tx *Store) error) error {
+func (s *Store) TransactWithAdvisoryLock(ctx context.Context, key int64, fn func(tx TxStore) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
